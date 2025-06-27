@@ -16,6 +16,9 @@ export interface PagedResult<T> {
   hasNextPage: boolean;
 }
 
+// Dashboard models
+export * from './dashboard.model';
+
 // Authentication models
 export interface LoginRequest {
   email: string;

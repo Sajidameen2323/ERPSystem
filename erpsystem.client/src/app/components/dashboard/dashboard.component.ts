@@ -5,13 +5,18 @@ import { LucideAngularModule, LayoutDashboard, Users, LogOut, User } from 'lucid
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { UserProfile } from '../../core/models';
+import { AdminDashboardComponent } from './admin-dashboard/admin-dashboard.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule],
+  imports: [CommonModule, RouterModule, LucideAngularModule, AdminDashboardComponent],
   template: `
-    <div class="min-h-screen bg-gray-50">
+    <!-- Admin Dashboard -->
+    <app-admin-dashboard *ngIf="isAdmin"></app-admin-dashboard>
+    
+    <!-- Regular User Dashboard -->
+    <div *ngIf="!isAdmin" class="min-h-screen bg-gray-50">
       <!-- Navigation -->
       <nav class="bg-white shadow-sm border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -139,6 +144,7 @@ import { UserProfile } from '../../core/models';
 export class DashboardComponent implements OnInit {
   currentUser: UserProfile | null = null;
   hasManagerAccess = false;
+  isAdmin = false;
 
   // Lucide icons
   readonly dashboardIcon = LayoutDashboard;
@@ -155,6 +161,7 @@ export class DashboardComponent implements OnInit {
   ngOnInit(): void {
     this.currentUser = this.authService.getCurrentUser();
     this.hasManagerAccess = this.authService.hasAnyRole(['Admin', 'Manager']);
+    this.isAdmin = this.authService.hasAnyRole(['Admin']);
   }
 
   logout(): void {

@@ -1,0 +1,49 @@
+<div class="bg-white shadow-lg rounded-lg">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h3 class="text-lg font-medium text-gray-900 flex items-center">
+      <lucide-icon [img]="clockIcon" class="w-5 h-5 mr-2 text-gray-500"></lucide-icon>
+      Recent Activities
+    </h3>
+  </div>
+  <div class="p-6">
+    <div *ngIf="activities.length === 0" class="text-center py-8">
+      <div class="text-gray-400 mb-2">
+        <lucide-icon [img]="clockIcon" class="w-12 h-12 mx-auto"></lucide-icon>
+      </div>
+      <p class="text-gray-500">No recent activities to display</p>
+    </div>
+    
+    <div *ngIf="activities.length > 0" class="flow-root">
+      <ul class="-mb-8">
+        <li *ngFor="let activity of activities; let i = index" class="relative pb-8">
+          <div *ngIf="i !== activities.length - 1" class="absolute top-5 left-5 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></div>
+          <div class="relative flex items-start space-x-3">
+            <div class="relative">
+              <div class="h-10 w-10 rounded-full flex items-center justify-center" 
+                   [ngClass]="activity.color">
+                <lucide-icon [img]="getIcon(activity.icon)" class="w-5 h-5"></lucide-icon>
+              </div>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div>
+                <div class="text-sm">
+                  <p class="font-medium text-gray-900">{{ activity.description }}</p>
+                </div>
+                <div class="mt-1 flex items-center text-sm text-gray-500">
+                  <span>{{ activity.userName }}</span>
+                  <span class="mx-2">•</span>
+                  <span>{{ getTimeAgo(activity.timestamp) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+  <div class="bg-gray-50 px-6 py-3 text-right">
+    <a href="#" class="text-sm font-medium text-blue-600 hover:text-blue-500">
+      View all activities →
+    </a>
+  </div>
+</div>
