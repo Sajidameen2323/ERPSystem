@@ -11,6 +11,15 @@ export const routes: Routes = [
     loadComponent: () => import('./components/auth/login/login.component').then(m => m.LoginComponent),
     canActivate: [guestGuard]
   },
+  {
+    path: 'login/okta',
+    loadComponent: () => import('./auth/okta-login/okta-login.component').then(m => m.OktaLoginComponent),
+    canActivate: [guestGuard]
+  },
+  {
+    path: 'login/callback',
+    loadComponent: () => import('./auth/okta-callback/okta-callback.component').then(m => m.OktaCallbackComponent)
+  },
 
   
   // Dashboard route (requires authentication)

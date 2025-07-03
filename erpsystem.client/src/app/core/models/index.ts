@@ -40,6 +40,31 @@ export interface AuthResponse {
   user: UserProfile;
 }
 
+// Okta-specific authentication models
+export interface OktaLoginResponse {
+  accessToken: string;
+  idToken: string;
+  user: UserProfile;
+  expiresAt: Date;
+  groups: string[];
+}
+
+export interface OktaTokenValidationRequest {
+  accessToken: string;
+}
+
+export interface OktaAuthorizationRequest {
+  code: string;
+  state: string;
+}
+
+export interface OktaTokenExchangeRequest {
+  code: string;
+  codeVerifier: string;
+  state: string;
+  redirectUri: string;
+}
+
 export interface UserProfile {
   id: string;
   firstName: string;

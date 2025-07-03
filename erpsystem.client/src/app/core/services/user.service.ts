@@ -12,6 +12,10 @@ import {
   Result
 } from '../models';
 
+export interface UserSearchRequest extends PaginationParams {
+  isActive?: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -19,8 +23,8 @@ export class UserService {
   constructor(private httpService: HttpService) {}
 
   // Get paginated list of users
-  getUsers(pagination: PaginationParams): Observable<PagedResult<UserManagement>> {
-    return this.httpService.getPaged<UserManagement>('/users', pagination).pipe(
+  getUsers(params: UserSearchRequest): Observable<PagedResult<UserManagement>> {
+    return this.httpService.get<PagedResult<UserManagement>>('/users', { params }).pipe(
       map(result => {
         if (result.isSuccess && result.data) {
           return result.data;
@@ -112,14 +116,15 @@ export class UserService {
   }
 
   // Search users
-  searchUsers(searchTerm: string, page: number = 1, pageSize: number = 10): Observable<PagedResult<UserManagement>> {
-    const pagination: PaginationParams = {
+  searchUsers(searchTerm: string, page: number = 1, pageSize: number = 10, isActive?: boolean): Observable<PagedResult<UserManagement>> {
+    const params: UserSearchRequest = {
       page,
       pageSize,
       searchTerm,
       sortBy: 'firstName',
-      sortDirection: 'asc'
+      sortDirection: 'asc',
+      isActive
     };
-    return this.getUsers(pagination);
+    return this.getUsers(params);
   }
 }

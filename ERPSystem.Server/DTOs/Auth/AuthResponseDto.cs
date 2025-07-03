@@ -7,6 +7,15 @@ public class LoginResponse
     public DateTime ExpiresAt { get; set; }
 }
 
+public class OktaLoginResponse
+{
+    public string AccessToken { get; set; } = string.Empty;
+    public string IdToken { get; set; } = string.Empty;
+    public UserDto User { get; set; } = new();
+    public DateTime ExpiresAt { get; set; }
+    public List<string> Groups { get; set; } = new();
+}
+
 public class UserDto
 {
     public string Id { get; set; } = string.Empty;

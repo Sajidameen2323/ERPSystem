@@ -1,0 +1,22 @@
+MY OKTA CONFIGURATION
+=====================
+
+Okta Domain: trial-1358401.okta.com
+
+
+Angular App (Frontend):
+- Client ID: 0oasufbxz8RxDLA0w697
+- Type: Single-Page Application
+
+Backend App (ASP.NET):
+- Client ID: 0oasufj4o3YRr4wqQ697
+- Client Secret: GID3GQNL_nCHm6AuirJ1vgbirJL7FMsPw4ASsTFjeBsP_CfCn0ELIcqXPQWsdFWJ
+- Backend Api Token: 00224TYv5OKhJJomoUjt8ygS1lPgmG0eqXhZT2u-1E
+- Type: Web Application
+
+Authorization Server: default
+
+URLs for Development:
+- Angular App: http://localhost:4200
+- Backend API: https://localhost:7001
+- Authority URL: https://trial-1358401.okta.com/oauth2/default

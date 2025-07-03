@@ -8,24 +8,22 @@ namespace ERPSystem.Server.Services.Implementations
     public class DashboardService : IDashboardService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IOktaAuthService _oktaAuthService;
 
-        public DashboardService(ApplicationDbContext context)
+        public DashboardService(ApplicationDbContext context, IOktaAuthService oktaAuthService)
         {
             _context = context;
+            _oktaAuthService = oktaAuthService;
         }
 
         public async Task<DashboardStatsDto> GetDashboardStatsAsync()
         {
             var stats = new DashboardStatsDto();
 
-            // User Statistics
-            var userStats = await _context.Users
-                .GroupBy(u => u.IsActive)
-                .Select(g => new { IsActive = g.Key, Count = g.Count() })
-                .ToListAsync();
-
-            stats.TotalUsers = userStats.Sum(s => s.Count);
-            stats.ActiveUsers = userStats.FirstOrDefault(s => s.IsActive)?.Count ?? 0;
+            // User Statistics - Since users are in Okta, we'll use mock data for now
+            // In a real implementation, you could call Okta API to get user counts
+            stats.TotalUsers = 0; // TODO: Implement Okta user count API call
+            stats.ActiveUsers = 0; // TODO: Implement Okta active user count API call
 
             // Product Statistics (assuming Products table exists)
             try
@@ -80,29 +78,14 @@ namespace ERPSystem.Server.Services.Implementations
             return await Task.FromResult(config);
         }
 
-        public async Task<List<RecentActivityDto>> GetRecentActivitiesAsync(int count = 10)
+        public Task<List<RecentActivityDto>> GetRecentActivitiesAsync(int count = 10)
         {
             var activities = new List<RecentActivityDto>();
 
-            // Add user-related activities
-            var recentUsers = await _context.Users
-                .OrderByDescending(u => u.CreatedAt)
-                .Take(count / 2)
-                .Select(u => new RecentActivityDto
-                {
-                    Id = u.Id,
-                    Description = $"New user registered: {u.Email}",
-                    Type = "user_registered",
-                    Timestamp = u.CreatedAt,
-                    UserName = u.Email ?? "System",
-                    Icon = "user-plus",
-                    Color = "bg-green-100 text-green-600"
-                })
-                .ToListAsync();
-
-            activities.AddRange(recentUsers);
-
-            // Add system activities
+            // Since users are managed in Okta, we'll use mock data for recent user activities
+            // In a real implementation, you could fetch this from Okta audit logs
+            
+            // Add sample system activities
             activities.Add(new RecentActivityDto
             {
                 Id = Guid.NewGuid().ToString(),
@@ -114,7 +97,18 @@ namespace ERPSystem.Server.Services.Implementations
                 Color = "bg-blue-100 text-blue-600"
             });
 
-            return activities.OrderByDescending(a => a.Timestamp).Take(count).ToList();
+            activities.Add(new RecentActivityDto
+            {
+                Id = Guid.NewGuid().ToString(),
+                Description = "Daily maintenance task completed",
+                Type = "system_maintenance",
+                Timestamp = DateTime.UtcNow.AddHours(-4),
+                UserName = "System",
+                Icon = "settings",
+                Color = "bg-gray-100 text-gray-600"
+            });
+
+            return Task.FromResult(activities.OrderByDescending(a => a.Timestamp).Take(count).ToList());
         }
 
         private List<DashboardChartDataDto> GenerateSampleSalesData()
