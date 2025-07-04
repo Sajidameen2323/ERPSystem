@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ERPSystem.Server.DTOs.Auth.Validation;
 
 namespace ERPSystem.Server.DTOs.Auth;
 
@@ -26,5 +27,7 @@ public class RegisterDto
     [StringLength(50, MinimumLength = 2)]
     public string LastName { get; set; } = string.Empty;
 
+    [Required]
+    [ValidRoles]
     public List<string> Roles { get; set; } = new();
 }

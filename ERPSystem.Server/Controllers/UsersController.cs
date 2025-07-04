@@ -1,51 +1,72 @@
 using ERPSystem.Server.DTOs.Auth;
-using ERPSystem.Server.Services.Interfaces;
 using ERPSystem.Server.Common;
+using ERPSystem.Server.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace ERPSystem.Server.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route(Constants.ApiRoutes.Users)]
 [Authorize]
 public class UsersController : ControllerBase
 {
+    private readonly IOktaService _oktaService;
     private readonly IUserService _userService;
+    private readonly ILogger<UsersController> _logger;
 
-    public UsersController(IUserService userService)
+    public UsersController(
+        IOktaService oktaService,
+        IUserService userService,
+        ILogger<UsersController> logger)
     {
+        _oktaService = oktaService;
         _userService = userService;
+        _logger = logger;
     }
 
     /// <summary>
-    /// Get paginated list of users (Admin only)
+    /// Retrieves a list of all users assigned to the client application
     /// </summary>
     [HttpGet]
-    [Authorize(Roles = Common.Constants.Roles.Admin)]
-    public async Task<IActionResult> GetUsers([FromQuery] UserSearchRequest request)
+    [Authorize(Roles = Constants.Roles.Admin)]
+    public async Task<IActionResult> GetApplicationUsers()
     {
-        var result = await _userService.GetUsersAsync(request);
+        var result = await _oktaService.GetApplicationUsersAsync();
 
-        if (result.IsSuccess)
-            return Ok(result);
+        if (!result.IsSuccess)
+        {
+            return BadRequest(Result<List<UserViewModel>>.Failure(result.Error));
+        }
 
-        return BadRequest(result);
+        return Ok(Result<List<UserViewModel>>.Success(result.Data!));
     }
 
     /// <summary>
     /// Get user by ID (Admin only)
     /// </summary>
     [HttpGet("{id}")]
-    [Authorize(Roles = Common.Constants.Roles.Admin)]
+    [Authorize(Roles = Constants.Roles.Admin)]
     public async Task<IActionResult> GetUser(string id)
     {
-        var result = await _userService.GetUserByIdAsync(id);
+        if (string.IsNullOrEmpty(id))
+        {
+            return BadRequest(Result.Failure("User ID is required"));
+        }
 
-        if (result.IsSuccess)
-            return Ok(result);
+        var result = await _oktaService.GetUserByIdAsync(id);
 
-        return BadRequest(result);
+        if (!result.IsSuccess)
+        {
+            if (result.Error.Contains("not found"))
+            {
+                return NotFound(Result.Failure(Constants.ApiMessages.UserNotFound));
+            }
+            return BadRequest(Result<UserViewModel>.Failure(result.Error));
+        }
+
+        return Ok(Result<UserViewModel>.Success(result.Data!));
     }
 
     /// <summary>
@@ -54,80 +75,37 @@ public class UsersController : ControllerBase
     [HttpGet("profile")]
     public async Task<IActionResult> GetProfile()
     {
-        var userId = User.FindFirst(Common.Constants.ClaimTypes.UserId)?.Value;
+        var userId = User.Identity?.Name ?? User.FindFirst("sub")?.Value;
+        
         if (string.IsNullOrEmpty(userId))
+        {
             return BadRequest(Result.Failure("User ID not found in token"));
+        }
 
         var result = await _userService.GetCurrentUserProfileAsync(userId);
 
-        if (result.IsSuccess)
-            return Ok(result);
+        if (!result.IsSuccess)
+        {
+            return BadRequest(Result<UserViewModel>.Failure(result.Error));
+        }
 
-        return BadRequest(result);
+        return Ok(Result<UserViewModel>.Success(result.Data!));
     }
 
     /// <summary>
     /// Get all available roles (Admin only)
     /// </summary>
     [HttpGet("roles")]
-    [Authorize(Roles = Common.Constants.Roles.Admin)]
-    public IActionResult GetRoles()
+    [Authorize(Roles = Constants.Roles.Admin)]
+    public async Task<IActionResult> GetRoles()
     {
-        var roles = new List<string>
+        var result = await _userService.GetAvailableRolesAsync();
+
+        if (!result.IsSuccess)
         {
-            Common.Constants.Roles.Admin,
-            Common.Constants.Roles.SalesUser,
-            Common.Constants.Roles.InventoryUser
-        };
-        
-        return Ok(Result<List<string>>.Success(roles));
-    }
+            return BadRequest(Result<List<string>>.Failure(result.Error));
+        }
 
-    /// <summary>
-    /// Assign roles to user (Admin only)
-    /// </summary>
-    [HttpPut("{id}/roles")]
-    [Authorize(Roles = Common.Constants.Roles.Admin)]
-    public async Task<IActionResult> AssignRoles(string id, [FromBody] AssignRolesDto assignRolesDto)
-    {
-        if (!ModelState.IsValid)
-            return BadRequest(Result.Failure("Invalid model state"));
-
-        var result = await _userService.AssignRolesAsync(id, assignRolesDto.Roles);
-
-        if (result.IsSuccess)
-            return Ok(Result.Success());
-
-        return BadRequest(result);
-    }
-
-    /// <summary>
-    /// Deactivate user (Admin only)
-    /// </summary>
-    [HttpPut("{id}/deactivate")]
-    [Authorize(Roles = Common.Constants.Roles.Admin)]
-    public async Task<IActionResult> DeactivateUser(string id)
-    {
-        var result = await _userService.DeactivateUserAsync(id);
-
-        if (result.IsSuccess)
-            return Ok(Result.Success());
-
-        return BadRequest(result);
-    }
-
-    /// <summary>
-    /// Activate user (Admin only)
-    /// </summary>
-    [HttpPut("{id}/activate")]
-    [Authorize(Roles = Common.Constants.Roles.Admin)]
-    public async Task<IActionResult> ActivateUser(string id)
-    {
-        var result = await _userService.ActivateUserAsync(id);
-
-        if (result.IsSuccess)
-            return Ok(Result.Success());
-
-        return BadRequest(result);
+        return Ok(Result<List<string>>.Success(result.Data!));
     }
 }

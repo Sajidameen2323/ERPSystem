@@ -1,0 +1,56 @@
+<div class="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md w-full space-y-8 text-center">
+    <!-- Error Icon -->
+    <div class="text-6xl">⛔</div>
+    
+    <!-- Header -->
+    <div>
+      <h2 class="mt-6 text-3xl font-extrabold text-gray-900">
+        Access Denied
+      </h2>
+      <p class="mt-2 text-sm text-gray-600">
+        You don't have permission to access this resource
+      </p>
+    </div>
+
+    <!-- Error Details -->
+    <div class="bg-red-50 border border-red-200 rounded-lg p-6">
+      <div class="text-red-800">
+        <h3 class="text-lg font-medium mb-2">Insufficient Permissions</h3>
+        <p class="text-sm">
+          Your account doesn't have the required role(s) to access this page. 
+          Please contact your administrator if you believe this is an error.
+        </p>
+      </div>
+    </div>
+
+    <!-- Available Roles Info -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <h4 class="text-sm font-medium text-blue-800 mb-2">Available Roles:</h4>
+      <div class="text-xs text-blue-700 space-y-1">
+        <div><span class="font-mono bg-blue-100 px-2 py-1 rounded">admin</span> - Full system access</div>
+        <div><span class="font-mono bg-blue-100 px-2 py-1 rounded">salesuser</span> - Sales operations</div>
+        <div><span class="font-mono bg-blue-100 px-2 py-1 rounded">inventoryuser</span> - Inventory management</div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex space-x-3">
+      <button 
+        (click)="goBack()"
+        class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded transition-colors">
+        Go Back
+      </button>
+      <button 
+        (click)="goToLogin()"
+        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors">
+        Login Again
+      </button>
+    </div>
+
+    <!-- Footer -->
+    <div class="text-center text-xs text-gray-500">
+      <p>Contact your system administrator for role assignments</p>
+    </div>
+  </div>
+</div>

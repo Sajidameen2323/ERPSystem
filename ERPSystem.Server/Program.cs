@@ -1,9 +1,7 @@
 using ERPSystem.Server.Configuration;
 using ERPSystem.Server.Data;
-using ERPSystem.Server.Repositories.Implementations;
-using ERPSystem.Server.Repositories.Interfaces;
-using ERPSystem.Server.Services.Implementations;
 using ERPSystem.Server.Services.Interfaces;
+using ERPSystem.Server.Services.Implementations;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -20,6 +18,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Configure Okta settings
 builder.Services.Configure<OktaSettings>(builder.Configuration.GetSection("Okta"));
 
+// Register application services
+builder.Services.AddScoped<IOktaService, OktaService>();
+builder.Services.AddScoped<IUserService, UserService>();
+
 // Add Okta authentication for API protection
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddOktaWebApi(new OktaWebApiOptions()
@@ -28,71 +30,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         AuthorizationServerId = builder.Configuration["Okta:AuthorizationServerId"],
         Audience = builder.Configuration["Okta:Audience"]
     });
-
-// Identity Configuration
-//builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
-//{
-//    // Password settings
-//    options.Password.RequireDigit = true;
-//    options.Password.RequireLowercase = true;
-//    options.Password.RequireNonAlphanumeric = true;
-//    options.Password.RequireUppercase = true;
-//    options.Password.RequiredLength = 8;
-//    options.Password.RequiredUniqueChars = 1;
-
-//    // Password settings
-//    options.Password.RequireDigit = true;
-//    options.Password.RequireLowercase = true;
-//    options.Password.RequireNonAlphanumeric = true;
-//    options.Password.RequireUppercase = true;
-//    options.Password.RequiredLength = 8;
-//    options.Password.RequiredUniqueChars = 1;
-
-//    // Lockout settings
-//    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
-//    options.Lockout.MaxFailedAccessAttempts = 5;
-//    options.Lockout.AllowedForNewUsers = true;
-
-//    // User settings
-//    options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
-//    options.User.RequireUniqueEmail = true;
-
-//    // Sign in settings
-//    options.SignIn.RequireConfirmedEmail = false;
-//    options.SignIn.RequireConfirmedPhoneNumber = false;
-//})
-//.AddEntityFrameworkStores<ApplicationDbContext>()
-//.AddDefaultTokenProviders();
-
-//// JWT Configuration
-//var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-//builder.Services.Configure<JwtSettings>(jwtSettings);
-
-//var secretKey = jwtSettings.Get<JwtSettings>()!.SecretKey;
-//var key = Encoding.UTF8.GetBytes(secretKey);
-
-//builder.Services.AddAuthentication(options =>
-//{
-//    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-//    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-//    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-//})
-//.AddJwtBearer(options =>
-//{
-//    options.SaveToken = true;
-//    options.RequireHttpsMetadata = false;
-//    options.TokenValidationParameters = new TokenValidationParameters()
-//    {
-//        ValidateIssuer = true,
-//        ValidateAudience = true,
-//        ValidateLifetime = true,
-//        ValidateIssuerSigningKey = true,
-//        ClockSkew = TimeSpan.Zero,
-//        ValidIssuer = jwtSettings["Issuer"],
-//        ValidAudience = jwtSettings["Audience"],
-//        IssuerSigningKey = new SymmetricSecurityKey(key)
-//    };
-//});
 
 // Authorization Policies
 builder.Services.AddAuthorization(options =>
@@ -105,21 +42,15 @@ builder.Services.AddAuthorization(options =>
     
     options.AddPolicy(ERPSystem.Server.Common.Constants.Policies.InventoryAccess, policy =>
         policy.RequireRole(ERPSystem.Server.Common.Constants.Roles.Admin, ERPSystem.Server.Common.Constants.Roles.InventoryUser));
+        
+    options.AddPolicy(ERPSystem.Server.Common.Constants.Policies.ERPAccess, policy =>
+        policy.RequireRole(ERPSystem.Server.Common.Constants.Roles.Admin, 
+                          ERPSystem.Server.Common.Constants.Roles.SalesUser,
+                          ERPSystem.Server.Common.Constants.Roles.InventoryUser));
 });
 
-
-// Repository Pattern
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-
-// Services
-builder.Services.AddScoped<IOktaAuthService, OktaAuthService>();
-builder.Services.AddScoped<IUserService, UserService>();
-//builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
-builder.Services.AddScoped<IDashboardService, DashboardService>();
-
-// HttpClient for Okta API calls
-builder.Services.AddHttpClient<OktaAuthService>();
+// HttpClient factory for making HTTP requests to Okta
+builder.Services.AddHttpClient();
 
 // AutoMapper
 builder.Services.AddAutoMapper(typeof(Program));
@@ -180,11 +111,11 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Ensure database is created (no seeding needed - users managed in Okta)
+// Ensure database is created for application data (users managed in Okta)
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    // Apply migrations
+    // Apply migrations for application data only
     await context.Database.MigrateAsync();
 }
 

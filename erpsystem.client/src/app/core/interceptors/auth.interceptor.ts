@@ -1,27 +1,41 @@
-import { Injectable, Inject } from '@angular/core';
-import { HttpInterceptor, HttpRequest, HttpHandler, HttpEvent } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
 import { OKTA_AUTH } from '@okta/okta-angular';
-import { OktaAuth } from '@okta/okta-auth-js';
+import { from, switchMap, catchError } from 'rxjs';
+import { of } from 'rxjs';
 
-@Injectable()
-export class AuthInterceptor implements HttpInterceptor {
-  constructor(@Inject(OKTA_AUTH) private oktaAuth: OktaAuth) {}
+export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  const oktaAuth = inject(OKTA_AUTH);
 
-  intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    // Get the Okta access token synchronously
-    const accessToken = this.oktaAuth.getAccessToken();
-    
-    if (accessToken) {
-      const authReq = req.clone({
-        setHeaders: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      });
-      return next.handle(authReq);
-    }
-    
-    // If no token, proceed with original request
-    return next.handle(req);
+  // Only add auth header for API requests (requests that go through proxy)
+  if (!req.url.startsWith('/api/')) {
+    return next(req);
   }
-}
+
+  console.log('🔄 Intercepting API request:', req.url);
+
+  // Get access token and add to request headers
+  return from(Promise.resolve(oktaAuth.getAccessToken())).pipe(
+    switchMap(accessToken => {
+      if (accessToken) {
+        console.log('🔑 Adding access token to request headers');
+        
+        const authReq = req.clone({
+          setHeaders: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        return next(authReq);
+      } else {
+        console.log('⚠️ No access token available for API request');
+        return next(req);
+      }
+    }),
+    catchError(error => {
+      console.error('❌ Error getting access token for API request:', error);
+      return next(req);
+    })
+  );
+};

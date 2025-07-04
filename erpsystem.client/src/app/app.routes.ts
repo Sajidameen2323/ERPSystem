@@ -1,66 +1,62 @@
 import { Routes } from '@angular/router';
-import { authGuard, guestGuard, adminGuard, managerGuard } from './core/guards/auth.guard';
+import { OktaAuthGuard, OktaCallbackComponent } from '@okta/okta-angular';
+import { adminGuard, salesUserGuard, inventoryUserGuard, managerGuard, roleGuard } from './core/guards/role.guard';
+import { guestGuard } from './core/guards/guest.guard';
 
 export const routes: Routes = [
-  // Redirect root to dashboard
-  { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
+  // Default route - redirect to login
+  { path: '', redirectTo: '/login', pathMatch: 'full' },
   
-  // Authentication routes (only for guests)
-  {
-    path: 'login',
-    loadComponent: () => import('./components/auth/login/login.component').then(m => m.LoginComponent),
+  // Login page
+  { 
+    path: 'login', 
+    loadComponent: () => import('./login/login.component').then(m => m.LoginComponent),
     canActivate: [guestGuard]
   },
-  {
-    path: 'login/okta',
-    loadComponent: () => import('./auth/okta-login/okta-login.component').then(m => m.OktaLoginComponent),
+  
+  // Okta callback route
+  { path: 'login/callback', component: OktaCallbackComponent },
+  
+  // Unauthorized page
+  { 
+    path: 'unauthorized', 
+    loadComponent: () => import('./shared/unauthorized/unauthorized.component').then(m => m.UnauthorizedComponent),
     canActivate: [guestGuard]
   },
-  {
-    path: 'login/callback',
-    loadComponent: () => import('./auth/okta-callback/okta-callback.component').then(m => m.OktaCallbackComponent)
-  },
-
   
-  // Dashboard route (requires authentication)
-  {
-    path: 'dashboard',
-    loadComponent: () => import('./components/dashboard/dashboard.component').then(m => m.DashboardComponent),
-    canActivate: [authGuard]
-  },
-  
-  // User management routes
-  {
-    path: 'users',
-    loadComponent: () => import('./components/user-management/user-list/user-list.component').then(m => m.UserListComponent),
-    canActivate: [managerGuard]
-  },
-  {
-    path: 'users/add',
-    loadComponent: () => import('./components/user-management/user-add/user-add.component').then(m => m.UserAddComponent),
-    canActivate: [adminGuard]
-  },
-  {
-    path: 'users/edit/:id',
-    loadComponent: () => import('./components/user-management/user-edit/user-edit.component').then(m => m.UserEditComponent),
-    canActivate: [adminGuard]
-  },
-  {
-    path: 'profile',
-    loadComponent: () => import('./components/user-management/user-profile/user-profile.component').then(m => m.UserProfileComponent),
-    canActivate: [authGuard]
+  // Dashboard routes
+  { 
+    path: 'dashboard', 
+    loadComponent: () => import('./dashboard/dashboard.component').then(m => m.DashboardComponent),
+    canActivate: [OktaAuthGuard, roleGuard],
+    data: { requiredRoles: ['admin', 'salesuser', 'inventoryuser'], requireAll: false },
+    children: [
+      // Admin routes
+      {
+        path: 'admin/users',
+        loadComponent: () => import('./dashboard/admin/admin-users.component').then(m => m.AdminUsersComponent),
+        canActivate: [adminGuard]
+      },
+      {
+        path: 'admin/register',
+        loadComponent: () => import('./dashboard/admin/register-user.component').then(m => m.RegisterUserComponent),
+        canActivate: [adminGuard]
+      },
+      // Profile route (available to all authenticated users)
+      {
+        path: 'profile',
+        loadComponent: () => import('./dashboard/profile/profile.component').then(m => m.ProfileComponent)
+      }
+    ]
   },
   
-  // Error pages
-  {
-    path: 'unauthorized',
-    loadComponent: () => import('./components/shared/unauthorized/unauthorized.component').then(m => m.UnauthorizedComponent)
-  },
-  {
-    path: 'not-found',
-    loadComponent: () => import('./components/shared/not-found/not-found.component').then(m => m.NotFoundComponent)
+  // Legacy route redirects
+  { 
+    path: 'admin', 
+    redirectTo: '/dashboard',
+    pathMatch: 'full'
   },
   
-  // Wildcard route - must be last
-  { path: '**', redirectTo: '/not-found' }
+  // Wildcard route - redirect to login
+  { path: '**', redirectTo: '/login' }
 ];

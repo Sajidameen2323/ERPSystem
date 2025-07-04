@@ -1,0 +1,137 @@
+<div class="max-w-4xl mx-auto">
+  <div class="bg-white shadow rounded-lg">
+    <!-- Header -->
+    <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center">
+        <lucide-angular [img]="icons.User" class="mr-2 h-5 w-5 text-gray-600"></lucide-angular>
+        My Profile
+      </h3>
+      <p class="mt-1 max-w-2xl text-sm text-gray-500">Your account information and role assignments</p>
+    </div>
+
+    <div *ngIf="getUserInfo()" class="px-4 py-6 sm:px-6">
+      <!-- User Basic Info -->
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <!-- Personal Information -->
+        <div class="bg-gray-50 rounded-lg p-6">
+          <h4 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <lucide-angular [img]="icons.User" class="mr-2 h-5 w-5 text-gray-600"></lucide-angular>
+            Personal Information
+          </h4>
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Full Name</dt>
+              <dd class="mt-1 text-sm text-gray-900">{{ getUserInfo()?.name }}</dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500 flex items-center">
+                <lucide-angular [img]="icons.Mail" class="mr-1 h-4 w-4"></lucide-angular>
+                Email Address
+              </dt>
+              <dd class="mt-1 text-sm text-gray-900">{{ getUserInfo()?.email }}</dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Username</dt>
+              <dd class="mt-1 text-sm text-gray-900">{{ getUserInfo()?.preferredUsername }}</dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">User ID</dt>
+              <dd class="mt-1 text-sm text-gray-900 font-mono text-xs">{{ getUserInfo()?.sub }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <!-- Role Information -->
+        <div class="bg-gray-50 rounded-lg p-6">
+          <h4 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <lucide-angular [img]="icons.Shield" class="mr-2 h-5 w-5 text-gray-600"></lucide-angular>
+            Role Assignments
+          </h4>
+          <div class="space-y-4">
+            <div>
+              <dt class="text-sm font-medium text-gray-500 mb-2">Assigned Roles</dt>
+              <dd class="flex flex-wrap gap-2">
+                <span 
+                  *ngFor="let role of userRoles" 
+                  class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
+                  [ngClass]="getRoleBadgeClass(role)">
+                  {{ role }}
+                </span>
+                <span *ngIf="userRoles.length === 0" class="text-sm text-gray-500 italic">
+                  No roles assigned
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Access Level</dt>
+              <dd class="mt-1 text-sm text-gray-900">
+                <span *ngIf="userRoles.includes('admin')" class="text-red-600 font-medium">Administrator</span>
+                <span *ngIf="!userRoles.includes('admin') && userRoles.includes('salesuser')" class="text-blue-600 font-medium">Sales User</span>
+                <span *ngIf="!userRoles.includes('admin') && !userRoles.includes('salesuser') && userRoles.includes('inventoryuser')" class="text-green-600 font-medium">Inventory User</span>
+                <span *ngIf="userRoles.length === 0" class="text-gray-500">Standard User</span>
+              </dd>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Token Information -->
+      <div class="mt-6 bg-gray-50 rounded-lg p-6">
+        <h4 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+          <lucide-angular [img]="icons.Calendar" class="mr-2 h-5 w-5 text-gray-600"></lucide-angular>
+          Session Information
+        </h4>
+        <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Token Issued At</dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              {{ getUserInfo()?.iat | date:'medium' }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Token Expires At</dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              {{ getUserInfo()?.exp | date:'medium' }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Identity Provider</dt>
+            <dd class="mt-1 text-sm text-gray-900 font-mono text-xs">{{ getUserInfo()?.iss }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Audience</dt>
+            <dd class="mt-1 text-sm text-gray-900 font-mono text-xs">{{ getUserInfo()?.aud }}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <!-- Permissions Summary -->
+      <div class="mt-6 bg-blue-50 rounded-lg p-6">
+        <h4 class="text-lg font-medium text-gray-900 mb-4">Your Permissions</h4>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div class="flex items-center">
+            <div [class]="userRoles.includes('admin') ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'" 
+                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mr-2">
+              {{ userRoles.includes('admin') ? '✓' : '✗' }}
+            </div>
+            <span class="text-sm text-gray-700">User Management</span>
+          </div>
+          <div class="flex items-center">
+            <div [class]="userRoles.includes('salesuser') || userRoles.includes('admin') ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'" 
+                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mr-2">
+              {{ userRoles.includes('salesuser') || userRoles.includes('admin') ? '✓' : '✗' }}
+            </div>
+            <span class="text-sm text-gray-700">Sales Management</span>
+          </div>
+          <div class="flex items-center">
+            <div [class]="userRoles.includes('inventoryuser') || userRoles.includes('admin') ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'" 
+                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mr-2">
+              {{ userRoles.includes('inventoryuser') || userRoles.includes('admin') ? '✓' : '✗' }}
+            </div>
+            <span class="text-sm text-gray-700">Inventory Management</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

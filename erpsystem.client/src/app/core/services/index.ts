@@ -1,5 +1,4 @@
-export * from './auth.service';
-export * from './user.service';
-export * from './http.service';
-export * from './toast.service';
-export * from './loading.service';
+// Service exports for easy importing
+export { UserService } from './user.service';
+export { AuthService } from './auth.service';
+export { ApiService } from './api.service';

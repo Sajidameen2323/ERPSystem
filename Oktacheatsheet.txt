@@ -11,7 +11,7 @@ Angular App (Frontend):
 Backend App (ASP.NET):
 - Client ID: 0oasufj4o3YRr4wqQ697
 - Client Secret: GID3GQNL_nCHm6AuirJ1vgbirJL7FMsPw4ASsTFjeBsP_CfCn0ELIcqXPQWsdFWJ
-- Backend Api Token: 00224TYv5OKhJJomoUjt8ygS1lPgmG0eqXhZT2u-1E
+- Backend Api Token: 00epHrmpVgjGtTttSYrGO47hq3g1KQXMjbJaQrdZgu
 - Type: Web Application
 
 Authorization Server: default
@@ -20,3 +20,5 @@ URLs for Development:
 - Angular App: http://localhost:4200
 - Backend API: https://localhost:7001
 - Authority URL: https://trial-1358401.okta.com/oauth2/default
+- Custom Auth Server Issuer - https://trial-1358401.okta.com/oauth2/aussv4niagwBjnTwt697
+- Audiance - api://my-app

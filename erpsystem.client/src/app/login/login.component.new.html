@@ -1,0 +1,112 @@
+<div class="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8"></div>
+  <div class="max-w-md w-full space-y-8">
+    <!-- Header -->
+    <div class="text-center">
+      <h2 class="mt-6 text-3xl font-extrabold text-gray-900">
+        MicroBiz Hub ERP
+      </h2>
+      <p class="mt-2 text-sm text-gray-600">
+        Enterprise Resource Planning System
+      </p>
+    </div>
+
+    <!-- Login Card -->
+    <div class="bg-white shadow-lg rounded-lg p-8">
+      
+      <!-- Login Form -->
+      <div class="space-y-6">
+        <div class="text-center">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Sign in to your account</h3>
+          <p class="text-sm text-gray-600 mb-6">
+            Use your organization credentials to access the ERP system
+          </p>
+        </div>
+
+        <!-- Login Button -->
+        <div class="space-y-4">
+          <button 
+            (click)="login()" 
+            [disabled]="isLoading"
+            class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200">
+            
+            <!-- Loading Spinner -->
+            <svg *ngIf="isLoading" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            
+            <!-- Login Icon -->
+            <svg *ngIf="!isLoading" class="-ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M3 3a1 1 0 011 1v12a1 1 0 11-2 0V4a1 1 0 011-1zm7.707 3.293a1 1 0 010 1.414L9.414 9H17a1 1 0 110 2H9.414l1.293 1.293a1 1 0 01-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0z" clip-rule="evenodd" />
+            </svg>
+            
+            {{ isLoading ? 'Signing In...' : 'Sign In with Okta' }}
+          </button>
+        </div>
+
+        <!-- Info Message -->
+        <div class="text-center">
+          <p class="text-xs text-gray-500">
+            You will be redirected to your organization's sign-in page
+          </p>
+        </div>
+      </div>
+
+      <!-- Debug Section (Development Only) -->
+      <div *ngIf="userInfo || accessToken" class="mt-8 pt-8 border-t border-gray-200">
+        <div class="space-y-4">
+          <h4 class="text-sm font-medium text-gray-900">Debug Information</h4>
+          
+          <!-- User Info -->
+          <div *ngIf="userInfo" class="bg-gray-50 rounded-lg p-4">
+            <h5 class="text-xs font-medium text-gray-700 mb-2">User Information:</h5>
+            <pre class="text-xs text-gray-600 whitespace-pre-wrap">{{ userInfo | json }}</pre>
+          </div>
+
+          <!-- Access Token Claims -->
+          <div *ngIf="accessTokenClaims" class="bg-blue-50 rounded-lg p-4">
+            <h5 class="text-xs font-medium text-blue-700 mb-2">Access Token Claims:</h5>
+            <pre class="text-xs text-blue-600 whitespace-pre-wrap">{{ accessTokenClaims | json }}</pre>
+          </div>
+
+          <!-- ID Token Claims -->
+          <div *ngIf="claims" class="bg-green-50 rounded-lg p-4">
+            <h5 class="text-xs font-medium text-green-700 mb-2">ID Token Claims:</h5>
+            <pre class="text-xs text-green-600 whitespace-pre-wrap">{{ claims | json }}</pre>
+          </div>
+
+          <!-- Debug Actions -->
+          <div class="flex space-x-2">
+            <button 
+              (click)="loadUserData()" 
+              class="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors">
+              Load User Data
+            </button>
+            <button 
+              (click)="testApiCall()" 
+              class="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors">
+              Test API Call
+            </button>
+            <button 
+              (click)="testClaims()" 
+              class="px-3 py-1 text-xs bg-purple-100 text-purple-700 rounded hover:bg-purple-200 transition-colors">
+              Test Claims
+            </button>
+            <button 
+              (click)="logout()" 
+              class="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors">
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="text-center">
+      <p class="text-xs text-gray-400">
+        © 2025 MicroBiz Hub. Secure enterprise authentication powered by Okta.
+      </p>
+    </div>
+  </div>
+</div>

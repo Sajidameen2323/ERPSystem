@@ -1,4 +1,5 @@
 using ERPSystem.Server.DTOs.Auth;
+using ERPSystem.Server.Common;
 using ERPSystem.Server.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,126 +8,96 @@ using System.Security.Claims;
 namespace ERPSystem.Server.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route(Constants.ApiRoutes.Auth)]
 public class AuthController : ControllerBase
 {
-    private readonly IOktaAuthService _oktaAuthService;
+    private readonly IOktaService _oktaService;
+    private readonly IUserService _userService;
+    private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IOktaAuthService oktaAuthService)
+    public AuthController(
+        IOktaService oktaService,
+        IUserService userService,
+        ILogger<AuthController> logger)
     {
-        _oktaAuthService = oktaAuthService;
+        _oktaService = oktaService;
+        _userService = userService;
+        _logger = logger;
     }
 
     /// <summary>
-    /// Authenticate user with Okta access token
-    /// </summary>
-    [HttpPost("okta-login")]
-    public async Task<IActionResult> OktaLogin([FromBody] OktaTokenValidationRequest request)
-    {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
-        var result = await _oktaAuthService.AuthenticateWithOktaAsync(request.AccessToken);
-
-        if (result.IsSuccess)
-            return Ok(result);
-
-        return BadRequest(new { error = result.Error });
-    }
-
-    /// <summary>
-    /// Register a new user in Okta (Admin only)
+    /// Registers a new user in Okta with role assignment and application access
     /// </summary>
     [HttpPost("register")]
-    [Authorize(Roles = Common.Constants.Roles.Admin)]
-    public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
+    [Authorize(Roles = Constants.Roles.Admin)]
+    public async Task<IActionResult> RegisterUser([FromBody] RegisterUserDto userDto)
     {
         if (!ModelState.IsValid)
-            return BadRequest(ModelState);
+        {
+            return BadRequest(Result.Failure("Invalid user data provided"));
+        }
 
-        var result = await _oktaAuthService.CreateUserAsync(registerDto);
+        var result = await _oktaService.CreateUserAsync(userDto);
 
-        if (result.IsSuccess)
-            return Ok(result);
+        if (!result.IsSuccess)
+        {
+            return BadRequest(Result.Failure(result.Error));
+        }
 
-        return BadRequest(new { error = result.Error });
+        return CreatedAtAction(
+            nameof(GetProfile), 
+            new { id = result.Data!.Id }, 
+            Result<UserViewModel>.Success(result.Data));
     }
 
     /// <summary>
-    /// Get current user profile
+    /// Validates an Okta access token and returns user information
+    /// </summary>
+    [HttpPost("validate-token")]
+    public async Task<IActionResult> ValidateToken([FromBody] TokenValidationRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(new TokenValidationResponse 
+            { 
+                IsValid = false, 
+                Error = Constants.ApiMessages.TokenValidationFailed 
+            });
+        }
+
+        var result = await _oktaService.ValidateTokenAsync(request.AccessToken);
+
+        return Ok(new TokenValidationResponse
+        {
+            IsValid = result.IsSuccess,
+            User = result.Data,
+            Error = result.IsSuccess ? null : result.Error
+        });
+    }
+
+    /// <summary>
+    /// Get current user profile from authenticated token
     /// </summary>
     [HttpGet("profile")]
     [Authorize]
     public async Task<IActionResult> GetProfile()
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+        
         if (string.IsNullOrEmpty(userId))
-            return BadRequest("User ID not found in token");
+        {
+            return BadRequest(Result.Failure("User ID not found in token"));
+        }
 
-        var result = await _oktaAuthService.GetUserProfileAsync(userId);
+        var result = await _userService.GetCurrentUserProfileAsync(userId);
 
-        if (result.IsSuccess)
-            return Ok(result);
+        if (!result.IsSuccess)
+        {
+            return BadRequest(Result.Failure(result.Error));
+        }
 
-        return BadRequest(new { error = result.Error });
+        return Ok(Result<UserViewModel>.Success(result.Data!));
     }
 
-    /// <summary>
-    /// Deactivate a user (Admin only)
-    /// </summary>
-    [HttpPost("deactivate/{userId}")]
-    [Authorize(Roles = Common.Constants.Roles.Admin)]
-    public async Task<IActionResult> DeactivateUser(string userId)
-    {
-        var result = await _oktaAuthService.DeactivateUserAsync(userId);
-
-        if (result.IsSuccess)
-            return Ok(new { message = "User deactivated successfully" });
-
-        return BadRequest(new { error = result.Error });
-    }
-
-    /// <summary>
-    /// Get user groups/roles
-    /// </summary>
-    [HttpGet("groups/{userId}")]
-    [Authorize(Roles = Common.Constants.Roles.Admin)]
-    public async Task<IActionResult> GetUserGroups(string userId)
-    {
-        var result = await _oktaAuthService.GetUserGroupsAsync(userId);
-
-        if (result.IsSuccess)
-            return Ok(result);
-
-        return BadRequest(new { error = result.Error });
-    }
-
-    /// <summary>
-    /// Logout current user (client-side operation with Okta)
-    /// </summary>
-    [HttpPost("logout")]
-    [Authorize]
-    public IActionResult Logout()
-    {
-        // With Okta, logout is primarily handled on the client side
-        // The client should revoke the token and clear the session
-        return Ok(new { message = "Logout successful. Please clear your session on the client side." });
-    }
-
-    /// <summary>
-    /// Exchange authorization code for access token using PKCE
-    /// </summary>
-    [HttpPost("okta-token-exchange")]
-    public async Task<IActionResult> OktaTokenExchange([FromBody] OktaTokenExchangeRequest request)
-    {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
-        var result = await _oktaAuthService.ExchangeCodeForTokensAsync(request);
-
-        if (result.IsSuccess)
-            return Ok(result);
-
-        return BadRequest(new { error = result.Error });
-    }
+ 
 }
