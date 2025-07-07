@@ -40,18 +40,37 @@ public class OktaUserResponse
 {
     [JsonPropertyName("id")]
     public string Id { get; set; } = string.Empty;
-    
+
     [JsonPropertyName("status")]
     public string Status { get; set; } = string.Empty;
-    
+
     [JsonPropertyName("created")]
     public DateTime Created { get; set; }
-    
+
     [JsonPropertyName("credentials")]
     public OktaUserCredentials? Credentials { get; set; }
-    
+
     [JsonPropertyName("profile")]
     public OktaUserProfile Profile { get; set; } = new();
+
+    [JsonPropertyName("_embedded")]
+    public OktaUserEmbedded? Embedded { get; set; }
+}
+
+public class OktaUserEmbedded
+{
+    [JsonPropertyName("user")]
+    public EmbeddedUser? User { get; set; }
+}
+
+public class EmbeddedUser
+{
+
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = string.Empty;
 }
 
 public class OktaUserCredentials

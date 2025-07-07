@@ -108,4 +108,64 @@ public class UsersController : ControllerBase
 
         return Ok(Result<List<string>>.Success(result.Data!));
     }
+
+    /// <summary>
+    /// Deactivate user (Admin only)
+    /// </summary>
+    [HttpPut("{id}/deactivate")]
+    [Authorize(Roles = Constants.Roles.Admin)]
+    public async Task<IActionResult> DeactivateUser(string id)
+    {
+        if (string.IsNullOrEmpty(id))
+        {
+            return BadRequest(Result.Failure("User ID is required"));
+        }
+
+        var result = await _oktaService.DeactivateUserAsync(id);
+
+        if (!result.IsSuccess)
+        {
+            if (result.Error.Contains("not found"))
+            {
+                return NotFound(Result.Failure(Constants.ApiMessages.UserNotFound));
+            }
+            if (result.Error.Contains("already deactivated"))
+            {
+                return BadRequest(Result.Failure(result.Error));
+            }
+            return BadRequest(Result.Failure(result.Error));
+        }
+
+        return Ok(Result<string>.Success(Constants.ApiMessages.UserDeactivatedSuccessfully));
+    }
+
+    /// <summary>
+    /// Activate user (Admin only)
+    /// </summary>
+    [HttpPut("{id}/activate")]
+    [Authorize(Roles = Constants.Roles.Admin)]
+    public async Task<IActionResult> ActivateUser(string id)
+    {
+        if (string.IsNullOrEmpty(id))
+        {
+            return BadRequest(Result.Failure("User ID is required"));
+        }
+
+        var result = await _oktaService.ActivateUserAsync(id);
+
+        if (!result.IsSuccess)
+        {
+            if (result.Error.Contains("not found"))
+            {
+                return NotFound(Result.Failure(Constants.ApiMessages.UserNotFound));
+            }
+            if (result.Error.Contains("already active"))
+            {
+                return BadRequest(Result.Failure(result.Error));
+            }
+            return BadRequest(Result.Failure(result.Error));
+        }
+
+        return Ok(Result<string>.Success(Constants.ApiMessages.UserActivatedSuccessfully));
+    }
 }

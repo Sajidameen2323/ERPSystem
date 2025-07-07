@@ -10,4 +10,6 @@ public interface IOktaService
     Task<Result<List<UserViewModel>>> GetApplicationUsersAsync();
     Task<Result<UserViewModel>> ValidateTokenAsync(string accessToken);
     Task<Result<bool>> AssignUserToApplicationAsync(string userId);
+    Task<Result<bool>> DeactivateUserAsync(string userId);
+    Task<Result<bool>> ActivateUserAsync(string userId);
 }

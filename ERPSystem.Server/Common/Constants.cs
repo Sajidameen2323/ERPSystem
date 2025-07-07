@@ -34,6 +34,10 @@ public static class Constants
         public const string TokenValidationFailed = "Token validation failed";
         public const string ConfigurationError = "Configuration error";
         public const string InternalServerError = "An internal server error occurred";
+        public const string UserDeactivatedSuccessfully = "User deactivated successfully";
+        public const string UserAlreadyDeactivated = "User is already deactivated";
+        public const string UserActivatedSuccessfully = "User activated successfully";
+        public const string UserAlreadyActive = "User is already active";
     }
 
     public static class ApiRoutes

@@ -13,7 +13,8 @@ Forntend development Angular 18 guide
 Backend development ASP.NET core .NET version 8 guide
 
     -  Use defined response classes when returning route responses, Result or PagedResult
-    -
+    -  Use Entity Framework Core for database operations
+    -  Use Dependency Injection for services
 
 Running code on terminal guide
 

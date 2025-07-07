@@ -34,7 +34,7 @@ export class AdminUsersComponent implements OnInit {
     page: 1,
     pageSize: 10
   };
-  
+
   pagedResult: PagedResult<User> | null = null;
   loading = false;
   error: string | null = null;
@@ -42,7 +42,7 @@ export class AdminUsersComponent implements OnInit {
   constructor(
     private userService: UserService,
     private router: Router
-  ) {}
+  ) { }
 
   ngOnInit() {
     this.loadUsers();
@@ -57,7 +57,7 @@ export class AdminUsersComponent implements OnInit {
         this.loading = false;
         if (result.isSuccess && result.data) {
           this.pagedResult = result.data;
-          this.users = result.data.items; // PagedResult has 'items' not 'data'
+          this.users = result.data.items.map(el => { return { ...el, isActive: el.status === "ACTIVE" } }); // PagedResult has 'items' not 'data'
         } else {
           this.error = result.message || result.error || 'Failed to load users';
         }
@@ -93,8 +93,8 @@ export class AdminUsersComponent implements OnInit {
   }
 
   toggleUserStatus(user: User) {
-    const action = user.isActive ? 
-      this.userService.deactivateUser(user.id) : 
+    const action = user.isActive ?
+      this.userService.deactivateUser(user.id) :
       this.userService.activateUser(user.id);
 
     action.subscribe({
@@ -112,8 +112,8 @@ export class AdminUsersComponent implements OnInit {
   }
 
   getUserStatusBadgeClass(isActive: boolean): string {
-    return isActive ? 
-      'bg-green-100 text-green-800' : 
+    return isActive ?
+      'bg-green-100 text-green-800' :
       'bg-red-100 text-red-800';
   }
 
@@ -128,23 +128,23 @@ export class AdminUsersComponent implements OnInit {
 
   getPageNumbers(): number[] {
     if (!this.pagedResult) return [];
-    
+
     const totalPages = this.pagedResult.totalPages;
     const currentPage = this.pagedResult.currentPage;
     const pages: number[] = [];
-    
+
     // Show up to 5 pages around current page
     let start = Math.max(1, currentPage - 2);
     let end = Math.min(totalPages, start + 4);
-    
+
     if (end - start < 4) {
       start = Math.max(1, end - 4);
     }
-    
+
     for (let i = start; i <= end; i++) {
       pages.push(i);
     }
-    
+
     return pages;
   }
 }
