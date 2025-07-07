@@ -1,0 +1,124 @@
+<div class="h-full bg-white dark:bg-gray-800 shadow-lg border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-300"
+     [class.w-64]="!isCollapsed()"
+     [class.w-16]="isCollapsed()">
+  
+  <!-- Sidebar Header -->
+  <div class="flex items-center p-4 border-b border-gray-200 dark:border-gray-700">
+    <div class="flex items-center space-x-3" [class.justify-center]="isCollapsed()">
+      <div class="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+        <span class="text-white font-bold text-sm">MB</span>
+      </div>
+      <div *ngIf="!isCollapsed()" class="transition-all duration-300">
+        <h1 class="text-lg font-bold text-gray-800 dark:text-white">MicroBiz Hub</h1>
+        <p class="text-xs text-gray-500 dark:text-gray-400">ERP System</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Menu -->
+  <nav class="flex-1 overflow-y-auto py-4">
+    <ul class="space-y-1 px-3">
+      <li *ngFor="let item of navigationItems">
+        <ng-container *ngIf="hasRequiredRole(item)">
+          
+          <!-- Parent Item (with or without children) -->
+          <div class="relative">
+            <a *ngIf="item.route && !item.children; else expandableItem"
+               [routerLink]="item.route"
+               routerLinkActive="bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border-r-2 border-blue-600"
+               class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors group">
+              
+              <lucide-angular [img]="item.icon" 
+                              class="w-5 h-5 mr-3 text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-400"
+                              [class.mr-0]="isCollapsed()"
+                              [class.mx-auto]="isCollapsed()"></lucide-angular>
+              
+              <span *ngIf="!isCollapsed()" class="transition-all duration-300">{{ item.label }}</span>
+              
+              <span *ngIf="item.badge && !isCollapsed()" 
+                    class="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300">
+                {{ item.badge }}
+              </span>
+            </a>
+
+            <ng-template #expandableItem>
+              <button
+                (click)="toggleExpanded(item.label)"
+                class="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors group"
+                [class.bg-gray-50]="isExpanded(item.label)"
+                [class.dark:bg-gray-700]="isExpanded(item.label)">
+                
+                <lucide-angular [img]="item.icon" 
+                                class="w-5 h-5 mr-3 text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-400"
+                                [class.mr-0]="isCollapsed()"
+                                [class.mx-auto]="isCollapsed()"></lucide-angular>
+                
+                <span *ngIf="!isCollapsed()" class="flex-1 text-left transition-all duration-300">{{ item.label }}</span>
+                
+                <span *ngIf="item.badge && !isCollapsed()" 
+                      class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300 mr-2">
+                  {{ item.badge }}
+                </span>
+                
+                <svg *ngIf="!isCollapsed()" 
+                     class="w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform duration-200"
+                     [class.rotate-90]="isExpanded(item.label)"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </button>
+            </ng-template>
+
+            <!-- Collapsed tooltip -->
+            <div *ngIf="isCollapsed() && item.children"
+                 class="absolute left-full top-0 ml-2 px-2 py-1 bg-gray-800 dark:bg-gray-600 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 whitespace-nowrap">
+              {{ item.label }}
+            </div>
+          </div>
+
+          <!-- Children Items -->
+          <ul *ngIf="item.children && isExpanded(item.label) && !isCollapsed()" 
+              class="mt-1 space-y-1 ml-6 border-l-2 border-gray-100 dark:border-gray-700 pl-4">
+            <li *ngFor="let child of item.children">
+              <ng-container *ngIf="hasRequiredRole(child)">
+                <a [routerLink]="child.route"
+                   routerLinkActive="bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border-r-2 border-blue-600"
+                   class="flex items-center px-3 py-2 text-sm text-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors">
+                  
+                  <span class="w-2 h-2 bg-gray-300 dark:bg-gray-600 rounded-full mr-3"></span>
+                  <span>{{ child.label }}</span>
+                  
+                  <span *ngIf="child.badge" 
+                        class="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300">
+                    {{ child.badge }}
+                  </span>
+                </a>
+              </ng-container>
+            </li>
+          </ul>
+        </ng-container>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- Sidebar Footer -->
+  <div class="border-t border-gray-200 dark:border-gray-700 p-4">
+    <button 
+      (click)="logout.emit()"
+      class="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-400 transition-colors group"
+      [class.justify-center]="isCollapsed()">
+      
+      <lucide-angular [img]="LogOutIcon" 
+                      class="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-red-500 dark:group-hover:text-red-400"
+                      [class.mr-3]="!isCollapsed()"></lucide-angular>
+      
+      <span *ngIf="!isCollapsed()" class="transition-all duration-300">Logout</span>
+    </button>
+
+    <!-- Collapsed tooltip for logout -->
+    <div *ngIf="isCollapsed()"
+         class="absolute left-full bottom-4 ml-2 px-2 py-1 bg-gray-800 dark:bg-gray-600 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 whitespace-nowrap">
+      Logout
+    </div>
+  </div>
+</div>

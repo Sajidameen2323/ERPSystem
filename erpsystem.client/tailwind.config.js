@@ -5,6 +5,7 @@ module.exports = {
     "./src/**/*.component.html",
     "./src/**/*.component.ts"
   ],
+  darkMode: 'class', // Enable class-based dark mode
   theme: {
     extend: {
       colors: {
@@ -14,6 +15,11 @@ module.exports = {
           600: '#2563eb',
           700: '#1d4ed8',
         }
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.3s ease-in-out',
+        'slide-up': 'slideUp 0.3s ease-out',
+        'scale-in': 'scaleIn 0.2s ease-out',
       }
     },
   },

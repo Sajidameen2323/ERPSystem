@@ -31,6 +31,11 @@ export const routes: Routes = [
     canActivate: [OktaAuthGuard, roleGuard],
     data: { requiredRoles: ['admin', 'salesuser', 'inventoryuser'], requireAll: false },
     children: [
+      // Default dashboard route
+      {
+        path: '',
+        loadComponent: () => import('./dashboard/dashboard-home/dashboard-home.component').then(m => m.DashboardHomeComponent)
+      },
       // Admin routes
       {
         path: 'admin/users',

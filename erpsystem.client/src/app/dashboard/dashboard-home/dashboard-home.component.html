@@ -1,0 +1,260 @@
+<!-- Dashboard Home Content -->
+<div class="space-y-6">
+  
+  <!-- Welcome Section -->
+  <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-lg overflow-hidden">
+    <div class="px-6 py-8 text-white">
+      <h1 class="text-3xl font-bold">Welcome to MicroBiz Hub</h1>
+      <p class="mt-2 text-blue-100">Manage your business operations efficiently with our comprehensive ERP system.</p>
+    </div>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+    
+    <!-- Total Products -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-300">
+      <div class="flex items-center">
+        <div class="flex-shrink-0">
+          <lucide-angular [img]="getStatIcon('products')" 
+                          [ngClass]="getStatColor('products')"
+                          class="w-8 h-8"></lucide-angular>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Products</p>
+          <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ dashboardStats.totalProducts }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Orders -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-300">
+      <div class="flex items-center">
+        <div class="flex-shrink-0">
+          <lucide-angular [img]="getStatIcon('orders')" 
+                          [ngClass]="getStatColor('orders')"
+                          class="w-8 h-8"></lucide-angular>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Active Orders</p>
+          <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ dashboardStats.activeOrders }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Low Stock Items -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-300">
+      <div class="flex items-center">
+        <div class="flex-shrink-0">
+          <lucide-angular [img]="icons.AlertTriangle" 
+                          [ngClass]="getStatColor('lowstock')"
+                          class="w-8 h-8"></lucide-angular>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">Low Stock</p>
+          <p class="text-2xl font-bold text-gray-900">{{ dashboardStats.lowStockItems }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Total Customers -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div class="flex items-center">
+        <div class="flex-shrink-0">
+          <lucide-angular [img]="getStatIcon('customers')" 
+                          [ngClass]="getStatColor('customers')"
+                          class="w-8 h-8"></lucide-angular>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">Customers</p>
+          <p class="text-2xl font-bold text-gray-900">{{ dashboardStats.totalCustomers }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monthly Revenue -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div class="flex items-center">
+        <div class="flex-shrink-0">
+          <lucide-angular [img]="getStatIcon('revenue')" 
+                          [ngClass]="getStatColor('revenue')"
+                          class="w-8 h-8"></lucide-angular>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">Monthly Revenue</p>
+          <p class="text-2xl font-bold text-gray-900">{{ formatCurrency(dashboardStats.monthlyRevenue) }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending Invoices -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div class="flex items-center">
+        <div class="flex-shrink-0">
+          <lucide-angular [img]="getStatIcon('invoices')" 
+                          [ngClass]="getStatColor('invoices')"
+                          class="w-8 h-8"></lucide-angular>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">Pending Invoices</p>
+          <p class="text-2xl font-bold text-gray-900">{{ dashboardStats.pendingInvoices }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    
+    <!-- Quick Actions -->
+    <div class="lg:col-span-1">
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-medium text-gray-900">Quick Actions</h3>
+        </div>
+        <div class="p-6">
+          <div class="space-y-3">
+            <ng-container *ngFor="let action of quickActions">
+              <button *ngIf="hasAnyRole(action.roles)"
+                      [routerLink]="action.route"
+                      [ngClass]="action.color"
+                      class="w-full flex items-center p-4 text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <lucide-angular [img]="action.icon" class="w-5 h-5 mr-3"></lucide-angular>
+                <div class="text-left">
+                  <div class="font-medium">{{ action.title }}</div>
+                  <div class="text-sm opacity-90">{{ action.description }}</div>
+                </div>
+              </button>
+            </ng-container>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activities -->
+    <div class="lg:col-span-2">
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-medium text-gray-900">Recent Activities</h3>
+        </div>
+        <div class="p-6">
+          <div class="flow-root">
+            <ul class="-mb-8">
+              <li *ngFor="let activity of recentActivities; let last = last">
+                <div class="relative pb-8" [class.pb-0]="last">
+                  <span *ngIf="!last" class="absolute top-5 left-5 -ml-px h-full w-0.5 bg-gray-200"></span>
+                  <div class="relative flex items-start space-x-3">
+                    <div class="relative">
+                      <div class="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
+                        <lucide-angular [img]="activity.icon" 
+                                        [ngClass]="activity.iconColor"
+                                        class="w-5 h-5"></lucide-angular>
+                      </div>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <div>
+                        <div class="text-sm">
+                          <span class="font-medium text-gray-900">{{ activity.title }}</span>
+                        </div>
+                        <p class="mt-0.5 text-sm text-gray-500">{{ activity.description }}</p>
+                        <div class="mt-2 text-xs text-gray-400">
+                          {{ formatRelativeTime(activity.timestamp) }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </li>
+            </ul>
+          </div>
+          
+          <!-- View All Activities Link -->
+          <div class="mt-6 pt-4 border-t border-gray-200">
+            <a href="#" class="text-sm text-blue-600 hover:text-blue-800 transition-colors">
+              View all activities →
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Role-based Sections -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+    
+    <!-- Admin Panel -->
+    <div *ngIf="hasRole('admin')" class="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div class="px-6 py-4 border-b border-gray-200 bg-red-50">
+        <div class="flex items-center">
+          <lucide-angular [img]="icons.Settings" class="w-5 h-5 text-red-600 mr-2"></lucide-angular>
+          <h3 class="text-lg font-medium text-gray-900">Administration</h3>
+        </div>
+      </div>
+      <div class="p-6">
+        <p class="text-sm text-gray-600 mb-4">Manage system users and settings</p>
+        <div class="space-y-2">
+          <a routerLink="/dashboard/admin/users" 
+             class="flex items-center p-2 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
+            <lucide-angular [img]="icons.Users" class="w-4 h-4 mr-2 text-gray-400"></lucide-angular>
+            User Management
+          </a>
+          <a routerLink="/dashboard/admin/register" 
+             class="flex items-center p-2 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
+            <lucide-angular [img]="icons.User" class="w-4 h-4 mr-2 text-gray-400"></lucide-angular>
+            Register New User
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sales Dashboard -->
+    <div *ngIf="hasRole('salesuser') || hasRole('admin')" class="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div class="px-6 py-4 border-b border-gray-200 bg-blue-50">
+        <div class="flex items-center">
+          <lucide-angular [img]="icons.TrendingUp" class="w-5 h-5 text-blue-600 mr-2"></lucide-angular>
+          <h3 class="text-lg font-medium text-gray-900">Sales Overview</h3>
+        </div>
+      </div>
+      <div class="p-6">
+        <p class="text-sm text-gray-600 mb-4">Manage customers and sales orders</p>
+        <div class="space-y-2">
+          <a routerLink="/dashboard/sales/customers" 
+             class="flex items-center p-2 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
+            <lucide-angular [img]="icons.Users" class="w-4 h-4 mr-2 text-gray-400"></lucide-angular>
+            Customer Management
+          </a>
+          <a routerLink="/dashboard/sales/orders" 
+             class="flex items-center p-2 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
+            <lucide-angular [img]="icons.ShoppingCart" class="w-4 h-4 mr-2 text-gray-400"></lucide-angular>
+            Sales Orders
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inventory Dashboard -->
+    <div *ngIf="hasRole('inventoryuser') || hasRole('admin')" class="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div class="px-6 py-4 border-b border-gray-200 bg-green-50">
+        <div class="flex items-center">
+          <lucide-angular [img]="icons.Package" class="w-5 h-5 text-green-600 mr-2"></lucide-angular>
+          <h3 class="text-lg font-medium text-gray-900">Inventory Overview</h3>
+        </div>
+      </div>
+      <div class="p-6">
+        <p class="text-sm text-gray-600 mb-4">Track products and stock levels</p>
+        <div class="space-y-2">
+          <a routerLink="/dashboard/inventory/products" 
+             class="flex items-center p-2 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
+            <lucide-angular [img]="icons.Package" class="w-4 h-4 mr-2 text-gray-400"></lucide-angular>
+            Product Management
+          </a>
+          <a routerLink="/dashboard/inventory/adjustments" 
+             class="flex items-center p-2 text-sm text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
+            <lucide-angular [img]="icons.Settings" class="w-4 h-4 mr-2 text-gray-400"></lucide-angular>
+            Stock Adjustments
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
