@@ -20,6 +20,8 @@
     "@angular/router": "^18.2.0",
     "@okta/okta-angular": "^6.5.1",
     "@okta/okta-auth-js": "^7.12.1",
+    "ag-grid-angular": "^34.0.1",
+    "ag-grid-community": "^34.0.1",
     "lucide-angular": "^0.523.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",

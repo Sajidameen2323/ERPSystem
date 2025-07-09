@@ -1,0 +1,39 @@
+<div 
+  class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg z-50 transition-all duration-300"
+  [class.translate-y-full]="selectedCount === 0">
+  
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between py-4">
+      
+      <!-- Selected count info -->
+      <div class="flex items-center space-x-4">
+        <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
+          {{ selectedCount }} {{ selectedCount === 1 ? 'item' : 'items' }} selected
+        </div>
+        <button
+          (click)="onClearSelection()"
+          class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors">
+          Clear selection
+        </button>
+      </div>
+
+      <!-- Bulk actions -->
+      <div class="flex items-center space-x-2">
+        <button
+          *ngFor="let action of allActions"
+          (click)="onActionClick(action.id)"
+          [disabled]="action.disabled"
+          [class]="getButtonClasses(action)"
+          [title]="action.label">
+          
+          <lucide-angular 
+            [img]="action.icon" 
+            class="mr-2 h-4 w-4">
+          </lucide-angular>
+          {{ action.label }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>

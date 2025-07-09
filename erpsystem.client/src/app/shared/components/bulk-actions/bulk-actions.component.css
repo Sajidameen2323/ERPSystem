@@ -1,0 +1,18 @@
+/* Bulk actions component styles */
+.bulk-actions {
+  transition: transform 0.3s ease-in-out;
+}
+
+/* Ensure the bulk actions bar stays above other content */
+.bulk-actions {
+  z-index: 1000;
+}
+
+/* Smooth animation for showing/hiding */
+.bulk-actions.hidden {
+  transform: translateY(100%);
+}
+
+.bulk-actions.visible {
+  transform: translateY(0);
+}

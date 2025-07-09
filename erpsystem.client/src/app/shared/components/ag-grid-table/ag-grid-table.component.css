@@ -1,0 +1,36 @@
+/* Minimal AG Grid Wrapper - Industry Standard */
+.ag-grid-wrapper {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  background: transparent;
+}
+
+.dark .ag-grid-wrapper {
+  border-color: #374151;
+}
+
+/* Simple container without animations */
+.ag-grid-container {
+  position: relative;
+  background: transparent;
+  width: 100%;
+  display: block;
+}
+
+.ag-grid-container ag-grid-angular {
+  display: block;
+  width: 100%;
+}
+
+/* Host element */
+:host {
+  display: block;
+  width: 100%;
+}
+
+/* Ensure rows are visible */
+.ag-grid-container ag-grid-angular ::ng-deep .ag-row {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
