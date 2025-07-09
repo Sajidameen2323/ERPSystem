@@ -1,20 +1,20 @@
 <div class="max-w-4xl mx-auto">
-  <div class="bg-white shadow rounded-lg">
+  <div class="bg-white dark:bg-gray-800 shadow rounded-lg border border-gray-200 dark:border-gray-700 transition-colors duration-300">
     <!-- Header -->
-    <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+    <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
       <div class="flex items-center justify-between">
         <div class="flex items-center">
           <button 
             (click)="navigateBack()"
-            class="mr-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors">
+            class="mr-4 p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors">
             <lucide-angular [img]="icons.ArrowLeft" class="h-5 w-5"></lucide-angular>
           </button>
           <div>
-            <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center">
-              <lucide-angular [img]="icons.UserPlus" class="mr-2 h-5 w-5 text-red-600"></lucide-angular>
+            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white flex items-center">
+              <lucide-angular [img]="icons.UserPlus" class="mr-2 h-5 w-5 text-red-600 dark:text-red-400"></lucide-angular>
               Register New User
             </h3>
-            <p class="mt-1 max-w-2xl text-sm text-gray-500">Create a new user account in Okta and assign roles</p>
+            <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">Create a new user account in Okta and assign roles</p>
           </div>
         </div>
       </div>

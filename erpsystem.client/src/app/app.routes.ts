@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { OktaAuthGuard, OktaCallbackComponent } from '@okta/okta-angular';
 import { adminGuard, salesUserGuard, inventoryUserGuard, managerGuard, roleGuard } from './core/guards/role.guard';
 import { guestGuard } from './core/guards/guest.guard';
+import { CurrentUserResolver } from './core/resolvers/current-user.resolver';
 
 export const routes: Routes = [
   // Default route - redirect to login
@@ -30,6 +31,7 @@ export const routes: Routes = [
     loadComponent: () => import('./dashboard/dashboard.component').then(m => m.DashboardComponent),
     canActivate: [OktaAuthGuard, roleGuard],
     data: { requiredRoles: ['admin', 'salesuser', 'inventoryuser'], requireAll: false },
+    resolve: { currentUser: CurrentUserResolver },
     children: [
       // Default dashboard route
       {

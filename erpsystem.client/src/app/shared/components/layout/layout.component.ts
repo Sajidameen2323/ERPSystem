@@ -8,6 +8,7 @@ import { SidebarConfigService } from '../../services/sidebar-config.service';
 import { LayoutService } from '../../services/layout.service';
 import { AuthService } from '../../../core/services';
 import { User } from '../../../core/models/user.interface';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-layout',
@@ -63,7 +64,6 @@ export class LayoutComponent implements OnInit, OnDestroy {
   // Computed properties using services
   sidebarClass = computed(() => this.sidebarConfig.getSidebarClasses());
   mainContentClass = computed(() => this.sidebarConfig.getMainContentClasses());
-  containerClass = computed(() => this.themeService.getContainerClass());
   
   // Service getters for template
   get isSidebarCollapsed() { return this.sidebarConfig.isCollapsed; }
@@ -73,52 +73,30 @@ export class LayoutComponent implements OnInit, OnDestroy {
   constructor(
     public themeService: ThemeService,
     public sidebarConfig: SidebarConfigService,
-    public layoutService: LayoutService
+    public layoutService: LayoutService,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit() {
-    // Load current user profile and roles
-    this.loadCurrentUser();
+    // Load current user profile and roles from route data
+    const user = this.route.snapshot.data['currentUser'];
+    if (user) {
+      this.currentUser.set(user);
+      this.userRoles.set(user.roles || []);
+      this.headerUserProfile = {
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        role: this.getUserRoleDisplay(user.roles || []),
+        avatar: undefined
+      };
+    } else {
+      this.userRoles.set([]);
+      this.setFallbackUserProfile();
+    }
   }
 
   ngOnDestroy() {
     this.layoutService.cleanup();
-  }
-
-  /**
-   * Load current user profile from auth service
-   */
-  private loadCurrentUser(): void {
-    this.authService.getCurrentUserProfile().subscribe({
-      next: (result) => {
-        if (result.isSuccess && result.data) {
-          const user = result.data;
-          this.currentUser.set(user);
-          
-          // Set user roles for navigation filtering
-          this.userRoles.set(user.roles || []);
-          
-          // Update header user profile
-          this.headerUserProfile = {
-            name: `${user.firstName} ${user.lastName}`,
-            email: user.email,
-            role: this.getUserRoleDisplay(user.roles || []),
-            avatar: undefined
-          };
-        } else {
-          console.error('Failed to load user profile:', result.message);
-          // Set default empty roles if user loading fails
-          this.userRoles.set([]);
-          this.setFallbackUserProfile();
-        }
-      },
-      error: (error) => {
-        console.error('Error loading user profile:', error);
-        // Set default empty roles if user loading fails
-        this.userRoles.set([]);
-        this.setFallbackUserProfile();
-      }
-    });
   }
 
   /**

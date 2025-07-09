@@ -1,44 +1,5 @@
 import { Injectable, signal, effect } from '@angular/core';
 
-export interface ThemeConfig {
-  light: {
-    primary: string;
-    secondary: string;
-    background: {
-      body: string;
-      container: string;
-      card: string;
-      sidebar: string;
-      header: string;
-      footer: string;
-    };
-    text: {
-      primary: string;
-      secondary: string;
-      muted: string;
-    };
-    border: string;
-  };
-  dark: {
-    primary: string;
-    secondary: string;
-    background: {
-      body: string;
-      container: string;
-      card: string;
-      sidebar: string;
-      header: string;
-      footer: string;
-    };
-    text: {
-      primary: string;
-      secondary: string;
-      muted: string;
-    };
-    border: string;
-  };
-}
-
 @Injectable({
   providedIn: 'root'
 })
@@ -46,46 +7,6 @@ export class ThemeService {
   private readonly STORAGE_KEY = 'darkMode';
   
   isDarkMode = signal(false);
-
-  // Theme configuration with Tailwind classes
-  private themeConfig: ThemeConfig = {
-    light: {
-      primary: 'bg-blue-600 text-white',
-      secondary: 'bg-gray-100 text-gray-900',
-      background: {
-        body: 'bg-gray-50',
-        container: 'bg-gray-50',
-        card: 'bg-white',
-        sidebar: 'bg-white',
-        header: 'bg-white',
-        footer: 'bg-white'
-      },
-      text: {
-        primary: 'text-gray-900',
-        secondary: 'text-gray-700',
-        muted: 'text-gray-500'
-      },
-      border: 'border-gray-200'
-    },
-    dark: {
-      primary: 'bg-blue-600 text-white',
-      secondary: 'bg-gray-700 text-gray-100',
-      background: {
-        body: 'bg-gray-900',
-        container: 'bg-gray-900',
-        card: 'bg-gray-800',
-        sidebar: 'bg-gray-800',
-        header: 'bg-gray-800',
-        footer: 'bg-gray-800'
-      },
-      text: {
-        primary: 'text-gray-100',
-        secondary: 'text-gray-300',
-        muted: 'text-gray-400'
-      },
-      border: 'border-gray-700'
-    }
-  };
 
   constructor() {
     this.loadThemePreference();
@@ -142,63 +63,40 @@ export class ThemeService {
   /**
    * Get current theme configuration
    */
-  getCurrentTheme(): ThemeConfig['light'] | ThemeConfig['dark'] {
-    return this.isDarkMode() ? this.themeConfig.dark : this.themeConfig.light;
+  getCurrentTheme(): string {
+    return this.isDarkMode() ? 'dark' : 'light';
   }
 
   /**
-   * Get theme configuration for specific mode
-   */
-  getTheme(isDark: boolean): ThemeConfig['light'] | ThemeConfig['dark'] {
-    return isDark ? this.themeConfig.dark : this.themeConfig.light;
-  }
-
-  /**
-   * Get Tailwind classes for common elements
+   * Get Tailwind classes for common elements using dark: prefix
    */
   getClasses() {
-    const theme = this.getCurrentTheme();
     return {
       // Container classes
-      container: `${theme.background.container} ${theme.text.primary} transition-colors duration-300`,
-      card: `${theme.background.card} ${theme.text.primary} ${theme.border} transition-colors duration-300`,
+      container: 'bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300',
+      card: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 transition-colors duration-300',
       
       // Layout classes
-      sidebar: `${theme.background.sidebar} ${theme.text.primary} ${theme.border} transition-colors duration-300`,
-      header: `${theme.background.header} ${theme.text.primary} ${theme.border} transition-colors duration-300`,
-      footer: `${theme.background.footer} ${theme.text.primary} ${theme.border} transition-colors duration-300`,
-      main: `${theme.background.body} transition-colors duration-300`,
+      sidebar: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700 transition-colors duration-300',
+      header: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 transition-colors duration-300',
+      footer: 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 transition-colors duration-300',
+      main: 'bg-white dark:bg-gray-900 transition-colors duration-300',
       
       // Text classes
-      textPrimary: theme.text.primary,
-      textSecondary: theme.text.secondary,
-      textMuted: theme.text.muted,
+      textPrimary: 'text-gray-900 dark:text-gray-100',
+      textSecondary: 'text-gray-700 dark:text-gray-300',
+      textMuted: 'text-gray-500 dark:text-gray-400',
       
       // Button classes
-      buttonPrimary: `${theme.primary} hover:bg-blue-700 focus:ring-blue-500 transition-colors duration-200`,
-      buttonSecondary: `${theme.secondary} hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200`,
+      buttonPrimary: 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white focus:ring-blue-500 transition-colors duration-200',
+      buttonSecondary: 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 transition-colors duration-200',
       
       // Border classes
-      border: theme.border,
+      border: 'border-gray-200 dark:border-gray-700',
       
       // Utility classes
       darkModeClass: this.isDarkMode() ? 'dark' : '',
-      backgroundBody: theme.background.body
+      backgroundBody: 'bg-gray-50 dark:bg-gray-900'
     };
-  }
-
-  /**
-   * Get responsive container class with theme
-   */
-  getContainerClass(): string {
-    const base = 'flex h-screen overflow-hidden transition-colors duration-300';
-    return `${base} ${this.isDarkMode() ? 'dark bg-gray-900' : 'bg-gray-50'}`;
-  }
-
-  /**
-   * Update theme configuration (for customization)
-   */
-  updateThemeConfig(newConfig: Partial<ThemeConfig>): void {
-    this.themeConfig = { ...this.themeConfig, ...newConfig };
   }
 }
