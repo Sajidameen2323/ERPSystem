@@ -2,12 +2,22 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule, Trash2, UserCheck, UserX, Edit, Download } from 'lucide-angular';
 
+export interface BulkActionConfirmation {
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  type?: 'warning' | 'danger' | 'info' | 'success';
+  requiresConfirmation?: boolean;
+}
+
 export interface BulkAction {
   id: string;
   label: string;
   icon: any;
   variant: 'primary' | 'secondary' | 'danger' | 'success' | 'warning';
   disabled?: boolean;
+  confirmation?: BulkActionConfirmation;
 }
 
 @Component({
@@ -21,7 +31,8 @@ export class BulkActionsComponent {
   @Input() selectedCount: number = 0;
   @Input() actions: BulkAction[] = [];
   @Input() customActions: BulkAction[] = [];
-  @Output() actionClicked = new EventEmitter<string>();
+  @Input() entityName: string = 'items'; // e.g., 'users', 'products', etc.
+  @Output() actionClicked = new EventEmitter<{ actionId: string; confirmation?: BulkActionConfirmation }>();
   @Output() clearSelection = new EventEmitter<void>();
 
   readonly defaultIcons = {
@@ -37,27 +48,49 @@ export class BulkActionsComponent {
     return [
       {
         id: 'activate',
-        label: 'Activate Users',
+        label: `Activate ${this.entityName}`,
         icon: this.defaultIcons.UserCheck,
-        variant: 'success'
+        variant: 'success',
+        confirmation: {
+          title: 'Confirm Activation',
+          message: `Are you sure you want to activate the selected ${this.entityName}?`,
+          confirmText: 'Activate',
+          type: 'success',
+          requiresConfirmation: true
+        }
       },
       {
         id: 'deactivate',
-        label: 'Deactivate Users',
+        label: `Deactivate ${this.entityName}`,
         icon: this.defaultIcons.UserX,
-        variant: 'warning'
+        variant: 'warning',
+        confirmation: {
+          title: 'Confirm Deactivation',
+          message: `Are you sure you want to deactivate the selected ${this.entityName}?`,
+          confirmText: 'Deactivate',
+          type: 'warning',
+          requiresConfirmation: true
+        }
       },
       {
         id: 'export',
         label: 'Export Selected',
         icon: this.defaultIcons.Download,
         variant: 'secondary'
+        // No confirmation needed for export
       },
       {
         id: 'delete',
-        label: 'Delete Users',
+        label: `Delete ${this.entityName}`,
         icon: this.defaultIcons.Trash2,
-        variant: 'danger'
+        variant: 'danger',
+        confirmation: {
+          title: 'Confirm Deletion',
+          message: `Are you sure you want to delete the selected ${this.entityName}? This action cannot be undone.`,
+          confirmText: 'Delete',
+          type: 'danger',
+          requiresConfirmation: true
+        }
       }
     ];
   }
@@ -67,7 +100,11 @@ export class BulkActionsComponent {
   }
 
   onActionClick(actionId: string) {
-    this.actionClicked.emit(actionId);
+    const action = this.allActions.find(a => a.id === actionId);
+    this.actionClicked.emit({ 
+      actionId, 
+      confirmation: action?.confirmation 
+    });
   }
 
   onClearSelection() {

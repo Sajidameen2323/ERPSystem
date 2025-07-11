@@ -7,4 +7,6 @@ export { UserInfoCellRendererComponent } from './components/ag-grid-renderers/us
 export { RolesCellRendererComponent } from './components/ag-grid-renderers/roles-cell-renderer/roles-cell-renderer.component';
 export { UserGridService } from './services/user-grid.service';
 export { BulkActionsComponent } from './components/bulk-actions/bulk-actions.component';
-export type { BulkAction } from './components/bulk-actions/bulk-actions.component';
+export type { BulkAction, BulkActionConfirmation } from './components/bulk-actions/bulk-actions.component';
+export { ConfirmationModalComponent } from './components/confirmation-modal/confirmation-modal.component';
+export type { ConfirmationConfig } from './components/confirmation-modal/confirmation-modal.component';

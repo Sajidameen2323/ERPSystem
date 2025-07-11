@@ -12,7 +12,7 @@ export interface User {
   roles?: string[]; // string[] in C# becomes string[] in TypeScript
   
   // Computed properties for frontend convenience (derived from server data)
-  isActive: boolean; // computed from status !== 'DEPROVISIONED'
+  isActive: boolean; // computed from status !== 'DEPROVISIONED' && status !== 'SUSPENDED'
   lastLoginAt?: string; // placeholder for future enhancement
 }
 
@@ -27,8 +27,8 @@ export interface RegisterUserRequest {
   groupIds?: string[];
 }
 
-// UserSearchRequest extending PaginationRequest (optional for server compatibility)
-export interface UserSearchRequest extends Partial<PaginationRequest> {
+// UserSearchRequest for filtering (pagination handled by AG Grid)
+export interface UserSearchRequest {
   searchTerm?: string;
   isActive?: boolean;
 }

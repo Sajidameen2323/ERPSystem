@@ -20,58 +20,36 @@ export class UserService {
 
   /**
    * Get list of users (Admin only)
-   * Note: Server returns a simple list, we convert it to PagedResult for UI compatibility
+   * Uses the unified users endpoint that supports optional filtering
+   * Backend always returns PagedResult regardless of filters
    */
   getUsers(request?: UserSearchRequest): Observable<Result<PagedResult<User>>> {
+    // Use the default users endpoint - supports optional filtering
+    // Backend handles filtering, AG Grid handles pagination and sorting
+    const endpoint = `${this.baseUrl}`;
     let params = new HttpParams();
 
-    // Add pagination parameters if provided
-    if (request?.page) {
-      params = params.set('page', request.page.toString());
-    }
-    if (request?.pageSize) {
-      params = params.set('pageSize', request.pageSize.toString());
-    }
+    // Send filter parameters when provided
     if (request?.searchTerm) {
       params = params.set('searchTerm', request.searchTerm);
     }
     if (request?.isActive !== undefined) {
       params = params.set('isActive', request.isActive.toString());
     }
-    if (request?.sortBy) {
-      params = params.set('sortBy', request.sortBy);
-    }
-    if (request?.sortDescending !== undefined) {
-      params = params.set('sortDescending', request.sortDescending.toString());
-    }
 
-    return this.http.get<Result<User[]>>(this.baseUrl, { params }).pipe(
+    return this.http.get<Result<PagedResult<User>>>(endpoint, { params }).pipe(
       map(response => {
         if (response.isSuccess && response.data) {
-          // Convert User[] response to PagedResult<User> for UI compatibility
           // Add computed properties to users
-          const processedUsers = response.data.map(user => ({
+          const processedUsers = response.data.items.map(user => ({
             ...user,
-            isActive: user.status !== 'DEPROVISIONED',
-            lastLoginAt: undefined // Placeholder for future enhancement
+            isActive: user.status !== 'DEPROVISIONED' && user.status !== 'SUSPENDED',
+            lastLoginAt: user.lastLoginAt // Placeholder for future enhancement
           }));
 
-          // Create fake pagination since server doesn't support it yet
-          const pageSize = request?.pageSize || 10;
-          const currentPage = request?.page || 1;
-          const totalCount = processedUsers.length;
-          const startIndex = (currentPage - 1) * pageSize;
-          const endIndex = Math.min(startIndex + pageSize, totalCount);
-          const paginatedItems = processedUsers.slice(startIndex, endIndex);
-
           const pagedResult: PagedResult<User> = {
-            items: paginatedItems,
-            totalCount,
-            pageSize,
-            currentPage,
-            totalPages: Math.ceil(totalCount / pageSize),
-            hasPreviousPage: currentPage > 1,
-            hasNextPage: currentPage < Math.ceil(totalCount / pageSize)
+            ...response.data,
+            items: processedUsers
           };
 
           return {
@@ -139,5 +117,19 @@ export class UserService {
    */
   activateUser(userId: string): Observable<Result<void>> {
     return this.http.put<Result<void>>(`${this.baseUrl}/${userId}/activate`, {});
+  }
+
+  /**
+   * Bulk activate users (Admin only)
+   */
+  bulkActivateUsers(userIds: string[]): Observable<Result<string[]>> {
+    return this.http.put<Result<string[]>>(`${this.baseUrl}/bulk/activate`, userIds);
+  }
+
+  /**
+   * Bulk deactivate users (Admin only)
+   */
+  bulkDeactivateUsers(userIds: string[]): Observable<Result<string[]>> {
+    return this.http.put<Result<string[]>>(`${this.baseUrl}/bulk/deactivate`, userIds);
   }
 }

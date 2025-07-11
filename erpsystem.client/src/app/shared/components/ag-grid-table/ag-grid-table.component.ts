@@ -1,10 +1,11 @@
 import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, OnChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
-import { ColDef, GridApi, GridReadyEvent, SelectionChangedEvent, CellClickedEvent, GridOptions, ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community';
+import { ColDef, GridApi, GridReadyEvent, SelectionChangedEvent, CellClickedEvent, GridOptions, themeQuartz, RowSelectionOptions } from 'ag-grid-community';
+import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import { LucideAngularModule } from 'lucide-angular';
 
-// Register AG Grid modules
+// Register AG Grid Community modules - Required for AG Grid v34+
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 export interface AgGridConfig<T = any> {
@@ -12,25 +13,46 @@ export interface AgGridConfig<T = any> {
   rowData: T[];
   loading?: boolean;
   error?: string | null;
+  
+  // Pagination (Community feature)
   pagination?: boolean;
   paginationPageSize?: number;
-  rowSelection?: 'single' | 'multiple'; // Kept for backward compatibility, converted to modern API internally
+  
+  // Row Selection (Modern v34+ API)
+  rowSelection?: 'single' | 'multiple' | RowSelectionOptions;
+  
+  // Grid behavior (Community features)
   animateRows?: boolean;
-  enableSorting?: boolean;
-  enableFilter?: boolean;
-  enableColResize?: boolean;
   suppressMovableColumns?: boolean;
+  
+  // Layout and sizing
   headerHeight?: number;
   rowHeight?: number;
   domLayout?: 'normal' | 'autoHeight' | 'print';
+  gridHeight?: number; // Fixed height for the grid (px)
+  adaptiveHeight?: boolean; // Whether to use adaptive height based on content (overrides gridHeight)
+  
+  // Overlays
   overlayNoRowsTemplate?: string;
   overlayLoadingTemplate?: string;
+  
+  // Row styling
   getRowClass?: (params: any) => string | string[];
+  
+  // Event handlers
   onRowClicked?: (event: any) => void;
   onCellClicked?: (event: CellClickedEvent) => void;
   onSelectionChanged?: (event: SelectionChangedEvent) => void;
+  
+  // Legacy properties (automatically converted)
+  suppressRowClickSelection?: boolean;
+  enableSorting?: boolean;
+  enableColResize?: boolean;
+  enableClickSelection?: boolean;
+  
+  // Styling
   customCssClass?: string;
-  darkMode?: boolean; // New property to control theme
+  darkMode?: boolean;
 }
 
 @Component({
@@ -51,6 +73,30 @@ export class AgGridTableComponent implements OnInit, OnDestroy, OnChanges {
   private gridApi!: GridApi;
   public selectedRows: any[] = [];
   public gridOptions: GridOptions = {};
+  
+  // Get height class for the grid wrapper
+  public get heightWrapperClass(): string {
+    if (this.config?.adaptiveHeight) {
+      return 'adaptive';
+    }
+    
+    const dataLength = this.config?.rowData?.length || 0;
+    if (dataLength <= 5) {
+      return 'compact';
+    } else if (dataLength > 15) {
+      return 'expanded';
+    }
+    
+    return ''; // Default height
+  }
+  
+  // Get dynamic height style
+  public get dynamicHeight(): string | null {
+    if (this.config?.gridHeight) {
+      return `${this.config.gridHeight}px`;
+    }
+    return null;
+  }
   
   // Theme configuration using the new AG Grid theming API - Sleek Industry Standard
   public get themeConfig() {
@@ -111,29 +157,65 @@ export class AgGridTableComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   private setupGridOptions() {
+    // Convert legacy rowSelection to modern format
+    const getRowSelectionConfig = (): RowSelectionOptions => {
+      // If already using modern object format, use it directly
+      if (typeof this.config.rowSelection === 'object') {
+        return this.config.rowSelection;
+      }
+      
+      // Convert legacy string format to modern object format
+      const legacyMode = this.config.rowSelection || 'single';
+      const mode = legacyMode === 'single' ? 'singleRow' : 'multiRow';
+      const enableClickSelection = this.config.enableClickSelection ?? 
+        (this.config.suppressRowClickSelection !== undefined ? !this.config.suppressRowClickSelection : true);
+      
+      return {
+        mode: mode,
+        enableClickSelection: enableClickSelection,
+        checkboxes: false, // Default to false, can be overridden if needed
+        headerCheckbox: false // Default to false, can be overridden if needed
+      };
+    };
+
+    // Sanitize column definitions to ensure compatibility with community version
+    const sanitizedColumnDefs = AgGridTableComponent.sanitizeColumnDefsForCommunity(this.config.columnDefs);
+
     this.gridOptions = {
-      columnDefs: this.config.columnDefs,
+      columnDefs: sanitizedColumnDefs,
       rowData: this.config.rowData,
+      
+      // Pagination (Community feature)
       pagination: this.config.pagination ?? true,
       paginationPageSize: this.config.paginationPageSize ?? 20,
       paginationPageSizeSelector: [10, 20, 50, 100],
-      // Use modern rowSelection object instead of deprecated string values
-      rowSelection: this.config.rowSelection === 'multiple' ? 
-        { 
-          mode: 'multiRow',
-          enableClickSelection: true
-        } : 
-        { 
-          mode: 'singleRow', 
-          enableClickSelection: true 
-        },
-      animateRows: false, // Disable animations for professional look
+      
+      // Row Selection (Community v34+ API)
+      rowSelection: getRowSelectionConfig(),
+      
+      // Basic grid features (All Community compatible)
+      animateRows: false, // Keep performance optimal
       suppressMovableColumns: this.config.suppressMovableColumns ?? true,
-      domLayout: this.config.domLayout ?? 'autoHeight',
+      suppressColumnVirtualisation: false, // Community feature for performance
+      suppressRowVirtualisation: false, // Community feature for performance
+      
+      // Layout and display
+      domLayout: this.config.domLayout ?? 'normal', // Use normal layout for proper overlay display
+      headerHeight: this.config.headerHeight ?? 40,
+      rowHeight: this.config.rowHeight ?? 52,
+      
+      // Ensure minimum height for overlays
+      getRowHeight: (params) => this.config.rowHeight ?? 52,
+      
+      // Loading states
       loading: this.config.loading ?? false,
       overlayNoRowsTemplate: this.config.overlayNoRowsTemplate ?? '<span class="text-gray-500 dark:text-gray-400">No data available</span>',
       overlayLoadingTemplate: this.config.overlayLoadingTemplate ?? '<span class="text-gray-500 dark:text-gray-400">Loading...</span>',
+      
+      // Row styling
       getRowClass: this.config.getRowClass,
+      
+      // Event handlers
       onRowClicked: (event) => {
         if (this.config.onRowClicked) {
           this.config.onRowClicked(event);
@@ -159,17 +241,29 @@ export class AgGridTableComponent implements OnInit, OnDestroy, OnChanges {
 
   private updateGridOptions() {
     if (this.gridApi) {
-      // Update loading state
-      this.gridApi.setGridOption('loading', this.config.loading ?? false);
+      // Update loading state first
+      const isLoading = this.config.loading ?? false;
+      this.gridApi.setGridOption('loading', isLoading);
       
       // Update row data
       this.gridApi.setGridOption('rowData', this.config.rowData);
       
-      // Update column definitions if they changed
-      this.gridApi.setGridOption('columnDefs', this.config.columnDefs);
+      // Update column definitions if they changed (sanitize first)
+      const sanitizedColumnDefs = AgGridTableComponent.sanitizeColumnDefsForCommunity(this.config.columnDefs);
+      this.gridApi.setGridOption('columnDefs', sanitizedColumnDefs);
       
-      // Hide overlay if we have data and not loading
-      if (!this.config.loading && this.config.rowData && this.config.rowData.length > 0) {
+      // Handle overlays based on loading state and data
+      if (isLoading) {
+        // Show loading overlay when loading
+        this.gridApi.showLoadingOverlay();
+      } else if (this.config.error) {
+        // Show no rows overlay for errors (since error is displayed above grid)
+        this.gridApi.showNoRowsOverlay();
+      } else if (!this.config.rowData || this.config.rowData.length === 0) {
+        // Show no rows overlay when no data
+        this.gridApi.showNoRowsOverlay();
+      } else {
+        // Hide overlay when we have data and not loading
         this.gridApi.hideOverlay();
       }
     }
@@ -182,8 +276,12 @@ export class AgGridTableComponent implements OnInit, OnDestroy, OnChanges {
     // Initial setup - update grid with current config
     this.updateGridOptions();
     
-    // Show error overlay if there's an error
-    if (this.config.error) {
+    // Handle initial state based on loading and error conditions
+    if (this.config.loading) {
+      this.gridApi.showLoadingOverlay();
+    } else if (this.config.error) {
+      this.gridApi.showNoRowsOverlay();
+    } else if (!this.config.rowData || this.config.rowData.length === 0) {
       this.gridApi.showNoRowsOverlay();
     }
   }
@@ -245,5 +343,98 @@ export class AgGridTableComponent implements OnInit, OnDestroy, OnChanges {
   public updateThemeMode(darkMode: boolean) {
     this.config.darkMode = darkMode;
     // The theme will automatically update through the getter when the grid re-renders
+  }
+
+  // Helper method for backward compatibility - no longer adds checkbox columns
+  // Modern approach: Use rowSelection.checkboxes in grid configuration
+  public static addCheckboxColumn(columnDefs: ColDef[]): ColDef[] {
+    // Simply return the column definitions as-is
+    // Checkbox selection should be configured via rowSelection.checkboxes
+    return columnDefs;
+  }
+
+  // Modern way to enable checkbox selection
+  public static enableCheckboxSelection(gridConfig: AgGridConfig): AgGridConfig {
+    return {
+      ...gridConfig,
+      rowSelection: {
+        mode: 'multiRow',
+        enableClickSelection: true,
+        checkboxes: true,
+        headerCheckbox: true
+      }
+    };
+  }
+
+  // Helper method to create row selection config
+  public static createRowSelectionConfig(
+    mode: 'single' | 'multiple' = 'single',
+    enableCheckboxes: boolean = false,
+    enableClickSelection: boolean = true,
+    enableHeaderCheckbox: boolean = false
+  ): RowSelectionOptions {
+    return {
+      mode: mode === 'single' ? 'singleRow' : 'multiRow',
+      enableClickSelection,
+      checkboxes: enableCheckboxes,
+      headerCheckbox: enableHeaderCheckbox
+    };
+  }
+
+  // Helper method to configure column definitions for Community version (no filters)
+  public static createCommunityColumnDefs(columns: Array<{
+    field: string;
+    headerName?: string;
+    width?: number;
+    sortable?: boolean;
+    resizable?: boolean;
+  }>): ColDef[] {
+    return columns.map(col => {
+      const colDef: ColDef = {
+        field: col.field,
+        headerName: col.headerName || col.field,
+        width: col.width,
+        sortable: col.sortable ?? true,
+        resizable: col.resizable ?? true,
+      };
+
+      // No filters to avoid SetFilter module issues
+      return colDef;
+    });
+  }
+
+  // Helper method to sanitize column definitions for AG Grid Community
+  public static sanitizeColumnDefsForCommunity(columnDefs: ColDef[]): ColDef[] {
+    return columnDefs.map(colDef => {
+      const sanitized = { ...colDef };
+      
+      // Remove all filter configurations to avoid SetFilter issues
+      delete sanitized.filter;
+      delete sanitized.filterParams;
+      
+      return sanitized;
+    });
+  }
+
+  // Helper method to create safe community-only column definitions (no filters)
+  public static createSafeColumnDefs(columns: Array<{
+    field: string;
+    headerName?: string;
+    width?: number;
+    sortable?: boolean;
+    resizable?: boolean;
+  }>): ColDef[] {
+    return columns.map(col => {
+      const colDef: ColDef = {
+        field: col.field,
+        headerName: col.headerName || col.field,
+        width: col.width,
+        sortable: col.sortable ?? true,
+        resizable: col.resizable ?? true,
+      };
+
+      // No filters to avoid any filter module issues
+      return colDef;
+    });
   }
 }

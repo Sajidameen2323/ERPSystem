@@ -1,36 +1,45 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, ViewChild, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { LucideAngularModule, Search, UserPlus, CheckSquare, Square } from 'lucide-angular';
+import { LucideAngularModule, Search, UserPlus, CheckSquare, Square, X } from 'lucide-angular';
+import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { UserService } from '../../core/services/user.service';
 import { User, UserSearchRequest, PagedResult, Result } from '../../core/models/user.interface';
-import { AgGridTableComponent, AgGridConfig, BulkActionsComponent, BulkAction } from '../../shared';
+import { 
+  AgGridTableComponent, 
+  AgGridConfig, 
+  BulkActionsComponent, 
+  BulkAction,
+  BulkActionConfirmation,
+  ConfirmationModalComponent,
+  ConfirmationConfig 
+} from '../../shared';
 import { UserGridService } from '../../shared/services/user-grid.service';
 
 @Component({
   selector: 'app-admin-users',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule, AgGridTableComponent, BulkActionsComponent],
+  imports: [CommonModule, FormsModule, LucideAngularModule, AgGridTableComponent, BulkActionsComponent, ConfirmationModalComponent],
   templateUrl: './admin-users.component.html',
   styleUrl: './admin-users.component.css'
 })
-export class AdminUsersComponent implements OnInit {
+export class AdminUsersComponent implements OnInit, OnDestroy {
   @ViewChild(AgGridTableComponent) gridComponent!: AgGridTableComponent;
   
   readonly icons = {
     Search,
     UserPlus,
     CheckSquare,
-    Square
+    Square,
+    X
   };
 
   users: User[] = [];
   searchRequest: UserSearchRequest = {
     searchTerm: '',
-    isActive: undefined,
-    page: 1,
-    pageSize: 10
+    isActive: undefined
+    // Removed page and pageSize - AG Grid will handle pagination
   };
 
   pagedResult: PagedResult<User> | null = null;
@@ -41,6 +50,19 @@ export class AdminUsersComponent implements OnInit {
   // Multi-select and bulk actions
   selectedUsers: User[] = [];
   selectedCount = 0;
+
+  // Confirmation modal
+  showConfirmationModal = false;
+  confirmationConfig: ConfirmationConfig = {
+    title: 'Confirm Action',
+    message: 'Are you sure you want to proceed?'
+  };
+  pendingAction: { actionId: string; users: User[]; activate?: boolean } | null = null;
+
+  // Debouncing for search and filters
+  private searchSubject = new Subject<string>();
+  private filterSubject = new Subject<void>();
+  private destroy$ = new Subject<void>();
 
   constructor(
     private userService: UserService,
@@ -54,24 +76,56 @@ export class AdminUsersComponent implements OnInit {
       null,
       (user) => this.editUser(user),
       (user) => this.toggleUserStatus(user),
-      true // Always enable multi-select for user table
+      true, // Always enable multi-select for user table
+      (action, user, callback) => this.showIndividualActionConfirmation(action, user, callback)
     );
   }
 
   ngOnInit() {
+    // Setup debounced search with reasonable delay to prevent excessive API calls
+    this.searchSubject
+      .pipe(
+        debounceTime(800), // 800ms delay - user must pause typing for search to trigger
+        distinctUntilChanged(),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(searchTerm => {
+        this.searchRequest.searchTerm = searchTerm;
+        this.loadUsers();
+      });
+
+    // Setup debounced filter changes
+    this.filterSubject
+      .pipe(
+        debounceTime(200), // Shorter delay for filter dropdown changes
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        this.loadUsers();
+      });
+
     this.loadUsers();
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   loadUsers() {
     this.loading = true;
     this.error = null;
+    
+    // Update grid config immediately to show loading state
+    this.updateGridConfig();
 
     this.userService.getUsers(this.searchRequest).subscribe({
       next: (result: Result<PagedResult<User>>) => {
         this.loading = false;
         if (result.isSuccess && result.data) {
           this.pagedResult = result.data;
-          this.users = result.data.items.map(el => { return { ...el, isActive: el.status === "ACTIVE" } }); // PagedResult has 'items' not 'data'
+          console.log('Paged Result:', this.pagedResult);
+          this.users = result.data.items; // Use users as processed by UserService (isActive already set correctly)
           this.updateGridConfig();
         } else {
           this.error = result.message || result.error || 'Failed to load users';
@@ -93,17 +147,28 @@ export class AdminUsersComponent implements OnInit {
       this.error,
       (user) => this.editUser(user),
       (user) => this.toggleUserStatus(user),
-      true // Always enable multi-select for user table
+      true, // Always enable multi-select for user table
+      (action, user, callback) => this.showIndividualActionConfirmation(action, user, callback)
     );
   }
 
   onSearch() {
-    this.searchRequest.page = 1; // Reset to first page
+    // Immediate search when Enter key is pressed
     this.loadUsers();
   }
 
+  onSearchChange(searchTerm: string) {
+    // Debounced search for input changes
+    this.searchSubject.next(searchTerm);
+  }
+
   onFilterChange() {
-    this.searchRequest.page = 1; // Reset to first page
+    // Debounced filter change
+    this.filterSubject.next();
+  }
+
+  clearSearch() {
+    this.searchRequest.searchTerm = '';
     this.loadUsers();
   }
 
@@ -115,13 +180,49 @@ export class AdminUsersComponent implements OnInit {
     this.router.navigate(['/dashboard/admin/edit-user', user.id]);
   }
 
+  showIndividualActionConfirmation(action: string, user: User, callback: () => void) {
+    const actionMessages = {
+      activate: {
+        title: 'Confirm User Activation',
+        message: `Are you sure you want to activate the user "${user.firstName} ${user.lastName}"?`,
+        confirmText: 'Activate User',
+        type: 'success' as const
+      },
+      deactivate: {
+        title: 'Confirm User Deactivation',
+        message: `Are you sure you want to deactivate the user "${user.firstName} ${user.lastName}"?\n\nThis will prevent them from accessing the system.`,
+        confirmText: 'Deactivate User',
+        type: 'warning' as const
+      }
+    };
+
+    const config = actionMessages[action as keyof typeof actionMessages];
+    if (config) {
+      this.showConfirmationDialog({
+        title: config.title,
+        message: config.message,
+        confirmText: config.confirmText,
+        type: config.type,
+        details: [`${user.firstName} ${user.lastName}`, user.email]
+      }, callback);
+    } else {
+      // Fallback to direct execution if no confirmation config found
+      callback();
+    }
+  }
+
   toggleUserStatus(user: User) {
+    this.loading = true;
+    // Update grid config immediately to show loading state
+    this.updateGridConfig();
+    
     const action = user.isActive ?
       this.userService.deactivateUser(user.id) :
       this.userService.activateUser(user.id);
 
     action.subscribe({
       next: (result) => {
+        this.loading = false;
         if (result.isSuccess) {
           this.loadUsers(); // Refresh the list
         } else {
@@ -130,6 +231,7 @@ export class AdminUsersComponent implements OnInit {
         }
       },
       error: (error) => {
+        this.loading = false;
         this.error = 'Failed to update user status: ' + (error.error?.message || error.message);
         this.updateGridConfig();
       }
@@ -150,96 +252,188 @@ export class AdminUsersComponent implements OnInit {
   }
 
   // Bulk actions
-  onBulkAction(actionId: string) {
+  onBulkAction(event: { actionId: string; confirmation?: BulkActionConfirmation }) {
+    const { actionId, confirmation } = event;
+    
     switch (actionId) {
       case 'activate':
-        this.bulkActivateUsers();
+        this.handleActivateAction(confirmation);
         break;
       case 'deactivate':
-        this.bulkDeactivateUsers();
+        this.handleDeactivateAction(confirmation);
         break;
       case 'export':
         this.exportSelectedUsers();
         break;
       case 'delete':
-        this.bulkDeleteUsers();
+        this.handleDeleteAction(confirmation);
         break;
     }
   }
 
-  private bulkActivateUsers() {
+  private handleActivateAction(confirmation?: BulkActionConfirmation) {
     if (this.selectedUsers.length === 0) return;
     
     const inactiveUsers = this.selectedUsers.filter(user => !user.isActive);
     if (inactiveUsers.length === 0) {
+      // Simple alert for non-critical info
       alert('Selected users are already active.');
       return;
     }
 
-    if (confirm(`Are you sure you want to activate ${inactiveUsers.length} user(s)?`)) {
-      // Here you would implement bulk activation
-      // For now, we'll process them one by one
+    if (confirmation?.requiresConfirmation) {
+      this.showConfirmationDialog({
+        title: confirmation.title,
+        message: `${confirmation.message}\n\n${inactiveUsers.length} user(s) will be activated.`,
+        confirmText: confirmation.confirmText,
+        type: confirmation.type,
+        details: inactiveUsers.map(u => `${u.firstName} ${u.lastName} (${u.email})`)
+      }, () => {
+        this.processBulkStatusChange(inactiveUsers, true);
+      });
+    } else {
       this.processBulkStatusChange(inactiveUsers, true);
     }
   }
 
-  private bulkDeactivateUsers() {
+  private handleDeactivateAction(confirmation?: BulkActionConfirmation) {
     if (this.selectedUsers.length === 0) return;
     
     const activeUsers = this.selectedUsers.filter(user => user.isActive);
     if (activeUsers.length === 0) {
+      // Simple alert for non-critical info
       alert('Selected users are already inactive.');
       return;
     }
 
-    if (confirm(`Are you sure you want to deactivate ${activeUsers.length} user(s)?`)) {
-      // Here you would implement bulk deactivation
-      // For now, we'll process them one by one
+    if (confirmation?.requiresConfirmation) {
+      this.showConfirmationDialog({
+        title: confirmation.title,
+        message: `${confirmation.message}\n\n${activeUsers.length} user(s) will be deactivated.`,
+        confirmText: confirmation.confirmText,
+        type: confirmation.type,
+        details: activeUsers.map(u => `${u.firstName} ${u.lastName} (${u.email})`)
+      }, () => {
+        this.processBulkStatusChange(activeUsers, false);
+      });
+    } else {
       this.processBulkStatusChange(activeUsers, false);
     }
   }
 
-  private processBulkStatusChange(users: User[], activate: boolean) {
-    let completed = 0;
-    let errors: string[] = [];
-
-    users.forEach(user => {
-      const action = activate ? 
-        this.userService.activateUser(user.id) : 
-        this.userService.deactivateUser(user.id);
-
-      action.subscribe({
-        next: (result) => {
-          completed++;
-          if (!result.isSuccess) {
-            errors.push(`${user.firstName} ${user.lastName}: ${result.message || result.error}`);
-          }
-          
-          if (completed === users.length) {
-            this.handleBulkActionComplete(errors);
-          }
-        },
-        error: (error) => {
-          completed++;
-          errors.push(`${user.firstName} ${user.lastName}: ${error.error?.message || error.message}`);
-          
-          if (completed === users.length) {
-            this.handleBulkActionComplete(errors);
-          }
-        }
+  private handleDeleteAction(confirmation?: BulkActionConfirmation) {
+    if (this.selectedUsers.length === 0) return;
+    
+    if (confirmation?.requiresConfirmation) {
+      this.showConfirmationDialog({
+        title: confirmation.title,
+        message: `${confirmation.message}\n\n${this.selectedUsers.length} user(s) will be deleted.`,
+        confirmText: confirmation.confirmText,
+        type: confirmation.type,
+        details: this.selectedUsers.map(u => `${u.firstName} ${u.lastName} (${u.email})`)
+      }, () => {
+        this.bulkDeleteUsers();
       });
+    } else {
+      this.bulkDeleteUsers();
+    }
+  }
+
+  // Confirmation modal helpers
+  private showConfirmationDialog(config: ConfirmationConfig, onConfirm: () => void) {
+    this.confirmationConfig = config;
+    this.pendingAction = { actionId: 'custom', users: this.selectedUsers };
+    this.showConfirmationModal = true;
+    
+    // Store the callback for when user confirms
+    (this as any).pendingConfirmCallback = onConfirm;
+  }
+
+  onConfirmationConfirmed() {
+    if ((this as any).pendingConfirmCallback) {
+      (this as any).pendingConfirmCallback();
+      (this as any).pendingConfirmCallback = null;
+    }
+    this.pendingAction = null;
+  }
+
+  onConfirmationCancelled() {
+    this.pendingAction = null;
+    (this as any).pendingConfirmCallback = null;
+  }
+
+  private processBulkStatusChange(users: User[], activate: boolean) {
+    this.loading = true;
+    // Update grid config immediately to show loading state
+    this.updateGridConfig();
+    
+    const userIds = users.map(user => user.id);
+    
+    const action = activate ? 
+      this.userService.bulkActivateUsers(userIds) : 
+      this.userService.bulkDeactivateUsers(userIds);
+
+    action.subscribe({
+      next: (result) => {
+        this.loading = false;
+        if (result.isSuccess) {
+          const actionType = activate ? 'activated' : 'deactivated';
+          const successCount = result.data?.length || 0;
+          
+          if (successCount === users.length) {
+            // All succeeded
+            this.showSuccessMessage(`Successfully ${actionType} ${successCount} user(s)!`);
+          } else {
+            // Partial success
+            const failedCount = users.length - successCount;
+            this.showWarningMessage(`Bulk operation completed with partial success:\n${successCount} user(s) ${actionType} successfully\n${failedCount} user(s) failed`);
+          }
+        } else {
+          // All failed
+          this.error = result.message || result.error || `Failed to ${activate ? 'activate' : 'deactivate'} users`;
+          this.showErrorMessage(`Bulk operation failed: ${this.error}`);
+        }
+        
+        this.loadUsers(); // Refresh the list
+        this.onClearSelection(); // Clear selection
+      },
+      error: (error) => {
+        this.loading = false;
+        this.error = `Failed to ${activate ? 'activate' : 'deactivate'} users: ` + (error.error?.message || error.message);
+        this.showErrorMessage(`Bulk operation failed: ${this.error}`);
+        
+        this.loadUsers(); // Refresh the list
+        this.onClearSelection(); // Clear selection
+      }
     });
   }
 
-  private handleBulkActionComplete(errors: string[]) {
-    if (errors.length > 0) {
-      alert(`Bulk action completed with errors:\n${errors.join('\n')}`);
-    } else {
-      alert('Bulk action completed successfully!');
-    }
-    
-    this.loadUsers(); // Refresh the list
-    this.onClearSelection(); // Clear selection
+  // User feedback methods
+  private showSuccessMessage(message: string) {
+    this.showConfirmationDialog({
+      title: 'Success',
+      message,
+      confirmText: 'OK',
+      type: 'success'
+    }, () => {});
+  }
+
+  private showWarningMessage(message: string) {
+    this.showConfirmationDialog({
+      title: 'Warning',
+      message,
+      confirmText: 'OK',
+      type: 'warning'
+    }, () => {});
+  }
+
+  private showErrorMessage(message: string) {
+    this.showConfirmationDialog({
+      title: 'Error',
+      message,
+      confirmText: 'OK',
+      type: 'danger'
+    }, () => {});
   }
 
   private exportSelectedUsers() {

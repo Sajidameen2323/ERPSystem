@@ -13,12 +13,16 @@
 
   <!-- Enhanced AG Grid with modern theming API -->
   <div class="ag-grid-container">
-    <ag-grid-angular
-      [columnDefs]="config.columnDefs"
-      [rowData]="config.rowData"
-      [theme]="themeConfig"
-      [gridOptions]="gridOptions"
-      (gridReady)="onGridReady($event)">
-    </ag-grid-angular>
+    <div class="ag-grid-height-wrapper" 
+         [class]="heightWrapperClass"
+         [style.height]="dynamicHeight">
+      <ag-grid-angular
+        [columnDefs]="config.columnDefs"
+        [rowData]="config.rowData"
+        [theme]="themeConfig"
+        [gridOptions]="gridOptions"
+        (gridReady)="onGridReady($event)">
+      </ag-grid-angular>
+    </div>
   </div>
 </div>

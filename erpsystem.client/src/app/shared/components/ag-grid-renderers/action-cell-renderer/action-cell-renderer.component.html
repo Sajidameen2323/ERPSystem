@@ -1,18 +1,20 @@
-<div class="flex items-center justify-end space-x-2">
-  <button 
-    *ngIf="showEdit"
-    (click)="onEdit()"
-    [title]="editTooltip"
-    class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors">
-    <lucide-angular [img]="editIcon" class="h-4 w-4"></lucide-angular>
-  </button>
-  
-  <button 
-    *ngIf="showToggleStatus"
-    (click)="onToggleStatus()"
-    [title]="statusTooltip"
-    [class]="statusButtonClass"
-    class="p-1 rounded transition-colors">
-    <lucide-angular [img]="statusIcon" class="h-4 w-4"></lucide-angular>
-  </button>
+<div class="actions-container">
+  <div class="flex items-center justify-center space-x-2">
+    <button 
+      *ngIf="showEdit"
+      (click)="onEdit()"
+      [title]="editTooltip"
+      class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors">
+      <lucide-angular [img]="editIcon" class="h-4 w-4"></lucide-angular>
+    </button>
+    
+    <button 
+      *ngIf="showToggleStatus"
+      (click)="onToggleStatus()"
+      [title]="statusTooltip"
+      [class]="statusButtonClass"
+      class="p-1 rounded transition-colors">
+      <lucide-angular [img]="statusIcon" class="h-4 w-4"></lucide-angular>
+    </button>
+  </div>
 </div>

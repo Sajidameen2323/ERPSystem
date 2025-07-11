@@ -20,7 +20,7 @@
 
   <!-- Search and Filters -->
   <div class="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <!-- Search -->
       <div class="relative">
         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -28,10 +28,21 @@
         </div>
         <input 
           type="text" 
-          [(ngModel)]="searchRequest.searchTerm"
+          [value]="searchRequest.searchTerm"
+          (input)="onSearchChange($any($event.target).value)"
           (keyup.enter)="onSearch()"
           placeholder="Search users..."
-          class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 dark:focus:placeholder-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-colors">
+          class="block w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 dark:focus:placeholder-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-colors">
+        <!-- Clear button -->
+        <div *ngIf="searchRequest.searchTerm" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+          <button 
+            type="button"
+            (click)="clearSearch()"
+            class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:text-gray-600 dark:focus:text-gray-300 transition-colors"
+            title="Clear search">
+            <lucide-angular [img]="icons.X" class="h-4 w-4"></lucide-angular>
+          </button>
+        </div>
       </div>
 
       <!-- Status Filter -->
@@ -42,22 +53,9 @@
           class="block w-full py-2 px-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 transition-colors">
           <option [ngValue]="undefined">All Users</option>
           <option [ngValue]="true">Active Users</option>
-          <option [ngValue]="false">Inactive Users</option>
-        </select>
-      </div>
-
-      <!-- Page Size -->
-      <div>
-        <select 
-          [(ngModel)]="searchRequest.pageSize" 
-          (change)="onFilterChange()"
-          class="block w-full py-2 px-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 transition-colors">
-          <option [ngValue]="5">5 per page</option>
-          <option [ngValue]="10">10 per page</option>
-          <option [ngValue]="25">25 per page</option>
-          <option [ngValue]="50">50 per page</option>
-        </select>
-      </div>
+            <option [ngValue]="false">Inactive Users</option>
+          </select>
+        </div>
     </div>
   </div>
 
@@ -73,7 +71,17 @@
   <!-- Bulk Actions Bar (shown when items are selected) -->
   <app-bulk-actions
     [selectedCount]="selectedCount"
+    [entityName]="'users'"
     (actionClicked)="onBulkAction($event)"
     (clearSelection)="onClearSelection()">
   </app-bulk-actions>
 </div>
+
+<!-- Confirmation Modal -->
+<app-confirmation-modal
+  [isVisible]="showConfirmationModal"
+  [config]="confirmationConfig"
+  (confirmed)="onConfirmationConfirmed()"
+  (cancelled)="onConfirmationCancelled()"
+  (visibilityChanged)="showConfirmationModal = $event">
+</app-confirmation-modal>

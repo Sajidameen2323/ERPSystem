@@ -29,7 +29,10 @@ public class UserViewModel
 {
     public string Id { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
-    public DateTime Created { get; set; }
+    public DateTime? Created { get; set; }
+
+    [JsonPropertyName("LastLoginAt")]
+    public DateTime? LastLoginAt { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
@@ -71,6 +74,9 @@ public class EmbeddedUser
 
     [JsonPropertyName("status")]
     public string Status { get; set; } = string.Empty;
+
+    [JsonPropertyName("lastLogin")]
+    public DateTime? LastLogin { get; set; }
 }
 
 public class OktaUserCredentials

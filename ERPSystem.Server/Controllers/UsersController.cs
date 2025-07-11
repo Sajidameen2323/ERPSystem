@@ -27,20 +27,23 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Retrieves a list of all users assigned to the client application
+    /// Retrieves a filtered list of users assigned to the client application
     /// </summary>
     [HttpGet]
     [Authorize(Roles = Constants.Roles.Admin)]
-    public async Task<IActionResult> GetApplicationUsers()
+    public async Task<IActionResult> GetApplicationUsers([FromQuery] UserSearchRequest? searchRequest = null)
     {
-        var result = await _oktaService.GetApplicationUsersAsync();
+        // Use default search request if none provided
+        searchRequest ??= new UserSearchRequest();
+
+        var result = await _oktaService.GetApplicationUsersAsync(searchRequest);
 
         if (!result.IsSuccess)
         {
-            return BadRequest(Result<List<UserViewModel>>.Failure(result.Error));
+            return BadRequest(Result<PagedResult<UserViewModel>>.Failure(result.Error));
         }
 
-        return Ok(Result<List<UserViewModel>>.Success(result.Data!));
+        return Ok(Result<PagedResult<UserViewModel>>.Success(result.Data!));
     }
 
     /// <summary>
@@ -167,5 +170,49 @@ public class UsersController : ControllerBase
         }
 
         return Ok(Result<string>.Success(Constants.ApiMessages.UserActivatedSuccessfully));
+    }
+
+    /// <summary>
+    /// Bulk activate users (Admin only)
+    /// </summary>
+    [HttpPut("bulk/activate")]
+    [Authorize(Roles = Constants.Roles.Admin)]
+    public async Task<IActionResult> BulkActivateUsers([FromBody] List<string> userIds)
+    {
+        if (userIds == null || userIds.Count == 0)
+        {
+            return BadRequest(Result.Failure("User IDs are required"));
+        }
+
+        var result = await _oktaService.BulkActivateUsersAsync(userIds);
+
+        if (!result.IsSuccess)
+        {
+            return BadRequest(Result.Failure(result.Error));
+        }
+
+        return Ok(Result<List<string>>.Success(result.Data!));
+    }
+
+    /// <summary>
+    /// Bulk deactivate users (Admin only)
+    /// </summary>
+    [HttpPut("bulk/deactivate")]
+    [Authorize(Roles = Constants.Roles.Admin)]
+    public async Task<IActionResult> BulkDeactivateUsers([FromBody] List<string> userIds)
+    {
+        if (userIds == null || userIds.Count == 0)
+        {
+            return BadRequest(Result.Failure("User IDs are required"));
+        }
+
+        var result = await _oktaService.BulkDeactivateUsersAsync(userIds);
+
+        if (!result.IsSuccess)
+        {
+            return BadRequest(Result.Failure(result.Error));
+        }
+
+        return Ok(Result<List<string>>.Success(result.Data!));
     }
 }

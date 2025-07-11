@@ -135,13 +135,14 @@ public class OktaService : IOktaService
         }
     }
 
-    public async Task<Result<List<UserViewModel>>> GetApplicationUsersAsync()
+    public async Task<Result<PagedResult<UserViewModel>>> GetApplicationUsersAsync(UserSearchRequest? searchRequest = null)
     {
         try
         {
+            // Get all users from Okta
             var validationResult = ValidateOktaConfiguration();
             if (!validationResult.IsSuccess)
-                return Result<List<UserViewModel>>.Failure(validationResult.Error);
+                return Result<PagedResult<UserViewModel>>.Failure(validationResult.Error);
 
             var client = CreateOktaApiClient();
             var requestUrl = $"{_oktaSettings.OktaDomain}/api/v1/apps/{_oktaSettings.ClientAppId}/users?expand=user";
@@ -151,26 +152,69 @@ public class OktaService : IOktaService
             {
                 var error = await response.Content.ReadAsStringAsync();
                 _logger.LogError("Failed to retrieve application users from Okta: {Error}", error);
-                return Result<List<UserViewModel>>.Failure("Failed to retrieve application users from Okta");
+                return Result<PagedResult<UserViewModel>>.Failure("Failed to retrieve application users from Okta");
             }
 
             var jsonString = await response.Content.ReadAsStringAsync();
-
             var contentStream = new MemoryStream(Encoding.UTF8.GetBytes(jsonString));
             var oktaUsers = await JsonSerializer.DeserializeAsync<List<OktaUserResponse>>(contentStream);
 
             if (oktaUsers == null)
             {
-                return Result<List<UserViewModel>>.Success(new List<UserViewModel>());
+                var emptyResult = new PagedResult<UserViewModel>
+                {
+                    Items = new List<UserViewModel>(),
+                    TotalCount = 0,
+                    PageSize = 0,
+                    CurrentPage = 1
+                };
+                return Result<PagedResult<UserViewModel>>.Success(emptyResult);
             }
 
-            var userViewModels = oktaUsers.Select(MapOktaUserToViewModel).ToList();
-            return Result<List<UserViewModel>>.Success(userViewModels);
+            var allUsers = oktaUsers.Select(MapOktaUserToViewModel).ToList();
+            
+            // Apply filters if search request is provided
+            var filteredUsers = allUsers.AsQueryable();
+
+            if (searchRequest != null)
+            {
+                // Filter by search term (first name, last name, or email)
+                if (!string.IsNullOrWhiteSpace(searchRequest.SearchTerm))
+                {
+                    var searchTerm = searchRequest.SearchTerm.ToLower().Trim();
+                    filteredUsers = filteredUsers.Where(u =>
+                        u.FirstName.ToLower().Contains(searchTerm) ||
+                        u.LastName.ToLower().Contains(searchTerm) ||
+                        u.Email.ToLower().Contains(searchTerm));
+                }
+
+                // Filter by active status
+                if (searchRequest.IsActive.HasValue)
+                {
+                    filteredUsers = filteredUsers.Where(u => 
+                        (u.Status != "DEPROVISIONED" && u.Status != "SUSPENDED") == searchRequest.IsActive.Value);
+                }
+            }
+
+            // Get total count after filtering
+            var totalCount = filteredUsers.Count();
+            var allFilteredUsers = filteredUsers.ToList();
+
+            // Return all filtered results for AG Grid to handle pagination
+            var pagedResult = new PagedResult<UserViewModel>
+            {
+                Items = allFilteredUsers,
+                TotalCount = totalCount,
+                PageSize = totalCount, // Set page size to total count (all results)
+                CurrentPage = 1
+            };
+
+            return Result<PagedResult<UserViewModel>>.Success(pagedResult);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving application users");
-            return Result<List<UserViewModel>>.Failure($"Error retrieving application users: {ex.Message}");
+            return Result<PagedResult<UserViewModel>>.Failure($"Error retrieving application users: {ex.Message}");
         }
     }
 
@@ -416,11 +460,142 @@ public class OktaService : IOktaService
         {
             Id = oktaUser.Id,
             Status = oktaUser?.Embedded?.User?.Status ?? "N/A",
-            Created = oktaUser.Created ,
+            Created = oktaUser?.Created ,
+            LastLoginAt = oktaUser?.Embedded?.User?.LastLogin,
             FirstName = oktaUser.Profile.GivenName,
             LastName = oktaUser.Profile.FamilyName,
             Email = oktaUser.Profile.Email,
             Roles = oktaUser.Profile.Roles
         };
+    }
+
+    public async Task<Result<List<string>>> BulkActivateUsersAsync(List<string> userIds)
+    {
+        try
+        {
+            var validationResult = ValidateOktaConfiguration();
+            if (!validationResult.IsSuccess)
+                return Result<List<string>>.Failure(validationResult.Error);
+
+            if (userIds == null || !userIds.Any())
+            {
+                return Result<List<string>>.Failure("No user IDs provided");
+            }
+
+            var activatedUsers = new List<string>();
+            var failedUsers = new List<string>();
+            var errors = new List<string>();
+
+            foreach (var userId in userIds)
+            {
+                if (string.IsNullOrWhiteSpace(userId))
+                {
+                    failedUsers.Add("Invalid ID");
+                    errors.Add("Invalid user ID provided");
+                    continue;
+                }
+
+                var result = await ActivateUserAsync(userId);
+                if (result.IsSuccess)
+                {
+                    activatedUsers.Add(userId);
+                    _logger.LogInformation("Successfully activated user {UserId} in bulk operation", userId);
+                }
+                else
+                {
+                    failedUsers.Add(userId);
+                    errors.Add($"Failed to activate user {userId}: {result.Error}");
+                    _logger.LogWarning("Failed to activate user {UserId} in bulk operation: {Error}", userId, result.Error);
+                }
+            }
+
+            if (failedUsers.Any() && !activatedUsers.Any())
+            {
+                // All failed
+                return Result<List<string>>.Failure($"Failed to activate all users. Errors: {string.Join("; ", errors)}");
+            }
+            else if (failedUsers.Any())
+            {
+                // Partial success
+                var message = $"Bulk activation partially completed. Activated: {activatedUsers.Count}, Failed: {failedUsers.Count}. Errors: {string.Join("; ", errors)}";
+                _logger.LogWarning("Bulk activation partially completed. Activated: {ActivatedCount}, Failed: {FailedCount}. Errors: {Errors}", 
+                    activatedUsers.Count, failedUsers.Count, string.Join("; ", errors));
+                return Result<List<string>>.Success(activatedUsers);
+            }
+
+            // All succeeded
+            _logger.LogInformation("Bulk activation completed successfully for {Count} users", activatedUsers.Count);
+            return Result<List<string>>.Success(activatedUsers);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during bulk user activation");
+            return Result<List<string>>.Failure($"Error during bulk activation: {ex.Message}");
+        }
+    }
+
+    public async Task<Result<List<string>>> BulkDeactivateUsersAsync(List<string> userIds)
+    {
+        try
+        {
+            var validationResult = ValidateOktaConfiguration();
+            if (!validationResult.IsSuccess)
+                return Result<List<string>>.Failure(validationResult.Error);
+
+            if (userIds == null || !userIds.Any())
+            {
+                return Result<List<string>>.Failure("No user IDs provided");
+            }
+
+            var deactivatedUsers = new List<string>();
+            var failedUsers = new List<string>();
+            var errors = new List<string>();
+
+            foreach (var userId in userIds)
+            {
+                if (string.IsNullOrWhiteSpace(userId))
+                {
+                    failedUsers.Add("Invalid ID");
+                    errors.Add("Invalid user ID provided");
+                    continue;
+                }
+
+                var result = await DeactivateUserAsync(userId);
+                if (result.IsSuccess)
+                {
+                    deactivatedUsers.Add(userId);
+                    _logger.LogInformation("Successfully deactivated user {UserId} in bulk operation", userId);
+                }
+                else
+                {
+                    failedUsers.Add(userId);
+                    errors.Add($"Failed to deactivate user {userId}: {result.Error}");
+                    _logger.LogWarning("Failed to deactivate user {UserId} in bulk operation: {Error}", userId, result.Error);
+                }
+            }
+
+            if (failedUsers.Any() && !deactivatedUsers.Any())
+            {
+                // All failed
+                return Result<List<string>>.Failure($"Failed to deactivate all users. Errors: {string.Join("; ", errors)}");
+            }
+            else if (failedUsers.Any())
+            {
+                // Partial success
+                var message = $"Bulk deactivation partially completed. Deactivated: {deactivatedUsers.Count}, Failed: {failedUsers.Count}. Errors: {string.Join("; ", errors)}";
+                _logger.LogWarning("Bulk deactivation partially completed. Deactivated: {DeactivatedCount}, Failed: {FailedCount}. Errors: {Errors}", 
+                    deactivatedUsers.Count, failedUsers.Count, string.Join("; ", errors));
+                return Result<List<string>>.Success(deactivatedUsers);
+            }
+
+            // All succeeded
+            _logger.LogInformation("Bulk deactivation completed successfully for {Count} users", deactivatedUsers.Count);
+            return Result<List<string>>.Success(deactivatedUsers);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during bulk user deactivation");
+            return Result<List<string>>.Failure($"Error during bulk deactivation: {ex.Message}");
+        }
     }
 }

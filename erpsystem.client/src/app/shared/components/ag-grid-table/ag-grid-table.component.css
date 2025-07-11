@@ -15,11 +15,95 @@
   background: transparent;
   width: 100%;
   display: block;
+  min-height: 300px; /* Ensure minimum height for overlays */
 }
 
 .ag-grid-container ag-grid-angular {
   display: block;
   width: 100%;
+  min-height: 300px; /* Ensure AG Grid has minimum height */
+}
+
+/* Height wrapper to ensure proper overlay display */
+.ag-grid-height-wrapper {
+  height: 500px; /* Default fixed height for consistent overlay display */
+  min-height: 300px;
+  width: 100%;
+  position: relative;
+}
+
+/* Adaptive height mode - adjusts based on content */
+.ag-grid-height-wrapper.adaptive {
+  height: auto;
+  min-height: 300px;
+  max-height: 600px; /* Prevent excessive height */
+}
+
+/* Compact mode for fewer rows */
+.ag-grid-height-wrapper.compact {
+  height: 350px;
+  min-height: 300px;
+}
+
+/* Expanded mode for more rows */
+.ag-grid-height-wrapper.expanded {
+  height: 700px;
+  min-height: 400px;
+}
+
+/* When loading or no data, ensure grid takes full height */
+.ag-grid-height-wrapper ag-grid-angular {
+  height: 100%;
+  width: 100%;
+}
+
+/* Ensure the actual grid viewport has minimum height for overlays */
+.ag-grid-container ag-grid-angular ::ng-deep .ag-root-wrapper {
+  min-height: 300px;
+}
+
+.ag-grid-container ag-grid-angular ::ng-deep .ag-root {
+  min-height: 300px;
+}
+
+/* Ensure overlay positioning and visibility */
+.ag-grid-container ag-grid-angular ::ng-deep .ag-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  z-index: 100;
+}
+
+/* Ensure loading overlay is properly visible */
+.ag-grid-container ag-grid-angular ::ng-deep .ag-overlay-loading-wrapper {
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ensure no rows overlay is properly visible */
+.ag-grid-container ag-grid-angular ::ng-deep .ag-overlay-no-rows-wrapper {
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ensure the grid body has minimum height */
+.ag-grid-container ag-grid-angular ::ng-deep .ag-body-viewport {
+  min-height: 250px; /* Slightly less than container to account for header */
+}
+
+/* Ensure center container takes full space */
+.ag-grid-container ag-grid-angular ::ng-deep .ag-center-cols-container {
+  min-height: 250px;
 }
 
 /* Host element */
@@ -33,4 +117,22 @@
   display: flex !important;
   visibility: visible !important;
   opacity: 1 !important;
+}
+
+/* Row hover effects for better UX */
+.ag-grid-container ag-grid-angular ::ng-deep .ag-row:hover {
+  background-color: #f9fafb !important;
+}
+
+.dark .ag-grid-container ag-grid-angular ::ng-deep .ag-row:hover {
+  background-color: #374151 !important;
+}
+
+/* Selection styling using AG Grid's built-in classes */
+.ag-grid-container ag-grid-angular ::ng-deep .ag-row-selected {
+  background-color: #dbeafe !important;
+}
+
+.dark .ag-grid-container ag-grid-angular ::ng-deep .ag-row-selected {
+  background-color: #1e40af !important;
 }
