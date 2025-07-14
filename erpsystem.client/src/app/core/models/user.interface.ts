@@ -8,6 +8,7 @@ export interface User {
   created: string; // ISO date string (DateTime serialized)
   firstName: string;
   lastName: string;
+  displayName?: string;
   email: string;
   roles?: string[]; // string[] in C# becomes string[] in TypeScript
   
@@ -25,6 +26,16 @@ export interface RegisterUserRequest {
   confirmPassword?: string; // Frontend validation only, not sent to server
   roles?: string[];
   groupIds?: string[];
+}
+
+// UpdateUserRequest interface matching ERPSystem.Server.DTOs.Auth.UpdateUserDto
+export interface UpdateUserRequest {
+  firstName: string;
+  lastName: string;
+  displayName?: string;
+  password?: string;
+  confirmPassword?: string; // Frontend validation only, not sent to server
+  roles?: string[];
 }
 
 // UserSearchRequest for filtering (pagination handled by AG Grid)

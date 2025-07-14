@@ -41,12 +41,12 @@ export const routes: Routes = [
       // Admin routes
       {
         path: 'admin/users',
-        loadComponent: () => import('./dashboard/admin/admin-users.component').then(m => m.AdminUsersComponent),
+        loadComponent: () => import('./dashboard/admin/admin-users/admin-users.component').then(m => m.AdminUsersComponent),
         canActivate: [adminGuard]
       },
       {
         path: 'admin/register',
-        loadComponent: () => import('./dashboard/admin/register-user.component').then(m => m.RegisterUserComponent),
+        loadComponent: () => import('./dashboard/admin/admin-users/register-user/register-user.component').then(m => m.RegisterUserComponent),
         canActivate: [adminGuard]
       },
       // Profile route (available to all authenticated users)

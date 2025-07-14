@@ -51,55 +51,6 @@
           </p>
         </div>
       </div>
-
-      <!-- Debug Section (Development Only) -->
-      <div *ngIf="userInfo || accessToken" class="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
-        <div class="space-y-4">
-          <h4 class="text-sm font-medium text-gray-900 dark:text-white">Debug Information</h4>
-          
-          <!-- User Info -->
-          <div *ngIf="userInfo" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-            <h5 class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">User Information:</h5>
-            <pre class="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{{ userInfo | json }}</pre>
-          </div>
-
-          <!-- Access Token Claims -->
-          <div *ngIf="accessTokenClaims" class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-            <h5 class="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2">Access Token Claims:</h5>
-            <pre class="text-xs text-blue-600 dark:text-blue-400 whitespace-pre-wrap">{{ accessTokenClaims | json }}</pre>
-          </div>
-
-          <!-- ID Token Claims -->
-          <div *ngIf="claims" class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-            <h5 class="text-xs font-medium text-green-700 dark:text-green-300 mb-2">ID Token Claims:</h5>
-            <pre class="text-xs text-green-600 dark:text-green-400 whitespace-pre-wrap">{{ claims | json }}</pre>
-          </div>
-
-          <!-- Debug Actions -->
-          <div class="flex space-x-2">
-            <button 
-              (click)="loadUserData()" 
-              class="px-3 py-1 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/70 transition-colors">
-              Load User Data
-            </button>
-            <button 
-              (click)="testApiCall()" 
-              class="px-3 py-1 text-xs bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-900/70 transition-colors">
-              Test API Call
-            </button>
-            <button 
-              (click)="testClaims()" 
-              class="px-3 py-1 text-xs bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-900/70 transition-colors">
-              Test Claims
-            </button>
-            <button 
-              (click)="logout()" 
-              class="px-3 py-1 text-xs bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-900/70 transition-colors">
-              Logout
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- Footer -->

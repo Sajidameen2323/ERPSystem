@@ -59,7 +59,7 @@ public class OktaService : IOktaService
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
             var createUserResponse = await client.PostAsync(
-                $"{_oktaSettings.OktaDomain}/api/v1/users?activate=true", 
+                $"{_oktaSettings.OktaDomain}/api/v1/users?activate=true",
                 content);
 
             if (!createUserResponse.IsSuccessStatusCode)
@@ -91,6 +91,47 @@ public class OktaService : IOktaService
         {
             _logger.LogError(ex, "Error creating user");
             return Result<UserViewModel>.Failure($"Error creating user: {ex.Message}");
+        }
+    }
+
+    public async Task<Result<UserViewModel>> GetApplicationUserByIdAsync(string userId)
+    {
+        try
+        {
+            var validationResult = ValidateOktaConfiguration();
+            if (!validationResult.IsSuccess)
+                return Result<UserViewModel>.Failure(validationResult.Error);
+
+            var client = CreateOktaApiClient();
+            var response = await client.GetAsync($"{_oktaSettings.OktaDomain}/api/v1/apps/{_oktaSettings.ClientAppId}/users/{userId}?expand=user");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    return Result<UserViewModel>.Failure("User not found");
+                }
+
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Failed to retrieve user from Okta: {Error}", error);
+                return Result<UserViewModel>.Failure("Failed to retrieve user from Okta");
+            }
+
+            var userJson = await response.Content.ReadAsStringAsync();
+            var oktaUser = JsonSerializer.Deserialize<OktaUserResponse>(userJson);
+
+            if (oktaUser == null)
+            {
+                return Result<UserViewModel>.Failure("Failed to deserialize user response");
+            }
+
+            var userViewModel = MapOktaUserToViewModel(oktaUser);
+            return Result<UserViewModel>.Success(userViewModel);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving user {UserId}", userId);
+            return Result<UserViewModel>.Failure($"Error retrieving user: {ex.Message}");
         }
     }
 
@@ -135,6 +176,66 @@ public class OktaService : IOktaService
         }
     }
 
+    public async Task<Result<UserViewModel>> UpdateUserAsync(string userId, UpdateUserDto updateDto)
+    {
+        try
+        {
+            var validationResult = ValidateOktaConfiguration();
+            if (!validationResult.IsSuccess)
+                return Result<UserViewModel>.Failure(validationResult.Error);
+
+            var client = CreateOktaApiClient();
+
+            // Build the update request with all fields at once using application-specific endpoint
+            var updateRequest = new
+            {
+                credentials = new
+                {
+                    userName = userId,
+                    password = !string.IsNullOrEmpty(updateDto.Password) ? new { value = updateDto.Password } : null
+                },
+                profile = new
+                {
+                    given_name = updateDto.FirstName,
+                    family_name = updateDto.LastName,
+                    name = updateDto.DisplayName ?? $"{updateDto.FirstName} {updateDto.LastName}",
+                    roles = updateDto.Roles ?? Array.Empty<string>()
+                }
+            };
+
+            var json = JsonSerializer.Serialize(updateRequest);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            // Use application-specific endpoint for updating user
+            var response = await client.PostAsync(
+                $"{_oktaSettings.OktaDomain}/api/v1/apps/{_oktaSettings.ClientAppId}/users/{userId}",
+                content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    return Result<UserViewModel>.Failure("User not found");
+                }
+
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Failed to update user in Okta application: {Error}", error);
+                return Result<UserViewModel>.Failure("Failed to update user in Okta application");
+            }
+
+            _logger.LogInformation("User {UserId} updated successfully in application", userId);
+
+            // Return updated user
+            var updatedUserResult = await GetApplicationUserByIdAsync(userId);
+            return updatedUserResult;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating user {UserId}", userId);
+            return Result<UserViewModel>.Failure($"Error updating user: {ex.Message}");
+        }
+    }
+
     public async Task<Result<PagedResult<UserViewModel>>> GetApplicationUsersAsync(UserSearchRequest? searchRequest = null)
     {
         try
@@ -172,7 +273,7 @@ public class OktaService : IOktaService
             }
 
             var allUsers = oktaUsers.Select(MapOktaUserToViewModel).ToList();
-            
+
             // Apply filters if search request is provided
             var filteredUsers = allUsers.AsQueryable();
 
@@ -191,7 +292,7 @@ public class OktaService : IOktaService
                 // Filter by active status
                 if (searchRequest.IsActive.HasValue)
                 {
-                    filteredUsers = filteredUsers.Where(u => 
+                    filteredUsers = filteredUsers.Where(u =>
                         (u.Status != "DEPROVISIONED" && u.Status != "SUSPENDED") == searchRequest.IsActive.Value);
                 }
             }
@@ -239,9 +340,9 @@ public class OktaService : IOktaService
 
             var userId = userInfo.GetProperty("sub").GetString() ?? string.Empty;
             var email = userInfo.GetProperty("email").GetString() ?? string.Empty;
-            var firstName = userInfo.TryGetProperty("given_name", out var givenName) 
+            var firstName = userInfo.TryGetProperty("given_name", out var givenName)
                 ? givenName.GetString() ?? string.Empty : string.Empty;
-            var lastName = userInfo.TryGetProperty("family_name", out var familyName) 
+            var lastName = userInfo.TryGetProperty("family_name", out var familyName)
                 ? familyName.GetString() ?? string.Empty : string.Empty;
 
             // Get detailed user information including roles
@@ -278,7 +379,7 @@ public class OktaService : IOktaService
         try
         {
             var client = CreateOktaApiClient();
-            
+
             var assignUserPayload = new
             {
                 id = userId,
@@ -292,7 +393,7 @@ public class OktaService : IOktaService
             var assignUserJson = JsonSerializer.Serialize(assignUserPayload);
             var assignUserContent = new StringContent(assignUserJson, Encoding.UTF8, "application/json");
             var assignToAppResponse = await client.PostAsync(
-                $"{_oktaSettings.OktaDomain}/api/v1/apps/{_oktaSettings.ClientId}/users", 
+                $"{_oktaSettings.OktaDomain}/api/v1/apps/{_oktaSettings.ClientId}/users",
                 assignUserContent);
 
             if (!assignToAppResponse.IsSuccessStatusCode)
@@ -323,14 +424,14 @@ public class OktaService : IOktaService
 
             // First, check if user exists and get current status
             var getUserResponse = await client.GetAsync($"{_oktaSettings.OktaDomain}/api/v1/users/{userId}");
-            
+
             if (!getUserResponse.IsSuccessStatusCode)
             {
                 if (getUserResponse.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
                     return Result<bool>.Failure(Constants.ApiMessages.UserNotFound);
                 }
-                
+
                 var error = await getUserResponse.Content.ReadAsStringAsync();
                 _logger.LogError("Failed to get user {UserId}: {Error}", userId, error);
                 return Result<bool>.Failure("Failed to retrieve user information");
@@ -350,7 +451,7 @@ public class OktaService : IOktaService
 
             // Deactivate the user (suspend in Okta)
             var deactivateResponse = await client.PostAsync(
-                $"{_oktaSettings.OktaDomain}/api/v1/users/{userId}/lifecycle/suspend", 
+                $"{_oktaSettings.OktaDomain}/api/v1/users/{userId}/lifecycle/suspend",
                 null);
 
             if (!deactivateResponse.IsSuccessStatusCode)
@@ -382,14 +483,14 @@ public class OktaService : IOktaService
 
             // First, check if user exists and get current status
             var getUserResponse = await client.GetAsync($"{_oktaSettings.OktaDomain}/api/v1/users/{userId}");
-            
+
             if (!getUserResponse.IsSuccessStatusCode)
             {
                 if (getUserResponse.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
                     return Result<bool>.Failure(Constants.ApiMessages.UserNotFound);
                 }
-                
+
                 var error = await getUserResponse.Content.ReadAsStringAsync();
                 _logger.LogError("Failed to get user {UserId}: {Error}", userId, error);
                 return Result<bool>.Failure("Failed to retrieve user information");
@@ -415,7 +516,7 @@ public class OktaService : IOktaService
 
             // Activate the user (unsuspend in Okta)
             var activateResponse = await client.PostAsync(
-                $"{_oktaSettings.OktaDomain}/api/v1/users/{userId}/lifecycle/unsuspend", 
+                $"{_oktaSettings.OktaDomain}/api/v1/users/{userId}/lifecycle/unsuspend",
                 null);
 
             if (!activateResponse.IsSuccessStatusCode)
@@ -460,10 +561,11 @@ public class OktaService : IOktaService
         {
             Id = oktaUser.Id,
             Status = oktaUser?.Embedded?.User?.Status ?? "N/A",
-            Created = oktaUser?.Created ,
+            Created = oktaUser?.Created,
             LastLoginAt = oktaUser?.Embedded?.User?.LastLogin,
             FirstName = oktaUser.Profile.GivenName,
             LastName = oktaUser.Profile.FamilyName,
+            DisplayName = oktaUser.Profile.Name,
             Email = oktaUser.Profile.Email,
             Roles = oktaUser.Profile.Roles
         };
@@ -518,7 +620,7 @@ public class OktaService : IOktaService
             {
                 // Partial success
                 var message = $"Bulk activation partially completed. Activated: {activatedUsers.Count}, Failed: {failedUsers.Count}. Errors: {string.Join("; ", errors)}";
-                _logger.LogWarning("Bulk activation partially completed. Activated: {ActivatedCount}, Failed: {FailedCount}. Errors: {Errors}", 
+                _logger.LogWarning("Bulk activation partially completed. Activated: {ActivatedCount}, Failed: {FailedCount}. Errors: {Errors}",
                     activatedUsers.Count, failedUsers.Count, string.Join("; ", errors));
                 return Result<List<string>>.Success(activatedUsers);
             }
@@ -583,7 +685,7 @@ public class OktaService : IOktaService
             {
                 // Partial success
                 var message = $"Bulk deactivation partially completed. Deactivated: {deactivatedUsers.Count}, Failed: {failedUsers.Count}. Errors: {string.Join("; ", errors)}";
-                _logger.LogWarning("Bulk deactivation partially completed. Deactivated: {DeactivatedCount}, Failed: {FailedCount}. Errors: {Errors}", 
+                _logger.LogWarning("Bulk deactivation partially completed. Deactivated: {DeactivatedCount}, Failed: {FailedCount}. Errors: {Errors}",
                     deactivatedUsers.Count, failedUsers.Count, string.Join("; ", errors));
                 return Result<List<string>>.Success(deactivatedUsers);
             }

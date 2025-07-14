@@ -3,8 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { LucideAngularModule, UserPlus, ArrowLeft, Eye, EyeOff } from 'lucide-angular';
-import { UserService } from '../../core/services/user.service';
-import { RegisterUserRequest } from '../../core/models/user.interface';
+import { UserService } from '../../../../core/services/user.service';
+import { RegisterUserRequest } from '../../../../core/models/user.interface';
 
 @Component({
   selector: 'app-register-user',

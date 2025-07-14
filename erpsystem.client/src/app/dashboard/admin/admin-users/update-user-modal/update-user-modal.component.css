@@ -1,0 +1,42 @@
+/* Custom styling for the update user modal */
+.status-active {
+  @apply text-green-600 font-medium;
+}
+
+.status-inactive {
+  @apply text-red-600 font-medium;
+}
+
+.status-suspended {
+  @apply text-yellow-600 font-medium;
+}
+
+.status-provisioned {
+  @apply text-blue-600 font-medium;
+}
+
+/* Smooth animations */
+.modal-enter {
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Form field focus animations */
+input:focus {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Checkbox custom styling */
+input[type="checkbox"]:checked {
+  background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='m13.854 3.646-7.5 7.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6 10.293l7.146-7.147a.5.5 0 0 1 .708.708z'/%3e%3c/svg%3e");
+}

@@ -58,7 +58,41 @@ public class UsersController : ControllerBase
             return BadRequest(Result.Failure("User ID is required"));
         }
 
-        var result = await _oktaService.GetUserByIdAsync(id);
+        var result = await _oktaService.GetApplicationUserByIdAsync(id);
+
+        if (!result.IsSuccess)
+        {
+            if (result.Error.Contains("not found"))
+            {
+                return NotFound(Result.Failure(Constants.ApiMessages.UserNotFound));
+            }
+            return BadRequest(Result<UserViewModel>.Failure(result.Error));
+        }
+
+        return Ok(Result<UserViewModel>.Success(result.Data!));
+    }
+
+    /// <summary>
+    /// Update user (Admin only)
+    /// </summary>
+    [HttpPut("{id}")]
+    [Authorize(Roles = Constants.Roles.Admin)]
+    public async Task<IActionResult> UpdateUser(string id, [FromBody] UpdateUserDto updateDto)
+    {
+        if (string.IsNullOrEmpty(id))
+        {
+            return BadRequest(Result.Failure("User ID is required"));
+        }
+
+        if (!ModelState.IsValid)
+        {
+            var errors = ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage);
+            return BadRequest(Result.Failure(string.Join("; ", errors)));
+        }
+
+        var result = await _oktaService.UpdateUserAsync(id, updateDto);
 
         if (!result.IsSuccess)
         {

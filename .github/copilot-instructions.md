@@ -27,3 +27,4 @@ UI Design guide
     -  Keep the design consistent across different pages
     -  Use a clean and modern design aesthetic
     -  Use Layouting pattern for dashboard and other pages
+    -  Support dark mode and light mode in the application

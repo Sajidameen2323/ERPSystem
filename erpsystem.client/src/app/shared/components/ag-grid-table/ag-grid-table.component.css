@@ -121,7 +121,7 @@
 
 /* Row hover effects for better UX */
 .ag-grid-container ag-grid-angular ::ng-deep .ag-row:hover {
-  background-color: #f9fafb !important;
+  background-color: #95c2f0 !important;
 }
 
 .dark .ag-grid-container ag-grid-angular ::ng-deep .ag-row:hover {

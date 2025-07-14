@@ -7,6 +7,8 @@ public interface IOktaService
 {
     Task<Result<UserViewModel>> CreateUserAsync(RegisterUserDto registerDto);
     Task<Result<UserViewModel>> GetUserByIdAsync(string userId);
+    Task<Result<UserViewModel>> GetApplicationUserByIdAsync(string userId);
+    Task<Result<UserViewModel>> UpdateUserAsync(string userId, UpdateUserDto updateDto);
     Task<Result<PagedResult<UserViewModel>>> GetApplicationUsersAsync(UserSearchRequest? searchRequest = null);
     Task<Result<UserViewModel>> ValidateTokenAsync(string accessToken);
     Task<Result<bool>> AssignUserToApplicationAsync(string userId);

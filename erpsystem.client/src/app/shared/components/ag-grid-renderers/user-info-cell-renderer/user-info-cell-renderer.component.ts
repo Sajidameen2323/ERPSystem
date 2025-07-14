@@ -33,7 +33,7 @@ export class UserInfoCellRendererComponent implements ICellRendererAngularComp {
   }
 
   get fullName(): string {
-    return `${this.user?.firstName || ''} ${this.user?.lastName || ''}`.trim();
+    return this.user?.displayName || `${this.user?.firstName} ${this.user?.lastName}`;
   }
 
   get email(): string {

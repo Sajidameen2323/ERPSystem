@@ -1,0 +1,196 @@
+<!-- Modal Overlay -->
+<div *ngIf="isVisible" class="fixed inset-0 bg-black bg-opacity-50 dark:bg-black dark:bg-opacity-70 flex items-center justify-center z-50"
+    (click)="onBackdropClick($event)">
+
+    <!-- Modal Content -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <!-- Modal Header -->
+        <div class="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Update User</h2>
+            <button (click)="onCancel()" class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Loading State -->
+        <div *ngIf="isLoading()" class="p-6 text-center">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
+            <p class="mt-2 text-gray-600 dark:text-gray-300">Loading user data...</p>
+        </div>
+
+        <!-- Error Message -->
+        <div *ngIf="errorMessage()" class="p-6 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 dark:border-red-600">
+            <p class="text-red-700 dark:text-red-300">{{ errorMessage() }}</p>
+        </div>
+
+        <!-- Form -->
+        <form *ngIf="!isLoading()" [formGroup]="updateForm" (ngSubmit)="onSubmit()" class="p-6">
+            <!-- User Info Display -->
+            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg mb-6">
+                <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Current User Information</h3>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <span class="text-gray-500 dark:text-gray-400">Email:</span>
+                        <span class="ml-2 font-medium text-gray-900 dark:text-white">{{ originalUser()?.email }}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 dark:text-gray-400">Status:</span>
+                        <span class="ml-2" [class]="getStatusClass(originalUser()?.status)">{{ originalUser()?.status
+                            }}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 dark:text-gray-400">Created:</span>
+                        <span class="ml-2 text-gray-900 dark:text-white">{{ originalUser()?.created | date:'medium' }}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 dark:text-gray-400">ID:</span>
+                        <span class="ml-2 font-mono text-xs text-gray-900 dark:text-white">{{ originalUser()?.id }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Fields -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- First Name -->
+                <div>
+                    <label for="firstName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        First Name <span class="text-red-500 dark:text-red-400">*</span>
+                    </label>
+                    <input id="firstName" type="text" formControlName="firstName"
+                        class="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                        [class.border-red-300]="isFieldInvalid('firstName')"
+                        [class.border-gray-300]="!isFieldInvalid('firstName')"
+                        [class.dark:border-red-500]="isFieldInvalid('firstName')"
+                        [class.dark:border-gray-600]="!isFieldInvalid('firstName')" />
+                    <div *ngIf="isFieldInvalid('firstName')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                        {{ getFieldError('firstName') }}
+                    </div>
+                </div>
+
+                <!-- Last Name -->
+                <div>
+                    <label for="lastName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Last Name <span class="text-red-500 dark:text-red-400">*</span>
+                    </label>
+                    <input id="lastName" type="text" formControlName="lastName"
+                        class="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                        [class.border-red-300]="isFieldInvalid('lastName')"
+                        [class.border-gray-300]="!isFieldInvalid('lastName')"
+                        [class.dark:border-red-500]="isFieldInvalid('lastName')"
+                        [class.dark:border-gray-600]="!isFieldInvalid('lastName')" />
+                    <div *ngIf="isFieldInvalid('lastName')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                        {{ getFieldError('lastName') }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Display Name -->
+            <div class="mt-6">
+                <label for="displayName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Display Name
+                </label>
+                <input id="displayName" type="text" formControlName="displayName"
+                    class="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                    [class.border-red-300]="isFieldInvalid('displayName')"
+                    [class.border-gray-300]="!isFieldInvalid('displayName')"
+                    [class.dark:border-red-500]="isFieldInvalid('displayName')"
+                    [class.dark:border-gray-600]="!isFieldInvalid('displayName')"
+                    placeholder="Auto-generated from first and last name if empty" />
+                <div *ngIf="isFieldInvalid('displayName')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                    {{ getFieldError('displayName') }}
+                </div>
+            </div>
+
+            <!-- Password Section -->
+            <div class="mt-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Change Password (Optional)</h3>
+                <!-- Helper element Leave empty to keep current password -->
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Leave the password fields empty to keep the current password.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- New Password -->
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            New Password
+                        </label>
+                        <input id="password" type="password" formControlName="password"
+                            class="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                            [class.border-red-300]="isFieldInvalid('password')"
+                            [class.border-gray-300]="!isFieldInvalid('password')"
+                            [class.dark:border-red-500]="isFieldInvalid('password')"
+                            [class.dark:border-gray-600]="!isFieldInvalid('password')" />
+                        <div *ngIf="isFieldInvalid('password')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                            {{ getFieldError('password') }}
+                        </div>
+                    </div>
+
+                    <!-- Confirm Password -->
+                    <div>
+                        <label for="confirmPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Confirm Password
+                        </label>
+                        <input id="confirmPassword" type="password" formControlName="confirmPassword"
+                            class="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                            [class.border-red-300]="isFieldInvalid('confirmPassword') || updateForm.hasError('passwordMismatch')"
+                            [class.border-gray-300]="!isFieldInvalid('confirmPassword') && !updateForm.hasError('passwordMismatch')"
+                            [class.dark:border-red-500]="isFieldInvalid('confirmPassword') || updateForm.hasError('passwordMismatch')"
+                            [class.dark:border-gray-600]="!isFieldInvalid('confirmPassword') && !updateForm.hasError('passwordMismatch')" />
+                        <div *ngIf="isFieldInvalid('confirmPassword')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                            {{ getFieldError('confirmPassword') }}
+                        </div>
+                        <div *ngIf="updateForm.hasError('passwordMismatch')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                            Passwords do not match
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Roles Section -->
+            <div class="mt-6" *ngIf="availableRoles().length > 0">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">User Roles</h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <label *ngFor="let role of availableRoles()"
+                        class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                        [class.border-blue-500]="isRoleSelected(role)" 
+                        [class.bg-blue-50]="isRoleSelected(role)"
+                        [class.border-gray-200]="!isRoleSelected(role)"
+                        [class.dark:border-blue-400]="isRoleSelected(role)" 
+                        [class.dark:bg-blue-900]="isRoleSelected(role)"
+                        [class.dark:border-gray-600]="!isRoleSelected(role)">
+                        <input type="checkbox" 
+                            [checked]="isRoleSelected(role)" 
+                            (change)="onRoleChange($event, role)"
+                            class="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400 bg-white dark:bg-gray-700" />
+                        <span class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">{{ role }}</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex justify-end space-x-4 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <button type="button" (click)="onCancel()"
+                    class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit" [disabled]="!updateForm.valid || isSubmitting()"
+                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 dark:bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors">
+                    <span *ngIf="isSubmitting()" class="inline-flex items-center">
+                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                            </circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
+                        </svg>
+                        Updating...
+                    </span>
+                    <span *ngIf="!isSubmitting()">Update User</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

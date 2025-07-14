@@ -4,6 +4,7 @@ import { Observable, map } from 'rxjs';
 import { 
   User, 
   RegisterUserRequest, 
+  UpdateUserRequest,
   UserSearchRequest, 
   AssignRolesRequest, 
   PagedResult, 
@@ -75,6 +76,13 @@ export class UserService {
    */
   getUserById(id: string): Observable<Result<User>> {
     return this.http.get<Result<User>>(`${this.baseUrl}/${id}`);
+  }
+
+  /**
+   * Update user (Admin only)
+   */
+  updateUser(id: string, userData: UpdateUserRequest): Observable<Result<User>> {
+    return this.http.put<Result<User>>(`${this.baseUrl}/${id}`, userData);
   }
 
   /**

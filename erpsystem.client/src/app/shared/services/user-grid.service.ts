@@ -40,7 +40,7 @@ export class UserGridService {
         valueFormatter: (params) => {
           // Provide a fallback value formatter for the user cell renderer
           if (!params.value) return '';
-          return `${params.data?.firstName || ''} ${params.data?.lastName || ''}`.trim();
+          return params.data?.displayName || `${params.data?.firstName} ${params.data?.lastName}`;
         }
       },
       {
