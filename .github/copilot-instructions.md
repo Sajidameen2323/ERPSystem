@@ -15,6 +15,7 @@ Backend development ASP.NET core .NET version 8 guide
     -  Use defined response classes when returning route responses, Result or PagedResult
     -  Use Entity Framework Core for database operations
     -  Use Dependency Injection for services
+    -  Controller should have prefix of ApiController `api/[controller]`
 
 Running code on terminal guide
 

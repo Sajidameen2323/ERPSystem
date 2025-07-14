@@ -53,6 +53,58 @@ export const routes: Routes = [
       {
         path: 'profile',
         loadComponent: () => import('./dashboard/profile/profile.component').then(m => m.ProfileComponent)
+      },
+      // Inventory routes
+      {
+        path: 'inventory/products',
+        loadComponent: () => import('./inventory/product-list/product-list.component').then(m => m.ProductListComponent),
+        canActivate: [inventoryUserGuard]
+      },
+      {
+        path: 'inventory/products/new',
+        loadComponent: () => import('./inventory/product-form/product-form.component').then(m => m.ProductFormComponent),
+        canActivate: [inventoryUserGuard]
+      },
+      {
+        path: 'inventory/products/:id/edit',
+        loadComponent: () => import('./inventory/product-form/product-form.component').then(m => m.ProductFormComponent),
+        canActivate: [inventoryUserGuard]
+      },
+      // Supply Chain routes
+      {
+        path: 'supply-chain/suppliers',
+        loadComponent: () => import('./supply-chain/supplier-list/supplier-list.component').then(m => m.SupplierListComponent),
+        canActivate: [inventoryUserGuard]
+      },
+      {
+        path: 'supply-chain/suppliers/new',
+        loadComponent: () => import('./supply-chain/supplier-form/supplier-form.component').then(m => m.SupplierFormComponent),
+        canActivate: [inventoryUserGuard]
+      },
+      {
+        path: 'supply-chain/suppliers/:id/edit',
+        loadComponent: () => import('./supply-chain/supplier-form/supplier-form.component').then(m => m.SupplierFormComponent),
+        canActivate: [inventoryUserGuard]
+      },
+      {
+        path: 'supply-chain/purchase-orders',
+        loadComponent: () => import('./supply-chain/purchase-order-list/purchase-order-list.component').then(m => m.PurchaseOrderListComponent),
+        canActivate: [inventoryUserGuard]
+      },
+      {
+        path: 'supply-chain/purchase-orders/new',
+        loadComponent: () => import('./supply-chain/purchase-order-form/purchase-order-form.component').then(m => m.PurchaseOrderFormComponent),
+        canActivate: [inventoryUserGuard]
+      },
+      {
+        path: 'supply-chain/purchase-orders/:id',
+        loadComponent: () => import('./supply-chain/purchase-order-detail/purchase-order-detail.component').then(m => m.PurchaseOrderDetailComponent),
+        canActivate: [inventoryUserGuard]
+      },
+      {
+        path: 'supply-chain/purchase-orders/:id/edit',
+        loadComponent: () => import('./supply-chain/purchase-order-form/purchase-order-form.component').then(m => m.PurchaseOrderFormComponent),
+        canActivate: [inventoryUserGuard]
       }
     ]
   },

@@ -1,0 +1,242 @@
+<div class="p-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center space-x-4">
+      <button
+        type="button"
+        (click)="onCancel()"
+        class="inline-flex items-center p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
+      >
+        <lucide-angular [img]="ArrowLeftIcon" class="w-5 h-5"></lucide-angular>
+      </button>
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+          {{ isEditing ? 'Edit Purchase Order' : 'Create Purchase Order' }}
+        </h1>
+        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          {{ isEditing ? 'Update purchase order details' : 'Create a new purchase order for your supplier' }}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="text-center py-8">
+    <div class="animate-spin inline-block w-8 h-8 border-4 border-current border-t-transparent text-blue-600 rounded-full"></div>
+    <p class="mt-2 text-gray-600 dark:text-gray-400">Loading purchase order details...</p>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="error" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6 flex items-center justify-between">
+    <span>{{ error }}</span>
+    <button (click)="error = null" class="text-red-500 hover:text-red-700">
+      <lucide-angular [img]="XIcon" class="w-4 h-4"></lucide-angular>
+    </button>
+  </div>
+
+  <!-- Form -->
+  <form *ngIf="!loading" [formGroup]="purchaseOrderForm" (ngSubmit)="onSubmit()" class="space-y-6">
+    <!-- Order Details -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+      <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Order Details</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Supplier -->
+        <div>
+          <label for="supplierId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Supplier *
+          </label>
+          <select
+            id="supplierId"
+            formControlName="supplierId"
+            [class]="isFieldInvalid('supplierId') 
+              ? 'w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+              : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'"
+          >
+            <option value="">Select a supplier</option>
+            <option *ngFor="let supplier of suppliers" [value]="supplier.id">{{ supplier.name }}</option>
+          </select>
+          <p *ngIf="isFieldInvalid('supplierId')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+            Please select a supplier
+          </p>
+        </div>
+
+        <!-- Expected Delivery Date -->
+        <div>
+          <label for="expectedDeliveryDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Expected Delivery Date
+          </label>
+          <input
+            type="date"
+            id="expectedDeliveryDate"
+            formControlName="expectedDeliveryDate"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          >
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="mt-6">
+        <label for="notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Notes
+        </label>
+        <textarea
+          id="notes"
+          formControlName="notes"
+          rows="3"
+          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          placeholder="Enter any additional notes for this purchase order"
+        ></textarea>
+      </div>
+    </div>
+
+    <!-- Order Items -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Order Items</h2>
+        <button
+          type="button"
+          (click)="addItem()"
+          class="inline-flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <lucide-angular [img]="PlusIcon" class="w-4 h-4"></lucide-angular>
+          Add Item
+        </button>
+      </div>
+
+      <div formArrayName="items" class="space-y-4">
+        <div *ngFor="let item of itemsFormArray.controls; let i = index" [formGroupName]="i" 
+             class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+          
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-medium text-gray-900 dark:text-white">Item {{ i + 1 }}</h3>
+            <button
+              type="button"
+              (click)="removeItem(i)"
+              [disabled]="itemsFormArray.length === 1"
+              class="text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <lucide-angular [img]="TrashIcon" class="w-4 h-4"></lucide-angular>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Product -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Product *
+              </label>
+              <select
+                formControlName="productId"
+                (change)="onProductChange(i)"
+                [class]="isFieldInvalid('productId', i) 
+                  ? 'w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+                  : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'"
+              >
+                <option value="">Select product</option>
+                <option *ngFor="let product of products" [value]="product.id">
+                  {{ product.name }} ({{ product.sku }})
+                </option>
+              </select>
+              <p *ngIf="isFieldInvalid('productId', i)" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                Please select a product
+              </p>
+            </div>
+
+            <!-- Quantity -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Quantity *
+              </label>
+              <input
+                type="number"
+                formControlName="quantity"
+                min="1"
+                [class]="isFieldInvalid('quantity', i) 
+                  ? 'w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+                  : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'"
+                placeholder="Enter quantity"
+              >
+              <p *ngIf="isFieldInvalid('quantity', i)" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                Please enter a valid quantity
+              </p>
+            </div>
+
+            <!-- Unit Price -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Unit Price *
+              </label>
+              <input
+                type="number"
+                formControlName="unitPrice"
+                min="0"
+                step="0.01"
+                [class]="isFieldInvalid('unitPrice', i) 
+                  ? 'w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+                  : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'"
+                placeholder="Enter unit price"
+              >
+              <p *ngIf="isFieldInvalid('unitPrice', i)" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                Please enter a valid unit price
+              </p>
+            </div>
+
+            <!-- Total Price -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Total Price
+              </label>
+              <div class="px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white">
+                {{ formatCurrency(calculateItemTotal(i)) }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Item Notes -->
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Item Notes
+            </label>
+            <textarea
+              formControlName="notes"
+              rows="2"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="Enter any notes for this item"
+            ></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grand Total -->
+      <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex justify-end">
+          <div class="text-right">
+            <p class="text-sm text-gray-600 dark:text-gray-400">Grand Total</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatCurrency(calculateGrandTotal()) }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form Actions -->
+    <div class="flex items-center justify-end space-x-4 pt-6">
+      <button
+        type="button"
+        (click)="onCancel()"
+        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+      >
+        Cancel
+      </button>
+      <button
+        type="submit"
+        [disabled]="saving || purchaseOrderForm.invalid"
+        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <div *ngIf="saving" class="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full"></div>
+        <lucide-angular *ngIf="!saving" [img]="SaveIcon" class="w-4 h-4"></lucide-angular>
+        {{ saving ? 'Saving...' : (isEditing ? 'Update Purchase Order' : 'Create Purchase Order') }}
+      </button>
+    </div>
+  </form>
+</div>

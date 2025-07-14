@@ -1,0 +1,278 @@
+<div class="p-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center space-x-4">
+      <button
+        type="button"
+        (click)="onCancel()"
+        class="inline-flex items-center p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
+      >
+        <lucide-angular [img]="ArrowLeftIcon" class="w-5 h-5"></lucide-angular>
+      </button>
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+          {{ isEditing ? 'Edit Supplier' : 'Add New Supplier' }}
+        </h1>
+        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          {{ isEditing ? 'Update supplier information and contact details' : 'Enter supplier information and contact details' }}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="text-center py-8">
+    <div class="animate-spin inline-block w-8 h-8 border-4 border-current border-t-transparent text-blue-600 rounded-full"></div>
+    <p class="mt-2 text-gray-600 dark:text-gray-400">Loading supplier details...</p>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="error" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6 flex items-center justify-between">
+    <span>{{ error }}</span>
+    <button (click)="error = null" class="text-red-500 hover:text-red-700">
+      <lucide-angular [img]="XIcon" class="w-4 h-4"></lucide-angular>
+    </button>
+  </div>
+
+  <!-- Form -->
+  <form *ngIf="!loading" [formGroup]="supplierForm" (ngSubmit)="onSubmit()" class="space-y-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+      <!-- Basic Information -->
+      <div class="mb-8">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Basic Information</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Supplier Name -->
+          <div>
+            <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Supplier Name *
+            </label>
+            <input
+              type="text"
+              id="name"
+              formControlName="name"
+              [class]="isFieldInvalid('name') 
+                ? 'w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+                : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'"
+              placeholder="Enter supplier name"
+            >
+            <p *ngIf="isFieldInvalid('name')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+              {{ getFieldError('name') }}
+            </p>
+          </div>
+
+          <!-- Contact Person -->
+          <div>
+            <label for="contactPerson" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Contact Person *
+            </label>
+            <input
+              type="text"
+              id="contactPerson"
+              formControlName="contactPerson"
+              [class]="isFieldInvalid('contactPerson') 
+                ? 'w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+                : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'"
+              placeholder="Enter contact person name"
+            >
+            <p *ngIf="isFieldInvalid('contactPerson')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+              {{ getFieldError('contactPerson') }}
+            </p>
+          </div>
+
+          <!-- Email -->
+          <div>
+            <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Email Address *
+            </label>
+            <input
+              type="email"
+              id="email"
+              formControlName="email"
+              [class]="isFieldInvalid('email') 
+                ? 'w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+                : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'"
+              placeholder="Enter email address"
+            >
+            <p *ngIf="isFieldInvalid('email')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+              {{ getFieldError('email') }}
+            </p>
+          </div>
+
+          <!-- Phone -->
+          <div>
+            <label for="phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Phone Number *
+            </label>
+            <input
+              type="tel"
+              id="phone"
+              formControlName="phone"
+              [class]="isFieldInvalid('phone') 
+                ? 'w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+                : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'"
+              placeholder="Enter phone number"
+            >
+            <p *ngIf="isFieldInvalid('phone')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+              {{ getFieldError('phone') }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Address Information -->
+      <div class="mb-8">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Address Information</h2>
+        <div class="grid grid-cols-1 gap-6">
+          <!-- Address -->
+          <div>
+            <label for="address" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Street Address *
+            </label>
+            <textarea
+              id="address"
+              formControlName="address"
+              rows="3"
+              [class]="isFieldInvalid('address') 
+                ? 'w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+                : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'"
+              placeholder="Enter full address"
+            ></textarea>
+            <p *ngIf="isFieldInvalid('address')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+              {{ getFieldError('address') }}
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- City -->
+            <div>
+              <label for="city" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                City *
+              </label>
+              <input
+                type="text"
+                id="city"
+                formControlName="city"
+                [class]="isFieldInvalid('city') 
+                  ? 'w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+                  : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'"
+                placeholder="Enter city"
+              >
+              <p *ngIf="isFieldInvalid('city')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                {{ getFieldError('city') }}
+              </p>
+            </div>
+
+            <!-- Country -->
+            <div>
+              <label for="country" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Country *
+              </label>
+              <select
+                id="country"
+                formControlName="country"
+                [class]="isFieldInvalid('country') 
+                  ? 'w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+                  : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'"
+              >
+                <option value="">Select country</option>
+                <option *ngFor="let country of countries" [value]="country">{{ country }}</option>
+              </select>
+              <p *ngIf="isFieldInvalid('country')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                {{ getFieldError('country') }}
+              </p>
+            </div>
+
+            <!-- Postal Code -->
+            <div>
+              <label for="postalCode" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Postal Code
+              </label>
+              <input
+                type="text"
+                id="postalCode"
+                formControlName="postalCode"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="Enter postal code"
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Business Information -->
+      <div class="mb-8">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Business Information</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- VAT Number -->
+          <div>
+            <label for="vatNumber" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              VAT Number
+            </label>
+            <input
+              type="text"
+              id="vatNumber"
+              formControlName="vatNumber"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="Enter VAT number"
+            >
+          </div>
+
+          <!-- Credit Limit -->
+          <div>
+            <label for="creditLimit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Credit Limit (USD)
+            </label>
+            <input
+              type="number"
+              id="creditLimit"
+              formControlName="creditLimit"
+              min="0"
+              step="0.01"
+              [class]="isFieldInvalid('creditLimit') 
+                ? 'w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+                : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'"
+              placeholder="Enter credit limit"
+            >
+            <p *ngIf="isFieldInvalid('creditLimit')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+              {{ getFieldError('creditLimit') }}
+            </p>
+          </div>
+
+          <!-- Payment Terms -->
+          <div class="md:col-span-2">
+            <label for="paymentTerms" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Payment Terms
+            </label>
+            <input
+              type="text"
+              id="paymentTerms"
+              formControlName="paymentTerms"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="e.g., Net 30, 2/10 Net 30"
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- Form Actions -->
+      <div class="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <button
+          type="button"
+          (click)="onCancel()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          [disabled]="saving || supplierForm.invalid"
+          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <div *ngIf="saving" class="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full"></div>
+          <lucide-angular *ngIf="!saving" [img]="SaveIcon" class="w-4 h-4"></lucide-angular>
+          {{ saving ? 'Saving...' : (isEditing ? 'Update Supplier' : 'Create Supplier') }}
+        </button>
+      </div>
+    </div>
+  </form>
+</div>

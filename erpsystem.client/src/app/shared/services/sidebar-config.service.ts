@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { Home, Users, Package, ShoppingCart, FileText, Settings, LogOut } from 'lucide-angular';
+import { Home, Users, Package, ShoppingCart, FileText, Settings, LogOut, Truck } from 'lucide-angular';
 
 export interface NavigationItem {
   label: string;
@@ -68,6 +68,28 @@ export class SidebarConfigService {
           route: '/dashboard/inventory/alerts', 
           roles: ['admin', 'inventoryuser'], 
           badge: '3' 
+        }
+      ]
+    },
+    {
+      label: 'Supply Chain',
+      icon: Truck,
+      roles: ['admin', 'inventoryuser'],
+      children: [
+        { 
+          label: 'Suppliers', 
+          route: '/dashboard/supply-chain/suppliers', 
+          roles: ['admin', 'inventoryuser'] 
+        },
+        { 
+          label: 'Purchase Orders', 
+          route: '/dashboard/supply-chain/purchase-orders', 
+          roles: ['admin', 'inventoryuser'] 
+        },
+        { 
+          label: 'Stock Movements', 
+          route: '/dashboard/supply-chain/stock-movements', 
+          roles: ['admin', 'inventoryuser'] 
         }
       ]
     },

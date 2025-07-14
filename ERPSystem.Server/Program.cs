@@ -21,6 +21,9 @@ builder.Services.Configure<OktaSettings>(builder.Configuration.GetSection("Okta"
 // Register application services
 builder.Services.AddScoped<IOktaService, OktaService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<ISupplierService, SupplierService>();
+builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
 
 // Add Okta authentication for API protection
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
