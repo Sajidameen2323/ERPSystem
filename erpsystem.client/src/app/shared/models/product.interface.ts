@@ -10,6 +10,7 @@ export interface Product {
   currentStock: number;
   minimumStock?: number;
   isLowStock: boolean;
+  isDeleted: boolean; // Add soft delete status
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,7 +39,9 @@ export interface ProductQueryParameters {
   searchTerm?: string;
   sortBy?: string;
   sortDirection?: 'asc' | 'desc';
-  lowStockOnly?: boolean;
+  statusFilter?: 'all' | 'active' | 'inactive' | 'lowStock' | 'outOfStock';
+  includeInactive?: boolean; // Keep for backward compatibility
+  lowStockOnly?: boolean; // Keep for backward compatibility
 }
 
 export interface StockAdjustment {

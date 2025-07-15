@@ -21,6 +21,11 @@ public class StockAdjustment
     
     public DateTime AdjustedAt { get; set; } = DateTime.UtcNow;
     
+    // Audit and Soft Delete
+    public bool IsDeleted { get; set; } = false;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    
     // Navigation properties
     public virtual Product Product { get; set; } = null!;
 }

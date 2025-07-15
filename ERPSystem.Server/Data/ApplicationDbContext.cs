@@ -9,16 +9,20 @@ public class ApplicationDbContext : DbContext
     {
     }
 
-    // Inventory Management DbSets
+    #region DbSets
+
+    // Inventory Management
     public DbSet<Product> Products { get; set; }
     public DbSet<StockAdjustment> StockAdjustments { get; set; }
+    public DbSet<StockMovement> StockMovements { get; set; }
     
-    // Supply Chain Management DbSets
+    // Supply Chain Management
     public DbSet<Supplier> Suppliers { get; set; }
     public DbSet<ProductSupplier> ProductSuppliers { get; set; }
     public DbSet<PurchaseOrder> PurchaseOrders { get; set; }
     public DbSet<PurchaseOrderItem> PurchaseOrderItems { get; set; }
-    public DbSet<StockMovement> StockMovements { get; set; }
+
+    #endregion
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -28,13 +32,23 @@ public class ApplicationDbContext : DbContext
         ConfigureSupplyChainEntities(builder);
     }
 
+    #region Inventory Entity Configuration
+
     private void ConfigureInventoryEntities(ModelBuilder builder)
     {
-        // Product Configuration
+        ConfigureProduct(builder);
+        ConfigureStockAdjustment(builder);
+        ConfigureStockMovement(builder);
+    }
+
+    private void ConfigureProduct(ModelBuilder builder)
+    {
         builder.Entity<Product>(entity =>
         {
+            // Primary Key
             entity.HasKey(e => e.Id);
             
+            // Required Fields
             entity.Property(e => e.Name)
                 .IsRequired()
                 .HasMaxLength(255);
@@ -43,40 +57,41 @@ public class ApplicationDbContext : DbContext
                 .IsRequired()
                 .HasMaxLength(50);
 
-            entity.HasIndex(e => e.SKU)
-                .IsUnique()
-                .HasDatabaseName("IX_Product_SKU");
-
             entity.Property(e => e.Description)
                 .HasMaxLength(1000);
 
+            // Financial Properties
             entity.Property(e => e.UnitPrice)
                 .HasPrecision(18, 2);
 
             entity.Property(e => e.CostPrice)
                 .HasPrecision(18, 2);
 
+            // Stock Properties
             entity.Property(e => e.CurrentStock)
                 .HasDefaultValue(0);
 
-            entity.Property(e => e.IsDeleted)
-                .HasDefaultValue(false);
+            // Audit Properties
+            ConfigureAuditProperties(entity);
 
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("GETUTCDATE()");
+            // Indexes
+            entity.HasIndex(e => e.SKU)
+                .IsUnique()
+                .HasDatabaseName("IX_Product_SKU");
 
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("GETUTCDATE()");
-
-            // Configure soft delete filter
+            // Soft Delete Filter
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
+    }
 
-        // StockAdjustment Configuration
+    private void ConfigureStockAdjustment(ModelBuilder builder)
+    {
         builder.Entity<StockAdjustment>(entity =>
         {
+            // Primary Key
             entity.HasKey(e => e.Id);
 
+            // Required Fields
             entity.Property(e => e.Reason)
                 .IsRequired()
                 .HasMaxLength(255);
@@ -88,24 +103,35 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.AdjustedAt)
                 .HasDefaultValueSql("GETUTCDATE()");
 
-            // Configure relationship
+            // Audit Properties
+            ConfigureAuditProperties(entity);
+
+            // Relationships
             entity.HasOne(e => e.Product)
                 .WithMany(p => p.StockAdjustments)
                 .HasForeignKey(e => e.ProductId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
+            // Indexes
             entity.HasIndex(e => e.ProductId)
                 .HasDatabaseName("IX_StockAdjustment_ProductId");
 
             entity.HasIndex(e => e.AdjustedAt)
                 .HasDatabaseName("IX_StockAdjustment_AdjustedAt");
-        });
 
-        // StockMovement Configuration
+            // Soft Delete Filter
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+    }
+
+    private void ConfigureStockMovement(ModelBuilder builder)
+    {
         builder.Entity<StockMovement>(entity =>
         {
+            // Primary Key
             entity.HasKey(e => e.Id);
 
+            // Required Fields
             entity.Property(e => e.Reason)
                 .IsRequired()
                 .HasMaxLength(500);
@@ -117,18 +143,23 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.MovementDate)
                 .HasDefaultValueSql("GETUTCDATE()");
 
+            // Optional Fields
             entity.Property(e => e.Reference)
                 .HasMaxLength(255);
 
             entity.Property(e => e.Notes)
                 .HasMaxLength(1000);
 
-            // Configure relationship
+            // Audit Properties
+            ConfigureAuditProperties(entity);
+
+            // Relationships
             entity.HasOne(e => e.Product)
                 .WithMany(p => p.StockMovements)
                 .HasForeignKey(e => e.ProductId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
+            // Indexes
             entity.HasIndex(e => e.ProductId)
                 .HasDatabaseName("IX_StockMovement_ProductId");
 
@@ -137,16 +168,32 @@ public class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => e.MovementType)
                 .HasDatabaseName("IX_StockMovement_MovementType");
+
+            // Soft Delete Filter
+            entity.HasQueryFilter(e => !e.IsDeleted);
         });
     }
 
+    #endregion
+
+    #region Supply Chain Entity Configuration
+
     private void ConfigureSupplyChainEntities(ModelBuilder builder)
     {
-        // Supplier Configuration
+        ConfigureSupplier(builder);
+        ConfigureProductSupplier(builder);
+        ConfigurePurchaseOrder(builder);
+        ConfigurePurchaseOrderItem(builder);
+    }
+
+    private void ConfigureSupplier(ModelBuilder builder)
+    {
         builder.Entity<Supplier>(entity =>
         {
+            // Primary Key
             entity.HasKey(e => e.Id);
 
+            // Required Fields
             entity.Property(e => e.Name)
                 .IsRequired()
                 .HasMaxLength(255);
@@ -158,10 +205,6 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Email)
                 .IsRequired()
                 .HasMaxLength(255);
-
-            entity.HasIndex(e => e.Email)
-                .IsUnique()
-                .HasDatabaseName("IX_Supplier_Email");
 
             entity.Property(e => e.Phone)
                 .IsRequired()
@@ -179,6 +222,7 @@ public class ApplicationDbContext : DbContext
                 .IsRequired()
                 .HasMaxLength(100);
 
+            // Optional Fields
             entity.Property(e => e.PostalCode)
                 .HasMaxLength(20);
 
@@ -191,6 +235,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.PaymentTerms)
                 .HasMaxLength(100);
 
+            // Financial Properties
             entity.Property(e => e.CreditLimit)
                 .HasPrecision(18, 2);
 
@@ -198,37 +243,43 @@ public class ApplicationDbContext : DbContext
                 .HasPrecision(18, 2)
                 .HasDefaultValue(0);
 
+            // Status Properties
             entity.Property(e => e.PerformanceRating)
                 .HasDefaultValue(0);
 
             entity.Property(e => e.IsActive)
                 .HasDefaultValue(true);
 
-            entity.Property(e => e.IsDeleted)
-                .HasDefaultValue(false);
+            // Audit Properties
+            ConfigureAuditProperties(entity);
 
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("GETUTCDATE()");
+            // Indexes
+            entity.HasIndex(e => e.Email)
+                .IsUnique()
+                .HasDatabaseName("IX_Supplier_Email");
 
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("GETUTCDATE()");
-
-            // Configure soft delete filter
+            // Soft Delete Filter
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
+    }
 
-        // ProductSupplier Configuration
+    private void ConfigureProductSupplier(ModelBuilder builder)
+    {
         builder.Entity<ProductSupplier>(entity =>
         {
+            // Primary Key
             entity.HasKey(e => e.Id);
 
+            // Required Fields
             entity.Property(e => e.SupplierSKU)
                 .IsRequired()
                 .HasMaxLength(50);
 
+            // Financial Properties
             entity.Property(e => e.SupplierPrice)
                 .HasPrecision(18, 2);
 
+            // Business Properties
             entity.Property(e => e.MinimumOrderQuantity)
                 .HasDefaultValue(1);
 
@@ -241,80 +292,79 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.IsActive)
                 .HasDefaultValue(true);
 
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("GETUTCDATE()");
+            // Audit Properties
+            ConfigureAuditProperties(entity);
 
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("GETUTCDATE()");
-
-            // Configure relationships
+            // Relationships
             entity.HasOne(e => e.Product)
                 .WithMany(p => p.ProductSuppliers)
                 .HasForeignKey(e => e.ProductId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.Supplier)
                 .WithMany(s => s.ProductSuppliers)
                 .HasForeignKey(e => e.SupplierId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
-            // Composite index for product-supplier relationship
+            // Indexes
             entity.HasIndex(e => new { e.ProductId, e.SupplierId })
                 .HasDatabaseName("IX_ProductSupplier_ProductId_SupplierId");
 
             entity.HasIndex(e => e.SupplierSKU)
                 .HasDatabaseName("IX_ProductSupplier_SupplierSKU");
 
-            // Apply same soft delete filter as Product
-            entity.HasQueryFilter(e => e.IsActive);
+            // Soft Delete Filter
+            entity.HasQueryFilter(e => !e.IsDeleted);
         });
+    }
 
-        // PurchaseOrder Configuration
+    private void ConfigurePurchaseOrder(ModelBuilder builder)
+    {
         builder.Entity<PurchaseOrder>(entity =>
         {
+            // Primary Key
             entity.HasKey(e => e.Id);
 
+            // Required Fields
             entity.Property(e => e.PONumber)
                 .IsRequired()
                 .HasMaxLength(50);
 
-            entity.HasIndex(e => e.PONumber)
-                .IsUnique()
-                .HasDatabaseName("IX_PurchaseOrder_PONumber");
+            entity.Property(e => e.CreatedByUserId)
+                .IsRequired()
+                .HasMaxLength(255);
 
+            // Optional Fields
+            entity.Property(e => e.ApprovedByUserId)
+                .HasMaxLength(255);
+
+            entity.Property(e => e.Notes)
+                .HasMaxLength(1000);
+
+            // Business Properties
             entity.Property(e => e.Status)
                 .HasDefaultValue(PurchaseOrderStatus.Draft);
 
             entity.Property(e => e.OrderDate)
                 .HasDefaultValueSql("GETUTCDATE()");
 
+            // Financial Properties
             entity.Property(e => e.TotalAmount)
                 .HasPrecision(18, 2);
 
-            entity.Property(e => e.Notes)
-                .HasMaxLength(1000);
+            // Audit Properties
+            ConfigureAuditProperties(entity);
 
-            entity.Property(e => e.CreatedByUserId)
-                .IsRequired()
-                .HasMaxLength(255);
-
-            entity.Property(e => e.ApprovedByUserId)
-                .HasMaxLength(255);
-
-            entity.Property(e => e.IsDeleted)
-                .HasDefaultValue(false);
-
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("GETUTCDATE()");
-
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("GETUTCDATE()");
-
-            // Configure relationship
+            // Relationships
             entity.HasOne(e => e.Supplier)
                 .WithMany(s => s.PurchaseOrders)
                 .HasForeignKey(e => e.SupplierId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Indexes
+            entity.HasIndex(e => e.PONumber)
+                .IsUnique()
+                .HasDatabaseName("IX_PurchaseOrder_PONumber");
 
             entity.HasIndex(e => e.SupplierId)
                 .HasDatabaseName("IX_PurchaseOrder_SupplierId");
@@ -325,43 +375,79 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.OrderDate)
                 .HasDatabaseName("IX_PurchaseOrder_OrderDate");
 
-            // Configure soft delete filter
+            // Soft Delete Filter
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
+    }
 
-        // PurchaseOrderItem Configuration
+    private void ConfigurePurchaseOrderItem(ModelBuilder builder)
+    {
         builder.Entity<PurchaseOrderItem>(entity =>
         {
+            // Primary Key
             entity.HasKey(e => e.Id);
 
+            // Required Fields
             entity.Property(e => e.OrderedQuantity)
                 .IsRequired();
 
+            // Business Properties
             entity.Property(e => e.ReceivedQuantity)
                 .HasDefaultValue(0);
 
+            // Financial Properties
             entity.Property(e => e.UnitPrice)
                 .HasPrecision(18, 2);
 
+            // Optional Fields
             entity.Property(e => e.Notes)
                 .HasMaxLength(500);
 
-            // Configure relationships
+            // Audit Properties
+            ConfigureAuditProperties(entity);
+
+            // Relationships
             entity.HasOne(e => e.PurchaseOrder)
                 .WithMany(po => po.Items)
                 .HasForeignKey(e => e.PurchaseOrderId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.Product)
                 .WithMany(p => p.PurchaseOrderItems)
                 .HasForeignKey(e => e.ProductId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Indexes
             entity.HasIndex(e => e.PurchaseOrderId)
                 .HasDatabaseName("IX_PurchaseOrderItem_PurchaseOrderId");
 
             entity.HasIndex(e => e.ProductId)
                 .HasDatabaseName("IX_PurchaseOrderItem_ProductId");
+
+            // Soft Delete Filter
+            entity.HasQueryFilter(e => !e.IsDeleted);
         });
     }
+
+    #endregion
+
+    #region Helper Methods
+
+    /// <summary>
+    /// Configures standard audit properties for entities with soft delete support
+    /// </summary>
+    private static void ConfigureAuditProperties<T>(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<T> entity) 
+        where T : class
+    {
+        entity.Property("IsDeleted")
+            .HasDefaultValue(false);
+
+        entity.Property("CreatedAt")
+            .HasDefaultValueSql("GETUTCDATE()");
+
+        entity.Property("UpdatedAt")
+            .HasDefaultValueSql("GETUTCDATE()");
+    }
+
+    #endregion
 }

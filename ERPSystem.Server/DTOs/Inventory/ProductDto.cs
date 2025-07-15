@@ -13,6 +13,7 @@ public class ProductDto
     public int CurrentStock { get; set; }
     public int? MinimumStock { get; set; }
     public bool IsLowStock { get; set; } // Computed property
+    public bool IsDeleted { get; set; } // Include soft delete status
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
@@ -98,4 +99,6 @@ public class ProductQueryParameters
     public string? SortBy { get; set; }
     public string? SortDirection { get; set; } = "asc";
     public bool? LowStockOnly { get; set; }
+    public bool IncludeInactive { get; set; } = false; // Keep for backward compatibility
+    public string? StatusFilter { get; set; } = "all"; // New parameter: all, active, inactive, lowStock, outOfStock
 }

@@ -207,7 +207,7 @@ export class PurchaseOrderListComponent implements OnInit, OnDestroy {
   }
 
   approvePurchaseOrder(purchaseOrder: PurchaseOrder): void {
-    if (confirm(`Are you sure you want to approve purchase order ${purchaseOrder.orderNumber}?`)) {
+    if (confirm(`Are you sure you want to approve purchase order ${purchaseOrder.poNumber}?`)) {
       this.purchaseOrderService.approvePurchaseOrder(purchaseOrder.id)
         .pipe(takeUntil(this.destroy$))
         .subscribe({

@@ -27,6 +27,11 @@ public class PurchaseOrderItem
     [MaxLength(500)]
     public string? Notes { get; set; }
     
+    // Audit and Soft Delete (Critical for financial tracking)
+    public bool IsDeleted { get; set; } = false;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    
     // Navigation properties
     public virtual PurchaseOrder PurchaseOrder { get; set; } = null!;
     public virtual Product Product { get; set; } = null!;

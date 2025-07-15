@@ -150,14 +150,14 @@
               </label>
               <input
                 type="number"
-                formControlName="quantity"
+                formControlName="orderedQuantity"
                 min="1"
-                [class]="isFieldInvalid('quantity', i) 
+                [class]="isFieldInvalid('orderedQuantity', i) 
                   ? 'w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
                   : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'"
                 placeholder="Enter quantity"
               >
-              <p *ngIf="isFieldInvalid('quantity', i)" class="mt-1 text-sm text-red-600 dark:text-red-400">
+              <p *ngIf="isFieldInvalid('orderedQuantity', i)" class="mt-1 text-sm text-red-600 dark:text-red-400">
                 Please enter a valid quantity
               </p>
             </div>

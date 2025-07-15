@@ -103,9 +103,9 @@ export class SupplierListComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
-          this.suppliers = response.items;
-          this.totalItems = response.totalCount;
-          this.totalPages = response.totalPages;
+          this.suppliers = response.data?.items || [];
+          this.totalItems = response.data?.totalCount || 0;
+          this.totalPages = response.data?.totalPages || 0;
           this.loading = false;
         },
         error: (error) => {

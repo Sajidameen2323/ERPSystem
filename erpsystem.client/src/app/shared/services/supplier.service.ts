@@ -4,11 +4,11 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { Result } from '../../core/models/shared.interface';
-import { 
-  Supplier, 
-  SupplierCreate, 
-  SupplierUpdate, 
-  SupplierQueryParameters, 
+import {
+  Supplier,
+  SupplierCreate,
+  SupplierUpdate,
+  SupplierQueryParameters,
   SupplierPagedResult,
   ProductSupplier,
   ProductSupplierCreate,
@@ -23,12 +23,12 @@ import {
 export class SupplierService {
   private readonly apiUrl = `/api/suppliers`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   /**
    * Get suppliers with filtering, sorting, and pagination
    */
-  getSuppliers(params: SupplierQueryParameters): Observable<SupplierPagedResult> {
+  getSuppliers(params: SupplierQueryParameters): Observable<Result<SupplierPagedResult>> {
     let httpParams = new HttpParams()
       .set('page', params.page.toString())
       .set('pageSize', params.pageSize.toString());
@@ -49,17 +49,19 @@ export class SupplierService {
       httpParams = httpParams.set('country', params.country);
     }
 
-    return this.http.get<SupplierPagedResult>(this.apiUrl, { params: httpParams }).pipe(
-        
-        map(response => ({
-        ...response,
-        items: (response.items || []).map(item => ({
-          ...item,
-          createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
-          updatedAt: item.updatedAt ? new Date(item.updatedAt) : new Date(),
-          lastPurchaseDate: item.lastPurchaseDate ? new Date(item.lastPurchaseDate) : undefined
-        }))
-      }))
+    return this.http.get<Result<SupplierPagedResult>>(this.apiUrl, { params: httpParams }).pipe(
+      map(response => {
+        console.log('Suppliers response:', response);
+        return {
+          ...response,
+          items: (response.data?.items || []).map(item => ({
+            ...item,
+            createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
+            updatedAt: item.updatedAt ? new Date(item.updatedAt) : new Date(),
+            lastPurchaseDate: item.lastPurchaseDate ? new Date(item.lastPurchaseDate) : undefined
+          }))
+        };
+      })
     );
   }
 
@@ -261,7 +263,7 @@ export class SupplierService {
       sortBy: 'name',
       sortDirection: 'asc'
     }).pipe(
-      map(response => response.items)
+      map(response => response.data?.items || []),
     );
   }
 }

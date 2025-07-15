@@ -20,7 +20,7 @@ export enum StockMovementType {
 
 export interface PurchaseOrder {
   id: string;
-  orderNumber: string;
+  poNumber: string;
   supplierId: string;
   status: PurchaseOrderStatus;
   orderDate: Date;
@@ -28,12 +28,13 @@ export interface PurchaseOrder {
   actualDeliveryDate?: Date;
   totalAmount: number;
   notes?: string;
-  createdBy: string;
-  approvedBy?: string;
+  createdByUserId: string;
+  approvedByUserId?: string;
   approvedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   // Navigation properties
+  supplierName?: string;
   supplier?: {
     id: string;
     name: string;
@@ -49,13 +50,15 @@ export interface PurchaseOrderItem {
   id: string;
   purchaseOrderId: string;
   productId: string;
-  quantity: number;
+  orderedQuantity: number;
+  receivedQuantity: number;
   unitPrice: number;
   totalPrice: number;
-  receivedQuantity: number;
-  isReceived: boolean;
+  receivedDate?: Date;
   notes?: string;
   // Navigation properties
+  productName?: string;
+  productSKU?: string;
   product?: {
     id: string;
     name: string;
@@ -64,7 +67,7 @@ export interface PurchaseOrderItem {
   };
   purchaseOrder?: {
     id: string;
-    orderNumber: string;
+    poNumber: string;
     status: PurchaseOrderStatus;
   };
 }
@@ -78,7 +81,7 @@ export interface PurchaseOrderCreate {
 
 export interface PurchaseOrderItemCreate {
   productId: string;
-  quantity: number;
+  orderedQuantity: number;
   unitPrice: number;
   notes?: string;
 }
@@ -90,7 +93,7 @@ export interface PurchaseOrderUpdate {
 }
 
 export interface PurchaseOrderItemUpdate {
-  quantity?: number;
+  orderedQuantity?: number;
   unitPrice?: number;
   notes?: string;
 }
@@ -124,15 +127,16 @@ export interface StockMovement {
   productId: string;
   movementType: StockMovementType;
   quantity: number;
-  unitPrice?: number;
-  totalValue?: number;
-  previousStock: number;
-  newStock: number;
+  stockBeforeMovement: number;
+  stockAfterMovement: number;
   reference?: string;
+  reason: string;
+  movedByUserId: string;
+  movementDate: Date;
   notes?: string;
-  createdBy: string;
-  createdAt: Date;
   // Navigation properties
+  productName?: string;
+  productSKU?: string;
   product?: {
     id: string;
     name: string;
@@ -152,3 +156,18 @@ export interface StockMovementQueryParameters {
 }
 
 export interface StockMovementPagedResult extends PagedResult<StockMovement> {}
+
+// DTO interfaces for API communication
+export interface ReceiveItemDto {
+  receivedQuantity: number;
+  notes?: string;
+}
+
+export interface StockMovementCreateDto {
+  productId: string;
+  movementType: StockMovementType;
+  quantity: number;
+  reference?: string;
+  reason: string;
+  notes?: string;
+}

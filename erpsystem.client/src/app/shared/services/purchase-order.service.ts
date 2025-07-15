@@ -10,12 +10,11 @@ import {
   PurchaseOrderUpdate,
   PurchaseOrderQueryParameters,
   PurchaseOrderPagedResult,
-  PurchaseOrderItem,
-  PurchaseOrderItemUpdate,
-  ReceiveItemsRequest,
   StockMovement,
   StockMovementQueryParameters,
   StockMovementPagedResult,
+  StockMovementCreateDto,
+  ReceiveItemDto,
   PurchaseOrderStatus
 } from '../models/purchase-order.interface';
 
@@ -51,17 +50,22 @@ export class PurchaseOrderService {
       httpParams = httpParams.set('supplierId', params.supplierId);
     }
     if (params.startDate) {
-      httpParams = httpParams.set('startDate', params.startDate.toISOString());
+      httpParams = httpParams.set('fromDate', params.startDate.toISOString());
     }
     if (params.endDate) {
-      httpParams = httpParams.set('endDate', params.endDate.toISOString());
+      httpParams = httpParams.set('toDate', params.endDate.toISOString());
     }
 
-    return this.http.get<PurchaseOrderPagedResult>(this.apiUrl, { params: httpParams }).pipe(
-      map(response => ({
-        ...response,
-        items: (response.items || []).map(item => this.mapPurchaseOrderDates(item))
-      }))
+    return this.http.get<Result<PurchaseOrderPagedResult>>(`${this.apiUrl}`, { params: httpParams }).pipe(
+      map(response => {
+        if (response.isSuccess && response.data) {
+          return {
+            ...response.data,
+            items: (response.data.items || []).map(item => this.mapPurchaseOrderDates(item))
+          };
+        }
+        throw new Error(response.error || 'Failed to get purchase orders');
+      })
     );
   }
 
@@ -111,7 +115,7 @@ export class PurchaseOrderService {
    * Delete a purchase order
    */
   deletePurchaseOrder(id: string): Observable<void> {
-    return this.http.delete<Result<void>>(`${this.apiUrl}/${id}`).pipe(
+    return this.http.delete<Result<boolean>>(`${this.apiUrl}/${id}`).pipe(
       map(response => {
         if (!response.isSuccess) {
           throw new Error(response.error || 'Failed to delete purchase order');
@@ -121,23 +125,10 @@ export class PurchaseOrderService {
   }
 
   /**
-   * Submit purchase order for approval
-   */
-  submitForApproval(id: string): Observable<void> {
-    return this.http.post<Result<void>>(`${this.apiUrl}/${id}/submit`, {}).pipe(
-      map(response => {
-        if (!response.isSuccess) {
-          throw new Error(response.error || 'Failed to submit purchase order for approval');
-        }
-      })
-    );
-  }
-
-  /**
    * Approve a purchase order
    */
   approvePurchaseOrder(id: string): Observable<void> {
-    return this.http.post<Result<void>>(`${this.apiUrl}/${id}/approve`, {}).pipe(
+    return this.http.put<Result<boolean>>(`${this.apiUrl}/${id}/approve`, {}).pipe(
       map(response => {
         if (!response.isSuccess) {
           throw new Error(response.error || 'Failed to approve purchase order');
@@ -149,8 +140,8 @@ export class PurchaseOrderService {
   /**
    * Cancel a purchase order
    */
-  cancelPurchaseOrder(id: string): Observable<void> {
-    return this.http.post<Result<void>>(`${this.apiUrl}/${id}/cancel`, {}).pipe(
+  cancelPurchaseOrder(id: string, reason: string): Observable<void> {
+    return this.http.put<Result<boolean>>(`${this.apiUrl}/${id}/cancel`, reason).pipe(
       map(response => {
         if (!response.isSuccess) {
           throw new Error(response.error || 'Failed to cancel purchase order');
@@ -160,55 +151,57 @@ export class PurchaseOrderService {
   }
 
   /**
-   * Get purchase order items
+   * Send purchase order to supplier
    */
-  getPurchaseOrderItems(purchaseOrderId: string): Observable<PurchaseOrderItem[]> {
-    return this.http.get<Result<PurchaseOrderItem[]>>(`${this.apiUrl}/${purchaseOrderId}/items`).pipe(
-      map(response => {
-        if (response.isSuccess && response.data) {
-          return response.data;
-        }
-        throw new Error(response.error || 'Failed to get purchase order items');
-      })
-    );
-  }
-
-  /**
-   * Update purchase order item
-   */
-  updatePurchaseOrderItem(purchaseOrderId: string, itemId: string, item: PurchaseOrderItemUpdate): Observable<PurchaseOrderItem> {
-    return this.http.put<Result<PurchaseOrderItem>>(`${this.apiUrl}/${purchaseOrderId}/items/${itemId}`, item).pipe(
-      map(response => {
-        if (response.isSuccess && response.data) {
-          return response.data;
-        }
-        throw new Error(response.error || 'Failed to update purchase order item');
-      })
-    );
-  }
-
-  /**
-   * Delete purchase order item
-   */
-  deletePurchaseOrderItem(purchaseOrderId: string, itemId: string): Observable<void> {
-    return this.http.delete<Result<void>>(`${this.apiUrl}/${purchaseOrderId}/items/${itemId}`).pipe(
+  sendPurchaseOrder(id: string): Observable<void> {
+    return this.http.put<Result<boolean>>(`${this.apiUrl}/${id}/send`, {}).pipe(
       map(response => {
         if (!response.isSuccess) {
-          throw new Error(response.error || 'Failed to delete purchase order item');
+          throw new Error(response.error || 'Failed to send purchase order');
         }
       })
     );
   }
 
   /**
-   * Receive items for a purchase order
+   * Receive individual item from purchase order
    */
-  receiveItems(purchaseOrderId: string, request: ReceiveItemsRequest): Observable<void> {
-    return this.http.post<Result<void>>(`${this.apiUrl}/${purchaseOrderId}/receive`, request).pipe(
+  receiveItem(itemId: string, dto: ReceiveItemDto): Observable<void> {
+    return this.http.put<Result<boolean>>(`${this.apiUrl}/items/${itemId}/receive`, dto).pipe(
       map(response => {
         if (!response.isSuccess) {
-          throw new Error(response.error || 'Failed to receive items');
+          throw new Error(response.error || 'Failed to receive item');
         }
+      })
+    );
+  }
+
+  /**
+   * Receive full purchase order
+   */
+  receiveFullOrder(id: string): Observable<void> {
+    return this.http.put<Result<boolean>>(`${this.apiUrl}/${id}/receive-full`, {}).pipe(
+      map(response => {
+        if (!response.isSuccess) {
+          throw new Error(response.error || 'Failed to receive full order');
+        }
+      })
+    );
+  }
+
+  /**
+   * Create manual stock movement
+   */
+  createStockMovement(dto: StockMovementCreateDto): Observable<StockMovement> {
+    return this.http.post<Result<StockMovement>>(`${this.apiUrl}/stock-movements`, dto).pipe(
+      map(response => {
+        if (response.isSuccess && response.data) {
+          return {
+            ...response.data,
+            movementDate: response.data.movementDate ? new Date(response.data.movementDate) : new Date()
+          };
+        }
+        throw new Error(response.error || 'Failed to create stock movement');
       })
     );
   }
@@ -228,10 +221,10 @@ export class PurchaseOrderService {
       httpParams = httpParams.set('movementType', params.movementType);
     }
     if (params.startDate) {
-      httpParams = httpParams.set('startDate', params.startDate.toISOString());
+      httpParams = httpParams.set('fromDate', params.startDate.toISOString());
     }
     if (params.endDate) {
-      httpParams = httpParams.set('endDate', params.endDate.toISOString());
+      httpParams = httpParams.set('toDate', params.endDate.toISOString());
     }
     if (params.sortBy) {
       httpParams = httpParams.set('sortBy', params.sortBy);
@@ -240,14 +233,19 @@ export class PurchaseOrderService {
       httpParams = httpParams.set('sortDirection', params.sortDirection);
     }
 
-    return this.http.get<StockMovementPagedResult>(`${this.apiUrl}/stock-movements`, { params: httpParams }).pipe(
-      map(response => ({
-        ...response,
-        items: (response.items || []).map(item => ({
-          ...item,
-          createdAt: item.createdAt ? new Date(item.createdAt) : new Date()
-        }))
-      }))
+    return this.http.get<Result<StockMovementPagedResult>>(`${this.apiUrl}/stock-movements`, { params: httpParams }).pipe(
+      map(response => {
+        if (response.isSuccess && response.data) {
+          return {
+            ...response.data,
+            items: (response.data.items || []).map(item => ({
+              ...item,
+              movementDate: item.movementDate ? new Date(item.movementDate) : new Date()
+            }))
+          };
+        }
+        throw new Error(response.error || 'Failed to get stock movements');
+      })
     );
   }
 
@@ -295,17 +293,17 @@ export class PurchaseOrderService {
   }
 
   /**
-   * Check if purchase order can be submitted for approval
+   * Check if purchase order can be sent to supplier
    */
-  canSubmit(status: PurchaseOrderStatus): boolean {
-    return status === PurchaseOrderStatus.Draft;
+  canSend(status: PurchaseOrderStatus): boolean {
+    return status === PurchaseOrderStatus.Approved;
   }
 
   /**
    * Check if purchase order can be approved
    */
   canApprove(status: PurchaseOrderStatus): boolean {
-    return status === PurchaseOrderStatus.Pending;
+    return status === PurchaseOrderStatus.Draft || status === PurchaseOrderStatus.Pending;
   }
 
   /**

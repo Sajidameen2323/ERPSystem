@@ -91,7 +91,7 @@ export class PurchaseOrderFormComponent implements OnInit, OnDestroy {
   private createItemForm(): FormGroup {
     return this.formBuilder.group({
       productId: ['', [Validators.required]],
-      quantity: [1, [Validators.required, Validators.min(1)]],
+      orderedQuantity: [1, [Validators.required, Validators.min(1)]],
       unitPrice: [0, [Validators.required, Validators.min(0)]],
       notes: ['', [Validators.maxLength(500)]]
     });
@@ -161,7 +161,7 @@ export class PurchaseOrderFormComponent implements OnInit, OnDestroy {
         const itemForm = this.createItemForm();
         itemForm.patchValue({
           productId: item.productId,
-          quantity: item.quantity,
+          orderedQuantity: item.orderedQuantity,
           unitPrice: item.unitPrice,
           notes: item.notes
         });
@@ -196,9 +196,9 @@ export class PurchaseOrderFormComponent implements OnInit, OnDestroy {
 
   calculateItemTotal(index: number): number {
     const itemForm = this.itemsFormArray.at(index);
-    const quantity = itemForm.get('quantity')?.value || 0;
+    const orderedQuantity = itemForm.get('orderedQuantity')?.value || 0;
     const unitPrice = itemForm.get('unitPrice')?.value || 0;
-    return quantity * unitPrice;
+    return orderedQuantity * unitPrice;
   }
 
   calculateGrandTotal(): number {
@@ -232,7 +232,7 @@ export class PurchaseOrderFormComponent implements OnInit, OnDestroy {
       notes: formValue.notes,
       items: formValue.items.map((item: any) => ({
         productId: item.productId,
-        quantity: item.quantity,
+        orderedQuantity: item.orderedQuantity,
         unitPrice: item.unitPrice,
         notes: item.notes
       }))

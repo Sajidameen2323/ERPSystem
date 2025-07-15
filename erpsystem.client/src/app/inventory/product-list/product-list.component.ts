@@ -5,12 +5,13 @@ import { Router } from '@angular/router';
 import { ProductService } from '../../shared/services/product.service';
 import { Product, ProductQueryParameters } from '../../shared/models/product.interface';
 import { LucideAngularModule, Search, Plus, Edit, Trash2, Package, AlertTriangle } from 'lucide-angular';
+import { StockAdjustmentModalComponent } from '../stock-adjustment-modal/stock-adjustment-modal.component';
 import { debounceTime, Subject, switchMap, catchError, of } from 'rxjs';
 
 @Component({
   selector: 'app-product-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule],
+  imports: [CommonModule, FormsModule, LucideAngularModule, StockAdjustmentModalComponent],
   templateUrl: './product-list.component.html',
   styleUrl: './product-list.component.css'
 })
@@ -39,7 +40,15 @@ export class ProductListComponent implements OnInit {
   searchTerm = signal('');
   sortBy = signal('name');
   sortDirection = signal<'asc' | 'desc'>('asc');
+  statusFilter = signal<'all' | 'active' | 'inactive' | 'lowStock' | 'outOfStock'>('all');
+  
+  // Keep these for backward compatibility
   lowStockOnly = signal(false);
+  includeInactive = signal(false);
+
+  // Stock adjustment modal state
+  showStockAdjustmentModal = signal(false);
+  selectedProductForAdjustment = signal<Product | null>(null);
 
   // Computed values
   totalPages = computed(() => Math.ceil(this.totalCount() / this.pageSize()));
@@ -92,7 +101,10 @@ export class ProductListComponent implements OnInit {
       searchTerm: this.searchTerm() || undefined,
       sortBy: this.sortBy(),
       sortDirection: this.sortDirection(),
-      lowStockOnly: this.lowStockOnly() || undefined
+      statusFilter: this.statusFilter(),
+      // Keep for backward compatibility
+      lowStockOnly: this.lowStockOnly() || undefined,
+      includeInactive: this.includeInactive() || undefined
     };
 
     return this.productService.getProducts(params).pipe(
@@ -128,10 +140,53 @@ export class ProductListComponent implements OnInit {
     this.loadProducts();
   }
 
+  onToggleLowStockFilter() {
+    this.lowStockOnly.set(!this.lowStockOnly());
+    this.currentPage.set(1);
+    this.loadProducts();
+  }
+
   onLowStockToggle() {
     this.lowStockOnly.set(!this.lowStockOnly());
     this.currentPage.set(1);
     this.loadProducts();
+  }
+
+  onToggleIncludeInactive() {
+    this.includeInactive.set(!this.includeInactive());
+    this.currentPage.set(1);
+    this.loadProducts();
+  }
+
+  onStatusFilterChange(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    const value = target.value as 'all' | 'active' | 'inactive' | 'lowStock' | 'outOfStock';
+    this.statusFilter.set(value);
+    
+    // Update legacy signals for backward compatibility
+    this.includeInactive.set(value === 'all' || value === 'inactive');
+    this.lowStockOnly.set(value === 'lowStock');
+    
+    this.currentPage.set(1);
+    this.loadProducts();
+  }
+
+  restoreProduct(product: Product) {
+    const confirmMessage = `Are you sure you want to restore "${product.name}"?`;
+    
+    if (confirm(confirmMessage)) {
+      this.loading.set(true);
+      this.productService.restoreProduct(product.id).pipe(
+        catchError(error => {
+          this.error.set('Failed to restore product. Please try again.');
+          console.error('Error restoring product:', error);
+          return of(null);
+        })
+      ).subscribe(() => {
+        this.loading.set(false);
+        this.loadProducts();
+      });
+    }
   }
 
   createProduct() {
@@ -143,7 +198,9 @@ export class ProductListComponent implements OnInit {
   }
 
   deleteProduct(product: Product) {
-    if (confirm(`Are you sure you want to delete "${product.name}"?`)) {
+    const confirmMessage = `Are you sure you want to delete "${product.name}"?`;
+      
+    if (confirm(confirmMessage)) {
       this.loading.set(true);
       this.productService.deleteProduct(product.id).pipe(
         catchError(error => {
@@ -159,8 +216,20 @@ export class ProductListComponent implements OnInit {
   }
 
   adjustStock(product: Product) {
-    // This will be implemented with a modal
-    console.log('Adjust stock for:', product.name);
+    this.selectedProductForAdjustment.set(product);
+    this.showStockAdjustmentModal.set(true);
+  }
+
+  onStockAdjusted() {
+    this.showStockAdjustmentModal.set(false);
+    this.selectedProductForAdjustment.set(null);
+    // Reload products to reflect the updated stock
+    this.loadProducts();
+  }
+
+  onStockAdjustmentCancelled() {
+    this.showStockAdjustmentModal.set(false);
+    this.selectedProductForAdjustment.set(null);
   }
 
   formatCurrency(amount: number): string {
@@ -172,8 +241,12 @@ export class ProductListComponent implements OnInit {
 
   getStockStatusClass(product: Product): string {
     if (product.isLowStock) {
-      return 'text-red-600 bg-red-100';
+      return 'text-red-600 bg-red-100 dark:bg-red-900/20 dark:text-red-400';
     }
-    return product.currentStock > 0 ? 'text-green-600 bg-green-100' : 'text-gray-600 bg-gray-100';
+    return product.currentStock > 0 ? 'text-green-600 bg-green-100 dark:bg-green-900/20 dark:text-green-400' : 'text-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-gray-400';
+  }
+
+  getProductStatusText(product: Product): string {
+    return product.isDeleted ? 'Inactive' : 'Active';
   }
 }

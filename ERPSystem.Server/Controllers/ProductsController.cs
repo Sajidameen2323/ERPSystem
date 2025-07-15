@@ -170,6 +170,35 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
+    /// Restore a deleted product
+    /// </summary>
+    [HttpPatch("{id}/restore")]
+    [Authorize(Roles = $"{Constants.Roles.Admin},{Constants.Roles.InventoryUser}")]
+    public async Task<ActionResult<Result>> RestoreProduct(Guid id)
+    {
+        try
+        {
+            var result = await _productService.RestoreProductAsync(id);
+            
+            if (!result.IsSuccess)
+            {
+                if (result.Error.Contains("not found"))
+                {
+                    return NotFound(Result.Failure("Product not found"));
+                }
+                return BadRequest(result);
+            }
+            
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error restoring product with ID {ProductId}", id);
+            return StatusCode(500, Result.Failure("An error occurred while restoring the product"));
+        }
+    }
+
+    /// <summary>
     /// Adjust stock for a product
     /// </summary>
     [HttpPost("{id}/adjust-stock")]

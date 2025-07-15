@@ -42,6 +42,12 @@ export class ProductService {
     if (params.lowStockOnly !== undefined) {
       httpParams = httpParams.set('lowStockOnly', params.lowStockOnly.toString());
     }
+    if (params.includeInactive !== undefined) {
+      httpParams = httpParams.set('includeInactive', params.includeInactive.toString());
+    }
+    if (params.statusFilter && params.statusFilter !== 'all') {
+      httpParams = httpParams.set('statusFilter', params.statusFilter);
+    }
 
     return this.http.get<ProductPagedResult>(this.apiUrl, { params: httpParams }).pipe(
       map(response => ({
@@ -117,6 +123,19 @@ export class ProductService {
       map(result => {
         if (!result.isSuccess) {
           throw new Error(result.error || result.message || 'Failed to delete product');
+        }
+      })
+    );
+  }
+
+  /**
+   * Restore a deleted product
+   */
+  restoreProduct(id: string): Observable<void> {
+    return this.http.patch<Result<void>>(`${this.apiUrl}/${id}/restore`, {}).pipe(
+      map(result => {
+        if (!result.isSuccess) {
+          throw new Error(result.error || result.message || 'Failed to restore product');
         }
       })
     );

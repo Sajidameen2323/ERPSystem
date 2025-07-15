@@ -27,6 +27,43 @@ public class ProductService : IProductService
         {
             var query = _context.Products.AsQueryable();
 
+            // Handle status filter
+            if (!string.IsNullOrWhiteSpace(parameters.StatusFilter))
+            {
+                switch (parameters.StatusFilter.ToLower())
+                {
+                    case "all":
+                        query = _context.Products.IgnoreQueryFilters();
+                        break;
+                    case "active":
+                        // Default behavior - already filtered by global query filter
+                        break;
+                    case "inactive":
+                        query = _context.Products.IgnoreQueryFilters().Where(p => p.IsDeleted);
+                        break;
+                    case "lowstock":
+                        query = query.Where(p => p.MinimumStock.HasValue && p.CurrentStock <= p.MinimumStock.Value);
+                        break;
+                    case "outofstock":
+                        query = query.Where(p => p.CurrentStock == 0);
+                        break;
+                }
+            }
+            else
+            {
+                // Handle legacy parameters for backward compatibility
+                if (parameters.IncludeInactive)
+                {
+                    query = _context.Products.IgnoreQueryFilters();
+                }
+
+                // Apply legacy low stock filter
+                if (parameters.LowStockOnly == true)
+                {
+                    query = query.Where(p => p.MinimumStock.HasValue && p.CurrentStock <= p.MinimumStock.Value);
+                }
+            }
+
             // Apply search filter
             if (!string.IsNullOrWhiteSpace(parameters.SearchTerm))
             {
@@ -35,12 +72,6 @@ public class ProductService : IProductService
                     p.Name.ToLower().Contains(searchTerm) || 
                     p.SKU.ToLower().Contains(searchTerm) ||
                     (p.Description != null && p.Description.ToLower().Contains(searchTerm)));
-            }
-
-            // Apply low stock filter
-            if (parameters.LowStockOnly == true)
-            {
-                query = query.Where(p => p.MinimumStock.HasValue && p.CurrentStock <= p.MinimumStock.Value);
             }
 
             // Apply sorting
@@ -194,6 +225,38 @@ public class ProductService : IProductService
         {
             _logger.LogError(ex, "Error deleting product with ID: {ProductId}", id);
             return Result.Failure("An error occurred while deleting the product");
+        }
+    }
+
+    public async Task<Result> RestoreProductAsync(Guid id)
+    {
+        try
+        {
+            var product = await _context.Products.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.Id == id);
+            
+            if (product == null)
+            {
+                return Result.Failure("Product not found");
+            }
+
+            if (!product.IsDeleted)
+            {
+                return Result.Failure("Product is not deleted");
+            }
+
+            // Restore product
+            product.IsDeleted = false;
+            product.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            
+            _logger.LogInformation("Product restored successfully with ID: {ProductId}", id);
+            return Result.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error restoring product with ID: {ProductId}", id);
+            return Result.Failure("An error occurred while restoring the product");
         }
     }
 

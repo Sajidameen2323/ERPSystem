@@ -27,8 +27,9 @@ public class ProductSupplier
     
     public bool IsActive { get; set; } = true;
     
+    // Audit and Soft Delete (Critical for supplier relationship tracking)
+    public bool IsDeleted { get; set; } = false;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     
     // Navigation properties

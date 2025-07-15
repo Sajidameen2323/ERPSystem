@@ -45,6 +45,11 @@ public class StockMovement
     [MaxLength(1000)]
     public string? Notes { get; set; }
     
+    // Audit and Soft Delete (Critical for audit trail)
+    public bool IsDeleted { get; set; } = false;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    
     // Navigation properties
     public virtual Product Product { get; set; } = null!;
 }
