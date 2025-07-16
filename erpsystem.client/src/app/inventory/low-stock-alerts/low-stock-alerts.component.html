@@ -1,0 +1,265 @@
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900 py-6">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="mb-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+            <lucide-angular [img]="AlertTriangle" class="h-6 w-6 mr-3 text-orange-500"></lucide-angular>
+            Low Stock Alerts
+          </h1>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Monitor products that need attention due to low or depleted stock levels
+          </p>
+        </div>
+        
+        <div class="flex items-center space-x-3">
+          <button 
+            (click)="refreshAlerts()"
+            [disabled]="loading()"
+            class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50">
+            <lucide-angular [img]="RefreshCw" [class]="loading() ? 'animate-spin h-4 w-4 mr-2' : 'h-4 w-4 mr-2'"></lucide-angular>
+            {{ loading() ? 'Refreshing...' : 'Refresh' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alert Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <!-- Total Alerts -->
+      <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <lucide-angular [img]="AlertTriangle" class="h-8 w-8 text-orange-500"></lucide-angular>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Alerts</dt>
+                <dd class="text-lg font-medium text-gray-900 dark:text-white">{{ totalAlerts() }}</dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Low Stock -->
+      <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <lucide-angular [img]="TrendingDown" class="h-8 w-8 text-yellow-500"></lucide-angular>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Low Stock</dt>
+                <dd class="text-lg font-medium text-yellow-600 dark:text-yellow-400">{{ totalLowStock() }}</dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Out of Stock -->
+      <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <lucide-angular [img]="Package" class="h-8 w-8 text-red-500"></lucide-angular>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Out of Stock</dt>
+                <dd class="text-lg font-medium text-red-600 dark:text-red-400">{{ totalOutOfStock() }}</dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-6">
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+          <!-- Search -->
+          <div class="relative flex-1 max-w-lg">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <lucide-angular [img]="Search" class="h-5 w-5 text-gray-400"></lucide-angular>
+            </div>
+            <input
+              type="text"
+              (input)="onSearch($event)"
+              placeholder="Search products by name or SKU..."
+              class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          </div>
+
+          <!-- View Filter Tabs -->
+          <div class="flex rounded-lg bg-gray-100 dark:bg-gray-700 p-1">
+            <button
+              (click)="setView('all')"
+              [class]="currentView() === 'all' 
+                ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow' 
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+              class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-200">
+              All ({{ totalAlerts() }})
+            </button>
+            <button
+              (click)="setView('lowStock')"
+              [class]="currentView() === 'lowStock' 
+                ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow' 
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+              class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-200">
+              Low Stock ({{ totalLowStock() }})
+            </button>
+            <button
+              (click)="setView('outOfStock')"
+              [class]="currentView() === 'outOfStock' 
+                ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow' 
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+              class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-200">
+              Out of Stock ({{ totalOutOfStock() }})
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading()" class="bg-white dark:bg-gray-800 shadow rounded-lg p-8 text-center">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p class="text-gray-600 dark:text-gray-400">Loading stock alerts...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="error() && !loading()" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <lucide-angular [img]="AlertTriangle" class="w-5 h-5"></lucide-angular>
+        <p>{{ error() }}</p>
+      </div>
+      <button 
+        (click)="refreshAlerts()"
+        class="text-red-800 dark:text-red-200 hover:text-red-600 dark:hover:text-red-400 font-medium">
+        Try Again
+      </button>
+    </div>
+
+    <!-- Alerts List -->
+    <div *ngIf="!loading() && !error()" class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+      <!-- Empty State -->
+      <div *ngIf="filteredProducts().length === 0" class="p-8 text-center">
+        <lucide-angular [img]="Package" class="w-12 h-12 text-gray-400 mx-auto mb-4"></lucide-angular>
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No stock alerts</h3>
+        <p class="text-gray-600 dark:text-gray-400 mb-4">
+          {{ searchTerm() 
+            ? 'No products match your search criteria.' 
+            : 'All products have adequate stock levels.' 
+          }}
+        </p>
+        <button 
+          *ngIf="searchTerm()"
+          (click)="searchTerm.set('')"
+          class="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
+          Clear search
+        </button>
+      </div>
+
+      <!-- Products List -->
+      <div *ngIf="filteredProducts().length > 0" class="divide-y divide-gray-200 dark:divide-gray-700">
+        <div 
+          *ngFor="let product of filteredProducts(); trackBy: trackByProductId" 
+          class="p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4 flex-1">
+              <!-- Urgency Indicator -->
+              <div class="flex-shrink-0">
+                <div [class]="getUrgencyLevel(product) === 'critical' 
+                  ? 'w-3 h-3 bg-red-500 rounded-full animate-pulse' 
+                  : getUrgencyLevel(product) === 'warning' 
+                    ? 'w-3 h-3 bg-yellow-500 rounded-full' 
+                    : 'w-3 h-3 bg-gray-400 rounded-full'">
+                </div>
+              </div>
+
+              <!-- Product Info -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center space-x-3">
+                  <h3 class="text-lg font-medium text-gray-900 dark:text-white truncate">
+                    {{ product?.name || 'Unknown Product' }}
+                  </h3>
+                  <span [class]="getStockStatusClass(product) + ' inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium'">
+                    {{ getStockStatusText(product) }}
+                  </span>
+                </div>
+                <div class="mt-1 flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                  <span>SKU: {{ product?.sku || 'N/A' }}</span>
+                  <span>•</span>
+                  <span>Current: {{ product?.currentStock || 0 }}</span>
+                  <span *ngIf="product?.minimumStock">•</span>
+                  <span *ngIf="product?.minimumStock">Min: {{ product.minimumStock }}</span>
+                  <span>•</span>
+                  <span>{{ formatCurrency(product?.unitPrice || 0) }}</span>
+                  <span *ngIf="getDaysUntilStockOut(product)" class="text-red-600 dark:text-red-400 font-medium">
+                    • {{ getDaysUntilStockOut(product) }} days left
+                  </span>
+                </div>
+                
+                <!-- Recommendation -->
+                <div *ngIf="product && product.currentStock < (product.minimumStock || 5)" class="mt-2">
+                  <div class="inline-flex items-center px-2 py-1 rounded text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">
+                    💡 Recommended order: {{ getRecommendedOrderQuantity(product) }} units
+                  </div>
+                </div>
+              </div>
+
+              <!-- Stock Level Visual -->
+              <div class="hidden sm:block">
+                <div class="text-right">
+                  <div class="text-2xl font-bold" [class]="(product?.currentStock || 0) === 0 
+                    ? 'text-red-600 dark:text-red-400' 
+                    : product?.isLowStock 
+                      ? 'text-yellow-600 dark:text-yellow-400' 
+                      : 'text-green-600 dark:text-green-400'">
+                    {{ product?.currentStock || 0 }}
+                  </div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400">
+                    {{ (product?.currentStock || 0) === 0 ? 'units' : 'in stock' }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center space-x-2 ml-4">
+              <button 
+                (click)="viewProduct(product)"
+                [disabled]="!product"
+                class="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 shadow-sm text-xs font-medium rounded text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="View Product">
+                <lucide-angular [img]="Eye" class="h-4 w-4 mr-1"></lucide-angular>
+                View
+              </button>
+              <button 
+                (click)="editProduct(product)"
+                [disabled]="!product"
+                class="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 shadow-sm text-xs font-medium rounded text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Edit Product">
+                <lucide-angular [img]="Edit" class="h-4 w-4 mr-1"></lucide-angular>
+                Edit
+              </button>
+              <button 
+                (click)="createPurchaseOrder(product)"
+                [disabled]="!product"
+                class="inline-flex items-center px-3 py-1.5 border border-transparent shadow-sm text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Create Purchase Order">
+                <lucide-angular [img]="ShoppingCart" class="h-4 w-4 mr-1"></lucide-angular>
+                Order
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, switchMap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { Result } from '../../core/models/shared.interface';
 import { 
@@ -193,6 +193,77 @@ export class ProductService {
           adjustedAt: item.adjustedAt ? new Date(item.adjustedAt) : new Date()
         }))
       }))
+    );
+  }
+
+  /**
+   * Get count of low stock items
+   */
+  getLowStockCount(): Observable<number> {
+    const params = new HttpParams()
+      .set('page', '1')
+      .set('pageSize', '1') // We only need the count, not the items
+      .set('statusFilter', 'lowStock');
+
+    return this.http.get<ProductPagedResult>(this.apiUrl, { params }).pipe(
+      map(response => response.totalCount || 0)
+    );
+  }
+
+  /**
+   * Get count of out of stock items
+   */
+  getOutOfStockCount(): Observable<number> {
+    const params = new HttpParams()
+      .set('page', '1')
+      .set('pageSize', '1') // We only need the count, not the items
+      .set('statusFilter', 'outOfStock');
+
+    return this.http.get<ProductPagedResult>(this.apiUrl, { params }).pipe(
+      map(response => response.totalCount || 0)
+    );
+  }
+
+  /**
+   * Get combined low stock and out of stock count with minimal API calls
+   */
+  getStockAlertsCount(): Observable<number> {
+    // Single API call to get all products that need attention (low stock + out of stock)
+    // Use lowStockOnly=true which includes both low stock and out of stock items
+    const params = new HttpParams()
+      .set('page', '1')
+      .set('pageSize', '1') // We only need the totalCount, not the actual items
+      .set('lowStockOnly', 'true'); // This backend filter should include both low stock and out of stock
+
+    return this.http.get<ProductPagedResult>(this.apiUrl, { params }).pipe(
+      map(response => response.totalCount || 0)
+    );
+  }
+
+  /**
+   * Get stock alerts count with deduplication (alternative approach)
+   */
+  getUniqueStockAlertsCount(): Observable<number> {
+    // Get actual items to ensure proper deduplication at the frontend
+    const params = new HttpParams()
+      .set('page', '1')
+      .set('pageSize', '500') // Reasonable limit for counting
+      .set('lowStockOnly', 'true');
+
+    return this.http.get<ProductPagedResult>(this.apiUrl, { params }).pipe(
+      map(response => {
+        const items = response.items || [];
+        // Deduplicate by product ID and count unique products that need attention
+        const uniqueProducts = new Map<string, Product>();
+        
+        items.forEach(product => {
+          if (product.isLowStock || product.currentStock === 0) {
+            uniqueProducts.set(product.id, product);
+          }
+        });
+        
+        return uniqueProducts.size;
+      })
     );
   }
 }

@@ -35,9 +35,9 @@
               
               <span *ngIf="!isCollapsed()" class="transition-all duration-300">{{ item.label }}</span>
               
-              <span *ngIf="item.badge && !isCollapsed()" 
+              <span *ngIf="getBadgeValue(item) && !isCollapsed()" 
                     class="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300">
-                {{ item.badge }}
+                {{ getBadgeValue(item) }}
               </span>
             </a>
 
@@ -55,9 +55,9 @@
                 
                 <span *ngIf="!isCollapsed()" class="flex-1 text-left transition-all duration-300">{{ item.label }}</span>
                 
-                <span *ngIf="item.badge && !isCollapsed()" 
+                <span *ngIf="getBadgeValue(item) && !isCollapsed()" 
                       class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300 mr-2">
-                  {{ item.badge }}
+                  {{ getBadgeValue(item) }}
                 </span>
                 
                 <svg *ngIf="!isCollapsed()" 
@@ -88,9 +88,9 @@
                   <span class="w-2 h-2 bg-gray-300 dark:bg-gray-600 rounded-full mr-3"></span>
                   <span>{{ child.label }}</span>
                   
-                  <span *ngIf="child.badge" 
+                  <span *ngIf="getBadgeValue(child)" 
                         class="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300">
-                    {{ child.badge }}
+                    {{ getBadgeValue(child) }}
                   </span>
                 </a>
               </ng-container>

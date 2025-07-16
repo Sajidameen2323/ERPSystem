@@ -3,8 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ProductService } from '../../shared/services/product.service';
+import { SidebarConfigService } from '../../shared/services/sidebar-config.service';
 import { Product, ProductQueryParameters } from '../../shared/models/product.interface';
-import { LucideAngularModule, Search, Plus, Edit, Trash2, Package, AlertTriangle } from 'lucide-angular';
+import { LucideAngularModule, Search, Plus, Edit, Trash2, Package, AlertTriangle, Eye } from 'lucide-angular';
 import { StockAdjustmentModalComponent } from '../stock-adjustment-modal/stock-adjustment-modal.component';
 import { debounceTime, Subject, switchMap, catchError, of } from 'rxjs';
 
@@ -18,6 +19,7 @@ import { debounceTime, Subject, switchMap, catchError, of } from 'rxjs';
 export class ProductListComponent implements OnInit {
   private productService = inject(ProductService);
   private router = inject(Router);
+  private sidebarConfigService = inject(SidebarConfigService);
 
   // Make Math available in template
   readonly Math = Math;
@@ -29,6 +31,7 @@ export class ProductListComponent implements OnInit {
   readonly Trash2 = Trash2;
   readonly Package = Package;
   readonly AlertTriangle = AlertTriangle;
+  readonly Eye = Eye;
 
   // Signals for reactive state management
   products = signal<Product[]>([]);
@@ -225,6 +228,8 @@ export class ProductListComponent implements OnInit {
     this.selectedProductForAdjustment.set(null);
     // Reload products to reflect the updated stock
     this.loadProducts();
+    // Refresh the sidebar low stock count
+    this.sidebarConfigService.refreshLowStockCount();
   }
 
   onStockAdjustmentCancelled() {
@@ -248,5 +253,9 @@ export class ProductListComponent implements OnInit {
 
   getProductStatusText(product: Product): string {
     return product.isDeleted ? 'Inactive' : 'Active';
+  }
+
+  viewProduct(product: Product) {
+    this.router.navigate(['/dashboard/inventory/products', product.id, 'view']);
   }
 }

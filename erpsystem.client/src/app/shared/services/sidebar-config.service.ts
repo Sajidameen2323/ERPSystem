@@ -1,5 +1,7 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, computed, inject, Signal } from '@angular/core';
 import { Home, Users, Package, ShoppingCart, FileText, Settings, LogOut, Truck } from 'lucide-angular';
+import { ProductService } from './product.service';
+import { interval, startWith, switchMap, catchError, of } from 'rxjs';
 
 export interface NavigationItem {
   label: string;
@@ -7,7 +9,7 @@ export interface NavigationItem {
   route?: string;
   children?: NavigationItem[];
   roles?: string[];
-  badge?: string;
+  badge?: string | Signal<string | undefined>;
   isActive?: boolean;
   isExpanded?: boolean;
 }
@@ -25,11 +27,18 @@ export interface SidebarConfig {
 })
 export class SidebarConfigService {
   private readonly STORAGE_KEY = 'sidebarCollapsed';
+  private readonly productService = inject(ProductService);
   
   // Sidebar state
   isCollapsed = signal(false);
   isMobile = signal(false);
   expandedItems = signal<Set<string>>(new Set());
+  
+  // Low stock alerts count
+  lowStockCount = signal<number>(0);
+  
+  // Auto-refresh low stock count every 5 minutes
+  private refreshInterval = 5 * 60 * 1000; // 5 minutes
 
   // Sidebar configuration
   private config: SidebarConfig = {
@@ -67,7 +76,10 @@ export class SidebarConfigService {
           label: 'Low Stock Alerts', 
           route: '/dashboard/inventory/alerts', 
           roles: ['admin', 'inventoryuser'], 
-          badge: '3' 
+          badge: computed(() => {
+            const count = this.lowStockCount();
+            return count > 0 ? count.toString() : undefined;
+          })
         }
       ]
     },
@@ -164,6 +176,45 @@ export class SidebarConfigService {
   constructor() {
     this.loadSidebarState();
     this.setupResponsiveListener();
+    this.initializeLowStockCount();
+  }
+
+  /**
+   * Initialize and setup auto-refresh for low stock count
+   */
+  private initializeLowStockCount(): void {
+    // Initial load
+    this.refreshLowStockCount();
+    
+    // Set up auto-refresh interval
+    interval(this.refreshInterval)
+      .pipe(
+        startWith(0),
+        switchMap(() => this.productService.getStockAlertsCount()),
+        catchError(error => {
+          console.error('Error fetching low stock count:', error);
+          return of(0);
+        })
+      )
+      .subscribe(count => {
+        this.lowStockCount.set(count);
+      });
+  }
+
+  /**
+   * Manually refresh the low stock count
+   */
+  refreshLowStockCount(): void {
+    this.productService.getStockAlertsCount()
+      .pipe(
+        catchError(error => {
+          console.error('Error fetching low stock count:', error);
+          return of(0);
+        })
+      )
+      .subscribe(count => {
+        this.lowStockCount.set(count);
+      });
   }
 
   /**
@@ -384,5 +435,23 @@ export class SidebarConfigService {
       Settings,
       LogOut
     };
+  }
+
+  /**
+   * Get badge value for navigation item (handles both string and Signal types)
+   */
+  getBadgeValue(badge: string | Signal<string | undefined> | undefined): string | undefined {
+    if (typeof badge === 'function') {
+      // It's a Signal
+      return badge();
+    }
+    return badge;
+  }
+
+  /**
+   * Get the current low stock count signal (for use in templates)
+   */
+  getLowStockCountSignal() {
+    return this.lowStockCount;
   }
 }

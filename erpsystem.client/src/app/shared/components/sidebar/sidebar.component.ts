@@ -60,4 +60,8 @@ export class SidebarComponent implements OnInit, OnChanges {
   isExpanded(itemLabel: string): boolean {
     return this.sidebarConfigService.isExpanded(itemLabel);
   }
+
+  getBadgeValue(item: NavigationItem): string | undefined {
+    return this.sidebarConfigService.getBadgeValue(item.badge);
+  }
 }

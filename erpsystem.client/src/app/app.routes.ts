@@ -66,8 +66,23 @@ export const routes: Routes = [
         canActivate: [inventoryUserGuard]
       },
       {
+        path: 'inventory/products/:id/view',
+        loadComponent: () => import('./inventory/product-view/product-view.component').then(m => m.ProductViewComponent),
+        canActivate: [inventoryUserGuard]
+      },
+      {
         path: 'inventory/products/:id/edit',
         loadComponent: () => import('./inventory/product-form/product-form.component').then(m => m.ProductFormComponent),
+        canActivate: [inventoryUserGuard]
+      },
+      {
+        path: 'inventory/adjustments',
+        loadComponent: () => import('./inventory/stock-adjustment-list/stock-adjustment-list.component').then(m => m.StockAdjustmentListComponent),
+        canActivate: [inventoryUserGuard]
+      },
+      {
+        path: 'inventory/alerts',
+        loadComponent: () => import('./inventory/low-stock-alerts/low-stock-alerts.component').then(m => m.LowStockAlertsComponent),
         canActivate: [inventoryUserGuard]
       },
       // Supply Chain routes
