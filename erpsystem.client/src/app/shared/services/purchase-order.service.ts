@@ -157,7 +157,12 @@ export class PurchaseOrderService {
    * Cancel a purchase order
    */
   cancelPurchaseOrder(id: string, reason: string): Observable<void> {
-    return this.http.put<Result<boolean>>(`${this.apiUrl}/${id}/cancel`, reason).pipe(
+    // Send reason string directly as the body, not as an object
+    return this.http.put<Result<boolean>>(`${this.apiUrl}/${id}/cancel`, JSON.stringify(reason), {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }).pipe(
       map(response => {
         if (!response.isSuccess) {
           throw new Error(response.error || 'Failed to cancel purchase order');

@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, FileText, Search, ArrowDownUp, Plus } from 'lucide-angular';
+import { LucideAngularModule, FileText, Search, ArrowDownUp, ArrowDown, ArrowUp, RefreshCcw } from 'lucide-angular';
 import { PurchaseOrder, StockMovement, StockMovementType } from '../../shared/models/purchase-order.interface';
 import { PurchaseOrderService } from '../../shared/services/purchase-order.service';
 import { FormsModule } from '@angular/forms';
@@ -23,12 +23,13 @@ export class StockMovementListComponent implements OnInit {
   totalItems = 0;
   totalPages = 0;
  
-
   // Icons
   readonly FileTextIcon = FileText;
   readonly SearchIcon = Search;
   readonly ArrowDownUpIcon = ArrowDownUp;
-  readonly PlusIcon = Plus;
+  readonly ArrowDownIcon = ArrowDown;
+  readonly ArrowUpIcon = ArrowUp;
+  readonly RefreshCcwIcon = RefreshCcw;
 
   constructor(private purchaseOrderService: PurchaseOrderService) {}
 

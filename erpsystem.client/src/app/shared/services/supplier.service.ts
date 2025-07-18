@@ -139,7 +139,7 @@ export class SupplierService {
    * Activate a supplier
    */
   activateSupplier(id: string): Observable<void> {
-    return this.http.post<Result<void>>(`${this.apiUrl}/${id}/activate`, {}).pipe(
+    return this.http.put<Result<void>>(`${this.apiUrl}/${id}/activate`, {}).pipe(
       map(response => {
         if (!response.isSuccess) {
           throw new Error(response.error || 'Failed to activate supplier');

@@ -288,6 +288,24 @@ public class ProductService : IProductService
 
             _context.StockAdjustments.Add(adjustment);
 
+            // Create stock movement record
+            var stockMovement = new StockMovement
+            {
+                Id = Guid.NewGuid(),
+                ProductId = productId,
+                MovementType = adjustmentDto.AdjustmentQuantity > 0 ? StockMovementType.StockIn : StockMovementType.StockOut,
+                Quantity = Math.Abs(adjustmentDto.AdjustmentQuantity),
+                StockBeforeMovement = product.CurrentStock,
+                StockAfterMovement = newStock,
+                Reference = $"ADJ-{adjustment.Id}",
+                Reason = adjustmentDto.Reason,
+                MovedByUserId = userId,
+                MovementDate = DateTime.UtcNow,
+                Notes = "Stock movement created using the stock adjustment form"
+            };
+
+            _context.StockMovements.Add(stockMovement);
+
             // Update product stock
             product.CurrentStock = newStock;
             product.UpdatedAt = DateTime.UtcNow;
@@ -295,8 +313,8 @@ public class ProductService : IProductService
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            _logger.LogInformation("Stock adjusted successfully for Product ID: {ProductId}, Adjustment: {Adjustment}", 
-                productId, adjustmentDto.AdjustmentQuantity);
+            _logger.LogInformation("Stock adjusted successfully for Product ID: {ProductId}, Adjustment: {Adjustment}, Movement ID: {MovementId}", 
+                productId, adjustmentDto.AdjustmentQuantity, stockMovement.Id);
             
             return Result.Success();
         }

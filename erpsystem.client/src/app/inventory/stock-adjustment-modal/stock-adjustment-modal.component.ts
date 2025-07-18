@@ -102,10 +102,14 @@ export class StockAdjustmentModalComponent implements OnInit, OnDestroy {
   }
 
   get isValidAdjustment(): boolean {
-    if (!this.product || !this.adjustmentForm.valid) return false;
+    if (!this.product || !this.adjustmentForm) return false;
     
     const type = this.adjustmentForm.get('adjustmentType')?.value;
     const quantity = this.adjustmentForm.get('quantity')?.value || 0;
+    const quantityControl = this.adjustmentForm.get('quantity');
+    
+    // Check if quantity is valid (not empty and meets min validator)
+    if (!quantity || !quantityControl?.valid) return false;
     
     // For decrease, ensure we don't go below 0
     if (type === 'decrease') {

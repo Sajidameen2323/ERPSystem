@@ -1,31 +1,29 @@
-<div class="p-4 sm:p-6">
-  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+<div class="p-6 w-[80vw]">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
     <div>
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Stock Movements</h1>
       <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
         View and track all stock movements in the system
       </p>
     </div>
-    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:mt-0 mt-4">
-      <button class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors w-full sm:w-auto">
-        <lucide-angular [img]="PlusIcon" class="w-4 h-4"></lucide-angular>
-        Add Movement
-      </button>
-    </div>
   </div>
 
   <!-- Filters -->
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
-    <div class="flex flex-col gap-4 md:grid md:grid-cols-4 md:gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <!-- Search -->
       <div class="relative">
         <lucide-angular [img]="SearchIcon" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"></lucide-angular>
         <input
           type="text"
-          placeholder="Search by product, reference, or reason..."
+          placeholder="Search stock movements..."
           [(ngModel)]="searchTerm"
           class="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
         >
       </div>
+
+      <!-- Type Filter -->
       <div>
         <select
           [(ngModel)]="selectedType"
@@ -37,8 +35,29 @@
           <option value="ADJUSTMENT">Adjustment</option>
         </select>
       </div>
-      <div class="hidden md:block"></div>
-      <div class="hidden md:block"></div>
+
+      <!-- Date Range (placeholder for future implementation) -->
+      <div>
+        <select
+          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        >
+          <option value="">All Time</option>
+          <option value="today">Today</option>
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+        </select>
+      </div>
+
+      <!-- Page Size -->
+      <div>
+        <select
+          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        >
+          <option value="10">10 per page</option>
+          <option value="25">25 per page</option>
+          <option value="50">50 per page</option>
+        </select>
+      </div>
     </div>
   </div>
 
@@ -54,56 +73,67 @@
   </div>
 
   <!-- Stock Movements Table -->
-  <div *ngIf="!loading" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-    <div class="w-full overflow-x-auto">
-      <table class="min-w-[800px] w-full divide-y divide-gray-200 dark:divide-gray-700">
+  <div *ngIf="!loading" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-700">
           <tr>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Product</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Quantity</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Stock Before</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Stock After</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Reference</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Reason</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Moved By</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Notes</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Product</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Quantity</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Stock Before</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Stock After</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Reference</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Reason</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Moved By</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Notes</th>
           </tr>
         </thead>
         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-          <tr *ngFor="let movement of stockMovements">
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{{ movement.movementDate | date:'medium' }}</td>
+          <tr *ngFor="let movement of stockMovements" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm text-gray-900 dark:text-white">{{ movement.movementDate | date:'medium' }}</div>
+            </td>
             <td class="px-6 py-4 whitespace-nowrap">
               <div class="flex flex-col">
-                <span class="text-sm font-medium text-gray-900 dark:text-white">{{ movement.productName || movement.product?.name }}</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400">{{ movement.productSKU || movement.product?.sku }}</span>
+                <div class="text-sm font-medium text-gray-900 dark:text-white">{{ movement.productName || movement.product?.name }}</div>
+                <div class="text-sm text-gray-500 dark:text-gray-400">{{ movement.productSKU || movement.product?.sku }}</div>
               </div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
               <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                 [ngClass]="{
-                  'bg-green-100 text-green-800': movement.movementType === 'Purchase',
-                  'bg-red-100 text-red-800': movement.movementType === 'Sale',
-                  'bg-yellow-100 text-yellow-800': movement.movementType === 'Adjustment'
+                  'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300': movement.movementType === 'Purchase',
+                  'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300': movement.movementType === 'Sale',
+                  'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300': movement.movementType === 'Adjustment'
                 }">
+                <lucide-angular *ngIf="movement.movementType === 'Purchase'" [img]="ArrowDownIcon" class="w-3.5 h-3.5 mr-1"></lucide-angular>
+                <lucide-angular *ngIf="movement.movementType === 'Sale'" [img]="ArrowUpIcon" class="w-3.5 h-3.5 mr-1"></lucide-angular>
+                <lucide-angular *ngIf="movement.movementType === 'Adjustment'" [img]="RefreshCcwIcon" class="w-3.5 h-3.5 mr-1"></lucide-angular>
                 {{ movement.movementType }}
               </span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{{ movement.quantity }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{{ movement.stockBeforeMovement }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{{ movement.stockAfterMovement }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{{ movement.reference }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{{ movement.reason }}</td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm text-gray-900 dark:text-white truncate max-w-[120px]" title="{{ movement.reference }}">{{ movement.reference }}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm text-gray-900 dark:text-white truncate max-w-[120px]" title="{{ movement.reason }}">{{ movement.reason }}</div>
+            </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{{ movement.movedByUserId }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{{ movement.notes }}</td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm text-gray-900 dark:text-white truncate max-w-[120px]" title="{{ movement.notes }}">{{ movement.notes }}</div>
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
 
     <!-- Empty State -->
-    <div *ngIf="stockMovements.length === 0 && !loading" class="text-center py-12">
+    <div *ngIf="stockMovements.length === 0" class="text-center py-12">
       <div class="text-gray-400 dark:text-gray-500 mb-4">
         <lucide-angular [img]="FileTextIcon" class="w-12 h-12 mx-auto"></lucide-angular>
       </div>
@@ -112,5 +142,32 @@
         {{ searchTerm || selectedType ? 'Try adjusting your search criteria' : 'No stock movements have been recorded yet.' }}
       </p>
     </div>
+  </div>
+
+  <!-- Pagination -->
+  <div *ngIf="!loading && stockMovements.length > 0" class="mt-6 flex items-center justify-between">
+    <div class="text-sm text-gray-700 dark:text-gray-300">
+      Showing 1 to {{ stockMovements.length }} of {{ stockMovements.length }} stock movements
+    </div>
+    
+    <nav class="flex items-center space-x-2">
+      <button
+        class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+      >
+        Previous
+      </button>
+
+      <button
+        class="px-3 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-md hover:bg-blue-700"
+      >
+        1
+      </button>
+
+      <button
+        class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+      >
+        Next
+      </button>
+    </nav>
   </div>
 </div>
