@@ -1,6 +1,7 @@
 using AutoMapper;
 using ERPSystem.Server.DTOs.SupplyChain;
 using ERPSystem.Server.Models;
+using Microsoft.OpenApi.Extensions;
 
 namespace ERPSystem.Server.Mappings;
 
@@ -43,7 +44,9 @@ public class SupplyChainProfile : Profile
 
         // PurchaseOrder mappings
         CreateMap<PurchaseOrder, PurchaseOrderDto>()
-            .ForMember(dest => dest.SupplierName, opt => opt.MapFrom(src => src.Supplier.Name));
+            .ForMember(dest => dest.SupplierName, opt => opt.MapFrom(src => src.Supplier.Name))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.GetDisplayName()))
+            .ForMember(dest => dest.Supplier, opt => opt.MapFrom(src => src.Supplier));
         
         CreateMap<PurchaseOrderCreateDto, PurchaseOrder>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())

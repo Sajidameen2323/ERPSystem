@@ -161,7 +161,7 @@ public class PurchaseOrdersController : ControllerBase
     /// Approve purchase order
     /// </summary>
     [HttpPut("{id}/approve")]
-    [Authorize(Roles = Constants.Roles.Admin)]
+    [Authorize(Roles = $"{Constants.Roles.Admin},{Constants.Roles.InventoryUser}")]
     public async Task<IActionResult> ApprovePurchaseOrder(Guid id)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;

@@ -9,6 +9,7 @@ public interface ISupplierService
     Task<Result<PagedResult<SupplierDto>>> GetSuppliersAsync(
         string? searchTerm = null,
         bool? isActive = null,
+        string? country = null,
         int page = 1,
         int pageSize = 10,
         string? sortBy = null,

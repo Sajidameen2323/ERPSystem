@@ -31,6 +31,7 @@ public class SuppliersController : ControllerBase
     public async Task<IActionResult> GetSuppliers(
         [FromQuery] string? searchTerm = null,
         [FromQuery] bool? isActive = null,
+        [FromQuery] string? country = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] string? sortBy = null,
@@ -40,7 +41,7 @@ public class SuppliersController : ControllerBase
         if (pageSize < 1 || pageSize > 100) pageSize = 10;
 
         var result = await _supplierService.GetSuppliersAsync(
-            searchTerm, isActive, page, pageSize, sortBy, sortDirection);
+            searchTerm, isActive, country, page, pageSize, sortBy, sortDirection);
 
         if (!result.IsSuccess)
         {

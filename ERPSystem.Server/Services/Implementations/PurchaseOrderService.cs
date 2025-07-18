@@ -10,6 +10,8 @@ namespace ERPSystem.Server.Services.Implementations;
 
 public class PurchaseOrderService : IPurchaseOrderService
 {
+
+
     private readonly ApplicationDbContext _context;
     private readonly IMapper _mapper;
     private readonly ILogger<PurchaseOrderService> _logger;
@@ -43,6 +45,7 @@ public class PurchaseOrderService : IPurchaseOrderService
                     .ThenInclude(poi => poi.Product)
                 .AsQueryable();
 
+            query = query.IgnoreQueryFilters(); // Ignore soft deletes if applicable
             // Apply filters
             if (supplierId.HasValue)
             {
@@ -88,6 +91,8 @@ public class PurchaseOrderService : IPurchaseOrderService
                 .Take(pageSize)
                 .ToListAsync();
 
+            // when mapping make sure enum string values are used
+        
             var purchaseOrderDtos = _mapper.Map<List<PurchaseOrderDto>>(purchaseOrders);
 
             var result = new PagedResult<PurchaseOrderDto>
@@ -115,8 +120,9 @@ public class PurchaseOrderService : IPurchaseOrderService
                 .Include(po => po.Supplier)
                 .Include(po => po.Items)
                     .ThenInclude(poi => poi.Product)
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(po => po.Id == id);
-
+            
             if (purchaseOrder == null)
             {
                 return Result<PurchaseOrderDto>.Failure("Purchase order not found");
@@ -200,6 +206,46 @@ public class PurchaseOrderService : IPurchaseOrderService
             await transaction.RollbackAsync();
             _logger.LogError(ex, "Error creating purchase order");
             return Result<PurchaseOrderDto>.Failure($"Failed to create purchase order: {ex.Message}");
+        }
+    }
+
+
+    // Mark as pending from draft
+
+    public async Task<Result<PurchaseOrderDto>> MarkPurchaseOrderPendingAsync(Guid id)
+    {
+        try
+        {
+            var purchaseOrder = await _context.PurchaseOrders
+                .Include(po => po.Supplier)
+                .Include(po => po.Items)
+                    .ThenInclude(poi => poi.Product)
+                .FirstOrDefaultAsync(po => po.Id == id);
+
+            if (purchaseOrder == null)
+            {
+                return Result<PurchaseOrderDto>.Failure("Purchase order not found");
+            }
+
+            if (purchaseOrder.Status != PurchaseOrderStatus.Draft)
+            {
+                return Result<PurchaseOrderDto>.Failure("Only draft purchase orders can be marked as pending");
+            }
+
+            purchaseOrder.Status = PurchaseOrderStatus.Pending;
+            purchaseOrder.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            var purchaseOrderDto = _mapper.Map<PurchaseOrderDto>(purchaseOrder);
+            _logger.LogInformation("Marked purchase order {PurchaseOrderId} - {PONumber} as Pending", purchaseOrder.Id, purchaseOrder.PONumber);
+
+            return Result<PurchaseOrderDto>.Success(purchaseOrderDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error marking purchase order {PurchaseOrderId} as pending", id);
+            return Result<PurchaseOrderDto>.Failure($"Failed to mark purchase order as pending: {ex.Message}");
         }
     }
 

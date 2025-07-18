@@ -27,6 +27,7 @@ public class SupplierService : ISupplierService
     public async Task<Result<PagedResult<SupplierDto>>> GetSuppliersAsync(
         string? searchTerm = null,
         bool? isActive = null,
+        string? country = null,
         int page = 1,
         int pageSize = 10,
         string? sortBy = null,
@@ -35,6 +36,15 @@ public class SupplierService : ISupplierService
         try
         {
             var query = _context.Suppliers.AsQueryable();
+
+            // When isActive is null, we want to get all suppliers (including soft deleted)
+            // When isActive is false, we want inactive suppliers (including soft deleted)
+            // When isActive is true, we want only active suppliers (excluding soft deleted)
+            if (isActive == null || (isActive.HasValue && !isActive.Value))
+            {
+                // Include soft deleted records when getting all suppliers or inactive suppliers
+                query = _context.Suppliers.IgnoreQueryFilters();
+            }
 
             // Apply search filter
             if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -48,7 +58,23 @@ public class SupplierService : ISupplierService
             // Apply active filter
             if (isActive.HasValue)
             {
-                query = query.Where(s => s.IsActive == isActive.Value);
+                if (isActive.Value)
+                {
+                    // For active suppliers: IsActive = true AND not soft deleted
+                    query = query.Where(s => s.IsActive == true && !s.IsDeleted);
+                }
+                else
+                {
+                    // For inactive suppliers: IsActive = false OR soft deleted
+                    query = query.Where(s => s.IsActive == false || s.IsDeleted);
+                }
+            }
+            // When isActive is null, no additional filtering is needed as we want all records
+
+            // Apply country filter
+            if (!string.IsNullOrWhiteSpace(country))
+            {
+                query = query.Where(s => s.Country.ToLower() == country.ToLower());
             }
 
             // Apply sorting
@@ -57,6 +83,7 @@ public class SupplierService : ISupplierService
                 "name" => sortDirection?.ToLower() == "desc" ? query.OrderByDescending(s => s.Name) : query.OrderBy(s => s.Name),
                 "contactname" => sortDirection?.ToLower() == "desc" ? query.OrderByDescending(s => s.ContactPerson) : query.OrderBy(s => s.ContactPerson),
                 "email" => sortDirection?.ToLower() == "desc" ? query.OrderByDescending(s => s.Email) : query.OrderBy(s => s.Email),
+                "country" => sortDirection?.ToLower() == "desc" ? query.OrderByDescending(s => s.Country) : query.OrderBy(s => s.Country),
                 "createdat" => sortDirection?.ToLower() == "desc" ? query.OrderByDescending(s => s.CreatedAt) : query.OrderBy(s => s.CreatedAt),
                 _ => query.OrderBy(s => s.Name)
             };
@@ -90,7 +117,9 @@ public class SupplierService : ISupplierService
     {
         try
         {
+            // Use IgnoreQueryFilters to find supplier even if soft deleted
             var supplier = await _context.Suppliers
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (supplier == null)
@@ -112,8 +141,9 @@ public class SupplierService : ISupplierService
     {
         try
         {
-            // Check if email already exists
+            // Check if email already exists (including soft deleted suppliers)
             var existingSupplier = await _context.Suppliers
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(s => s.Email.ToLower() == dto.Email.ToLower());
 
             if (existingSupplier != null)
@@ -143,7 +173,9 @@ public class SupplierService : ISupplierService
     {
         try
         {
+            // Use IgnoreQueryFilters to find supplier even if soft deleted
             var supplier = await _context.Suppliers
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (supplier == null)
@@ -151,8 +183,9 @@ public class SupplierService : ISupplierService
                 return Result<SupplierDto>.Failure("Supplier not found");
             }
 
-            // Check if email already exists for another supplier
+            // Check if email already exists for another supplier (including soft deleted)
             var existingSupplier = await _context.Suppliers
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(s => s.Email.ToLower() == dto.Email.ToLower() && s.Id != id);
 
             if (existingSupplier != null)
@@ -181,7 +214,9 @@ public class SupplierService : ISupplierService
     {
         try
         {
+            // Use IgnoreQueryFilters to find supplier even if already soft deleted
             var supplier = await _context.Suppliers
+                .IgnoreQueryFilters()
                 .Include(s => s.ProductSuppliers)
                 .Include(s => s.PurchaseOrders)
                 .FirstOrDefaultAsync(s => s.Id == id);
@@ -221,7 +256,9 @@ public class SupplierService : ISupplierService
     {
         try
         {
+            // Use IgnoreQueryFilters to find supplier even if soft deleted
             var supplier = await _context.Suppliers
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (supplier == null)
@@ -230,6 +267,8 @@ public class SupplierService : ISupplierService
             }
 
             supplier.IsActive = true;
+            // If supplier was soft deleted, restore it
+            supplier.IsDeleted = false;
             supplier.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -248,7 +287,9 @@ public class SupplierService : ISupplierService
     {
         try
         {
+            // Use IgnoreQueryFilters to find supplier even if soft deleted
             var supplier = await _context.Suppliers
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (supplier == null)

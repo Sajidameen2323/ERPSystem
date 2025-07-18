@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography.X509Certificates;
 using ERPSystem.Server.Models;
 
 namespace ERPSystem.Server.DTOs.SupplyChain;
@@ -8,7 +9,7 @@ public class PurchaseOrderDto
     public Guid Id { get; set; }
     public string PONumber { get; set; } = string.Empty;
     public Guid SupplierId { get; set; }
-    public PurchaseOrderStatus Status { get; set; }
+    public string? Status { get; set; }
     public DateTime OrderDate { get; set; }
     public DateTime? ExpectedDeliveryDate { get; set; }
     public DateTime? ActualDeliveryDate { get; set; }
@@ -22,6 +23,7 @@ public class PurchaseOrderDto
     
     // Navigation properties
     public string? SupplierName { get; set; }
+    public SupplierDto? Supplier { get; set; }
     public List<PurchaseOrderItemDto> Items { get; set; } = new();
 }
 
