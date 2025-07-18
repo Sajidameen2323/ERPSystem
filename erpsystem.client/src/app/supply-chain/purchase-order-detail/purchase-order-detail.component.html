@@ -20,14 +20,71 @@
 
     <!-- Action Buttons -->
     <div class="flex items-center space-x-3" *ngIf="purchaseOrder">
+      <!-- Edit (Draft only) -->
       <a
         *ngIf="canEdit(purchaseOrder.status)"
         [routerLink]="[purchaseOrder.id, 'edit']"
         class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        title="Edit Order"
       >
         <lucide-angular [img]="EditIcon" class="w-4 h-4"></lucide-angular>
-        Edit Order
+        Edit
       </a>
+
+      <!-- Mark as Pending (Draft only) -->
+      <button
+        *ngIf="canMarkPending(purchaseOrder.status)"
+        (click)="markAsPending(purchaseOrder)"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+        title="Mark as Pending"
+      >
+        <lucide-angular [img]="ClockIcon" class="w-4 h-4"></lucide-angular>
+        Mark as Pending
+      </button>
+
+      <!-- Approve (Pending only) -->
+      <button
+        *ngIf="canApprove(purchaseOrder.status)"
+        (click)="approvePurchaseOrder(purchaseOrder)"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+        title="Approve Order"
+      >
+        <lucide-angular [img]="CheckCircleIcon" class="w-4 h-4"></lucide-angular>
+        Approve
+      </button>
+
+      <!-- Send to Supplier (Approved only) -->
+      <button
+        *ngIf="canSend(purchaseOrder.status)"
+        (click)="sendPurchaseOrder(purchaseOrder)"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+        title="Send to Supplier"
+      >
+        <lucide-angular [img]="TruckIcon" class="w-4 h-4"></lucide-angular>
+        Send
+      </button>
+
+      <!-- Cancel (Draft, Pending, Approved) -->
+      <button
+        *ngIf="canCancel(purchaseOrder.status)"
+        (click)="cancelPurchaseOrder(purchaseOrder)"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        title="Cancel Order"
+      >
+        <lucide-angular [img]="XCircleIcon" class="w-4 h-4"></lucide-angular>
+        Cancel
+      </button>
+
+      <!-- Receive Items (Approved/PartiallyReceived) -->
+      <button
+        *ngIf="canReceiveItems(purchaseOrder.status)"
+        (click)="receiveFullOrder(purchaseOrder)"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+        title="Receive Full Order"
+      >
+        <lucide-angular [img]="PackageIcon" class="w-4 h-4"></lucide-angular>
+        Receive All
+      </button>
     </div>
   </div>
 
@@ -168,22 +225,35 @@
                 <div class="text-sm text-gray-900 dark:text-white">{{ item.receivedQuantity }} / {{ item.orderedQuantity }}</div>
               </td>
 
-              <!-- Status -->
+              <!-- Status & Actions -->
               <td class="px-6 py-4 whitespace-nowrap">
-                <span
-                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                  [ngClass]="{
-                    'bg-green-100 text-green-800': item.receivedQuantity >= item.orderedQuantity,
-                    'bg-yellow-100 text-yellow-800': item.receivedQuantity > 0 && item.receivedQuantity < item.orderedQuantity,
-                    'bg-gray-100 text-gray-800': item.receivedQuantity === 0
-                  }"
-                >
-                  <lucide-angular 
-                    [img]="item.receivedQuantity >= item.orderedQuantity ? CheckCircleIcon : (item.receivedQuantity > 0 ? TruckIcon : XCircleIcon)" 
-                    class="w-3 h-3 mr-1"
-                  ></lucide-angular>
-                  {{ item.receivedQuantity >= item.orderedQuantity ? 'Received' : (item.receivedQuantity > 0 ? 'Partial' : 'Pending') }}
-                </span>
+                <div class="flex items-center space-x-2">
+                  <span
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                    [ngClass]="{
+                      'bg-green-100 text-green-800': item.receivedQuantity >= item.orderedQuantity,
+                      'bg-yellow-100 text-yellow-800': item.receivedQuantity > 0 && item.receivedQuantity < item.orderedQuantity,
+                      'bg-gray-100 text-gray-800': item.receivedQuantity === 0
+                    }"
+                  >
+                    <lucide-angular 
+                      [img]="item.receivedQuantity >= item.orderedQuantity ? CheckCircleIcon : (item.receivedQuantity > 0 ? TruckIcon : XCircleIcon)" 
+                      class="w-3 h-3 mr-1"
+                    ></lucide-angular>
+                    {{ item.receivedQuantity >= item.orderedQuantity ? 'Received' : (item.receivedQuantity > 0 ? 'Partial' : 'Pending') }}
+                  </span>
+
+                  <!-- Receive Item Button (if not fully received and order is Approved/PartiallyReceived) -->
+                  <button
+                    *ngIf="canReceiveItems(purchaseOrder.status) && item.receivedQuantity < item.orderedQuantity"
+                    (click)="receiveItem(item)"
+                    class="ml-2 inline-flex items-center px-2 py-1 bg-indigo-500 text-white rounded hover:bg-indigo-600 text-xs"
+                    title="Receive Item"
+                  >
+                    <lucide-angular [img]="PackageIcon" class="w-3 h-3 mr-1"></lucide-angular>
+                    Receive
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>

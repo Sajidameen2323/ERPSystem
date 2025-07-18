@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil, debounceTime, distinctUntilChanged } from 'rxjs';
-import { LucideAngularModule, Plus, Search, Edit, Eye, FileText, Truck, CheckCircle } from 'lucide-angular';
+import { LucideAngularModule, Plus, Search, Edit, Eye, FileText, Truck, CheckCircle, Clock } from 'lucide-angular';
 
 import { PurchaseOrderService } from '../../shared/services/purchase-order.service';
 import { SupplierService } from '../../shared/services/supplier.service';
@@ -40,6 +40,8 @@ export class PurchaseOrderListComponent implements OnInit, OnDestroy {
   readonly FileTextIcon = FileText;
   readonly TruckIcon = Truck;
   readonly CheckCircleIcon = CheckCircle;
+  readonly ClockIcon = Clock;
+
 
   // Pagination
   currentPage = 1;
@@ -60,7 +62,7 @@ export class PurchaseOrderListComponent implements OnInit, OnDestroy {
   constructor(
     private purchaseOrderService: PurchaseOrderService,
     private supplierService: SupplierService
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.setupSearchDebounce();
@@ -168,18 +170,18 @@ export class PurchaseOrderListComponent implements OnInit, OnDestroy {
     const pages: number[] = [];
     const maxPagesToShow = 5;
     const halfRange = Math.floor(maxPagesToShow / 2);
-    
+
     let start = Math.max(1, this.currentPage - halfRange);
     let end = Math.min(this.totalPages, start + maxPagesToShow - 1);
-    
+
     if (end - start + 1 < maxPagesToShow) {
       start = Math.max(1, end - maxPagesToShow + 1);
     }
-    
+
     for (let i = start; i <= end; i++) {
       pages.push(i);
     }
-    
+
     return pages;
   }
 
@@ -222,6 +224,33 @@ export class PurchaseOrderListComponent implements OnInit, OnDestroy {
         });
     }
   }
+
+  /**
+   * Returns true if the purchase order can be marked as pending (Draft status only)
+   */
+  canMarkPending(status: PurchaseOrderStatus): boolean {
+    return this.purchaseOrderService.canMarkPending(status);
+  }
+
+  /**
+   * Mark the purchase order as Pending (calls backend and updates UI)
+   */
+  markAsPending(po: PurchaseOrder): void {
+    if (!po || po.status !== PurchaseOrderStatus.Draft) return;
+    if (!confirm(`Mark purchase order ${po.poNumber} as Pending?`)) return;
+    this.loading = true;
+    this.error = null;
+    this.purchaseOrderService.markAsPending(po.id).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        this.loadPurchaseOrders();
+      },
+      error: (err) => {
+        this.error = err?.message || 'Failed to mark as pending.';
+        this.loading = false;
+      }
+    });
+  }
+
 
   formatCurrency(amount: number): string {
     return new Intl.NumberFormat('en-US', {

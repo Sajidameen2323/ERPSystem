@@ -212,7 +212,7 @@ public class PurchaseOrderService : IPurchaseOrderService
 
     // Mark as pending from draft
 
-    public async Task<Result<PurchaseOrderDto>> MarkPurchaseOrderPendingAsync(Guid id)
+    public async Task<Result<bool>> MarkPurchaseOrderPendingAsync(Guid id)
     {
         try
         {
@@ -224,12 +224,12 @@ public class PurchaseOrderService : IPurchaseOrderService
 
             if (purchaseOrder == null)
             {
-                return Result<PurchaseOrderDto>.Failure("Purchase order not found");
+                return Result<bool>.Failure("Purchase order not found");
             }
 
             if (purchaseOrder.Status != PurchaseOrderStatus.Draft)
             {
-                return Result<PurchaseOrderDto>.Failure("Only draft purchase orders can be marked as pending");
+                return Result<bool>.Failure("Only draft purchase orders can be marked as pending");
             }
 
             purchaseOrder.Status = PurchaseOrderStatus.Pending;
@@ -240,12 +240,12 @@ public class PurchaseOrderService : IPurchaseOrderService
             var purchaseOrderDto = _mapper.Map<PurchaseOrderDto>(purchaseOrder);
             _logger.LogInformation("Marked purchase order {PurchaseOrderId} - {PONumber} as Pending", purchaseOrder.Id, purchaseOrder.PONumber);
 
-            return Result<PurchaseOrderDto>.Success(purchaseOrderDto);
+            return Result<bool>.Success(true);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error marking purchase order {PurchaseOrderId} as pending", id);
-            return Result<PurchaseOrderDto>.Failure($"Failed to mark purchase order as pending: {ex.Message}");
+            return Result<bool>.Failure($"Failed to mark purchase order as pending: {ex.Message}");
         }
     }
 
@@ -458,7 +458,7 @@ public class PurchaseOrderService : IPurchaseOrderService
                 return Result<bool>.Failure("Purchase order item not found");
             }
 
-            if (item.PurchaseOrder.Status != PurchaseOrderStatus.Sent)
+            if (item.PurchaseOrder.Status != PurchaseOrderStatus.Sent && item.PurchaseOrder.Status != PurchaseOrderStatus.PartiallyReceived)
             {
                 return Result<bool>.Failure("Can only receive items from sent purchase orders");
             }

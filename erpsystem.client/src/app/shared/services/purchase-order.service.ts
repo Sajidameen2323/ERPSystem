@@ -1,3 +1,5 @@
+
+// Removed misplaced markPending method
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -25,6 +27,20 @@ export class PurchaseOrderService {
   private readonly apiUrl = `/api/purchaseorders`;
 
   constructor(private http: HttpClient) {}
+
+  /**
+   * Mark a purchase order as Pending
+   */
+  markAsPending(id: string): Observable<boolean> {
+    return this.http.put<Result<boolean>>(`${this.apiUrl}/${id}/mark-pending`, {}).pipe(
+      map((response: Result<boolean>) => {
+        if (response.isSuccess) {
+          return response.data as boolean;
+        }
+        throw new Error(response.error || 'Failed to mark as pending');
+      })
+    );
+  }
 
   /**
    * Get purchase orders with filtering, sorting, and pagination
@@ -257,6 +273,7 @@ export class PurchaseOrderService {
       { value: PurchaseOrderStatus.Draft, label: 'Draft' },
       { value: PurchaseOrderStatus.Pending, label: 'Pending Approval' },
       { value: PurchaseOrderStatus.Approved, label: 'Approved' },
+      { value: PurchaseOrderStatus.Sent, label: 'Sent to Supplier' },
       { value: PurchaseOrderStatus.PartiallyReceived, label: 'Partially Received' },
       { value: PurchaseOrderStatus.Received, label: 'Fully Received' },
       { value: PurchaseOrderStatus.Cancelled, label: 'Cancelled' }
@@ -274,6 +291,8 @@ export class PurchaseOrderService {
         return 'bg-yellow-100 text-yellow-800';
       case PurchaseOrderStatus.Approved:
         return 'bg-blue-100 text-blue-800';
+      case PurchaseOrderStatus.Sent:
+        return 'bg-orange-100 text-orange-800';
       case PurchaseOrderStatus.PartiallyReceived:
         return 'bg-purple-100 text-purple-800';
       case PurchaseOrderStatus.Received:
@@ -303,8 +322,13 @@ export class PurchaseOrderService {
    * Check if purchase order can be approved
    */
   canApprove(status: PurchaseOrderStatus): boolean {
-    return status === PurchaseOrderStatus.Draft || status === PurchaseOrderStatus.Pending;
+    return status === PurchaseOrderStatus.Pending;
   }
+
+  canMarkPending(status: PurchaseOrderStatus): boolean {
+    return status === PurchaseOrderStatus.Draft;
+  }
+
 
   /**
    * Check if purchase order can be cancelled
@@ -319,8 +343,8 @@ export class PurchaseOrderService {
    * Check if items can be received
    */
   canReceiveItems(status: PurchaseOrderStatus): boolean {
-    return status === PurchaseOrderStatus.Approved || 
-           status === PurchaseOrderStatus.PartiallyReceived;
+    return status === PurchaseOrderStatus.PartiallyReceived || 
+           status === PurchaseOrderStatus.Sent;
   }
 
   /**

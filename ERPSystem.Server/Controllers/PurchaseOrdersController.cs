@@ -103,7 +103,7 @@ public class PurchaseOrdersController : ControllerBase
             return BadRequest(Result<PurchaseOrderDto>.Failure(result.Error));
         }
 
-        return CreatedAtAction(nameof(GetPurchaseOrder), new { id = result.Data!.Id }, 
+        return CreatedAtAction(nameof(GetPurchaseOrder), new { id = result.Data!.Id },
             Result<PurchaseOrderDto>.Success(result.Data!));
     }
 
@@ -156,6 +156,29 @@ public class PurchaseOrdersController : ControllerBase
 
         return Ok(Result<bool>.Success(true));
     }
+
+    /// <summary>
+    /// Mark purchase order as pending
+    /// </summary>
+    [HttpPut("{id}/mark-pending")]
+    [Authorize(Roles = $"{Constants.Roles.Admin},{Constants.Roles.InventoryUser}")]
+    public async Task<IActionResult> MarkPurchaseOrderPending(Guid id)
+    {
+
+        var result = await _purchaseOrderService.MarkPurchaseOrderPendingAsync(id);
+
+        if (!result.IsSuccess)
+        {
+            if (result.Error.Contains("not found"))
+            {
+                return NotFound(Result<bool>.Failure("Purchase order not found"));
+            }
+            return BadRequest(Result<bool>.Failure(result.Error));
+        }
+
+        return Ok(Result<bool>.Success(true));
+    }
+
 
     /// <summary>
     /// Approve purchase order

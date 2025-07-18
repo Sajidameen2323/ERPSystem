@@ -190,6 +190,16 @@
                 >
                   <lucide-angular [img]="CheckCircleIcon" class="w-4 h-4"></lucide-angular>
                 </button>
+                
+                <!-- Mark as Pending (only for Draft status) -->
+                <button
+                  *ngIf="canMarkPending(po.status)"
+                  (click)="markAsPending(po)"
+                  class="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300"
+                  title="Mark as Pending"
+                >
+                  <lucide-angular [img]="ClockIcon" class="w-4 h-4"></lucide-angular>
+                </button>
 
                 <!-- Receive Items (for Approved/PartiallyReceived) -->
                 <a

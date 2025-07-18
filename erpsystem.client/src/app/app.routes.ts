@@ -120,6 +120,11 @@ export const routes: Routes = [
         path: 'supply-chain/purchase-orders/:id/edit',
         loadComponent: () => import('./supply-chain/purchase-order-form/purchase-order-form.component').then(m => m.PurchaseOrderFormComponent),
         canActivate: [inventoryUserGuard]
+      },
+      {
+        path: 'supply-chain/stock-movements',
+        loadComponent: () => import('./supply-chain/stock-movement-list/stock-movement-list.component').then(m => m.StockMovementListComponent),
+        canActivate: [inventoryUserGuard]
       }
     ]
   },

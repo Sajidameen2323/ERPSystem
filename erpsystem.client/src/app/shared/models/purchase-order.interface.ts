@@ -4,6 +4,7 @@ export enum PurchaseOrderStatus {
   Draft = 'Draft',
   Pending = 'Pending',
   Approved = 'Approved',
+  Sent = 'Sent',
   PartiallyReceived = 'PartiallyReceived',
   Received = 'Received',
   Cancelled = 'Cancelled'
