@@ -21,6 +21,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<ProductSupplier> ProductSuppliers { get; set; }
     public DbSet<PurchaseOrder> PurchaseOrders { get; set; }
     public DbSet<PurchaseOrderItem> PurchaseOrderItems { get; set; }
+    public DbSet<PurchaseOrderReturn> PurchaseOrderReturns { get; set; }
+    public DbSet<PurchaseOrderReturnItem> PurchaseOrderReturnItems { get; set; }
 
     #endregion
 
@@ -184,6 +186,8 @@ public class ApplicationDbContext : DbContext
         ConfigureProductSupplier(builder);
         ConfigurePurchaseOrder(builder);
         ConfigurePurchaseOrderItem(builder);
+        ConfigurePurchaseOrderReturn(builder);
+        ConfigurePurchaseOrderReturnItem(builder);
     }
 
     private void ConfigureSupplier(ModelBuilder builder)
@@ -423,6 +427,109 @@ public class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => e.ProductId)
                 .HasDatabaseName("IX_PurchaseOrderItem_ProductId");
+
+            // Soft Delete Filter
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+    }
+
+    private void ConfigurePurchaseOrderReturn(ModelBuilder builder)
+    {
+        builder.Entity<PurchaseOrderReturn>(entity =>
+        {
+            // Primary Key
+            entity.HasKey(e => e.Id);
+
+            // Required Fields
+            entity.Property(e => e.ReturnNumber)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.CreatedByUserId)
+                .IsRequired();
+
+            entity.Property(e => e.TotalReturnAmount)
+                .HasColumnType("decimal(18,2)");
+
+            // Indexes
+            entity.HasIndex(e => e.ReturnNumber)
+                .IsUnique()
+                .HasDatabaseName("IX_PurchaseOrderReturn_ReturnNumber");
+
+            entity.HasIndex(e => e.PurchaseOrderId)
+                .HasDatabaseName("IX_PurchaseOrderReturn_PurchaseOrderId");
+
+            entity.HasIndex(e => e.SupplierId)
+                .HasDatabaseName("IX_PurchaseOrderReturn_SupplierId");
+
+            entity.HasIndex(e => e.ReturnDate)
+                .HasDatabaseName("IX_PurchaseOrderReturn_ReturnDate");
+
+            // Relationships
+            entity.HasOne(e => e.PurchaseOrder)
+                .WithMany()
+                .HasForeignKey(e => e.PurchaseOrderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Supplier)
+                .WithMany()
+                .HasForeignKey(e => e.SupplierId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(e => e.Items)
+                .WithOne(e => e.PurchaseOrderReturn)
+                .HasForeignKey(e => e.PurchaseOrderReturnId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Soft Delete Filter
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+    }
+
+    private void ConfigurePurchaseOrderReturnItem(ModelBuilder builder)
+    {
+        builder.Entity<PurchaseOrderReturnItem>(entity =>
+        {
+            // Primary Key
+            entity.HasKey(e => e.Id);
+
+            // Required Fields
+            entity.Property(e => e.ReturnQuantity)
+                .IsRequired();
+
+            entity.Property(e => e.UnitPrice)
+                .IsRequired()
+                .HasColumnType("decimal(18,2)");
+
+            entity.Property(e => e.TotalReturnAmount)
+                .IsRequired()
+                .HasColumnType("decimal(18,2)");
+
+            // Indexes
+            entity.HasIndex(e => e.PurchaseOrderReturnId)
+                .HasDatabaseName("IX_PurchaseOrderReturnItem_PurchaseOrderReturnId");
+
+            entity.HasIndex(e => e.ProductId)
+                .HasDatabaseName("IX_PurchaseOrderReturnItem_ProductId");
+
+            entity.HasIndex(e => e.PurchaseOrderItemId)
+                .HasDatabaseName("IX_PurchaseOrderReturnItem_PurchaseOrderItemId");
+
+            // Relationships
+            entity.HasOne(e => e.PurchaseOrderReturn)
+                .WithMany(e => e.Items)
+                .HasForeignKey(e => e.PurchaseOrderReturnId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Product)
+                .WithMany()
+                .HasForeignKey(e => e.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.PurchaseOrderItem)
+                .WithMany()
+                .HasForeignKey(e => e.PurchaseOrderItemId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Soft Delete Filter
             entity.HasQueryFilter(e => !e.IsDeleted);

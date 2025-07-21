@@ -1,0 +1,103 @@
+/* Modal Animations and Styles */
+
+/* Fade in/out animation for backdrop */
+.fixed.inset-0 {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Scale animation for modal panel */
+.inline-block.align-bottom {
+  animation: scaleIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Smooth focus styles */
+.inline-block.align-bottom:focus-within {
+  outline: none;
+}
+
+/* Enhanced close button hover effect */
+button[aria-label="Close modal"]:hover {
+  transform: scale(1.05);
+}
+
+/* Smooth transitions for all interactive elements */
+button {
+  transition: all 0.15s ease-in-out;
+}
+
+/* Custom scrollbar for modal content if needed */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5);
+  border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.7);
+}
+
+/* Dark mode scrollbar */
+.dark .overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(75, 85, 99, 0.5);
+}
+
+.dark .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(75, 85, 99, 0.7);
+}
+
+/* Responsive text sizing */
+@media (max-width: 640px) {
+  .inline-block.align-bottom {
+    margin: 1rem;
+    max-width: calc(100vw - 2rem);
+  }
+}
+
+/* Badge hover effects */
+.inline-flex.items-center.px-3.py-1.rounded-full {
+  transition: transform 0.15s ease-in-out;
+}
+
+.inline-flex.items-center.px-3.py-1.rounded-full:hover {
+  transform: scale(1.02);
+}
+
+/* Card hover effects */
+.rounded-lg.p-4 {
+  transition: box-shadow 0.15s ease-in-out;
+}
+
+.rounded-lg.p-4:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.dark .rounded-lg.p-4:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}

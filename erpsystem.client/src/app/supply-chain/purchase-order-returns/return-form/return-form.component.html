@@ -1,0 +1,352 @@
+<!-- Return Form Component -->
+<div [ngClass]="layoutService.getContainerClasses()">
+  
+  <!-- Header Section -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+    <div class="flex items-center gap-4">
+      <button
+        (click)="goBack()"
+        class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors rounded-lg"
+        [ngClass]="themeClasses().buttonSecondary">
+        <lucide-angular [img]="ArrowLeftIcon" class="w-4 h-4"></lucide-angular>
+        Back to Returns
+      </button>
+      
+      <div>
+        <h1 class="text-2xl font-bold" [ngClass]="themeClasses().textPrimary">
+          Create Return
+        </h1>
+        <p class="mt-1 text-sm" [ngClass]="themeClasses().textMuted">
+          Create a new purchase order return
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Message -->
+  @if (success()) {
+    <div class="mb-6 p-4 border border-green-300 dark:border-green-600 rounded-lg bg-green-50 dark:bg-green-900/20">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <lucide-angular [img]="CheckCircleIcon" class="w-5 h-5 text-green-600 dark:text-green-400 mr-2"></lucide-angular>
+          <span class="text-green-700 dark:text-green-400">{{ success() }}</span>
+        </div>
+        <button (click)="clearSuccess()" class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300">
+          <lucide-angular [img]="XCircleIcon" class="w-4 h-4"></lucide-angular>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Error Message -->
+  @if (error()) {
+    <div class="mb-6 p-4 border border-red-300 dark:border-red-600 rounded-lg bg-red-50 dark:bg-red-900/20">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <lucide-angular [img]="AlertCircleIcon" class="w-5 h-5 text-red-600 dark:text-red-400 mr-2"></lucide-angular>
+          <span class="text-red-700 dark:text-red-400">{{ error() }}</span>
+        </div>
+        <button (click)="clearError()" class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">
+          <lucide-angular [img]="XCircleIcon" class="w-4 h-4"></lucide-angular>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="text-center py-12">
+      <div class="animate-spin inline-block w-8 h-8 border-4 border-current border-t-transparent text-blue-600 rounded-full"></div>
+      <p class="mt-4 text-sm" [ngClass]="themeClasses().textMuted">Loading purchase order details...</p>
+    </div>
+  }
+
+  <!-- Return Form -->
+  @if (!loading()) {
+    <form [formGroup]="returnForm" (ngSubmit)="onSubmit()" class="space-y-6">
+      
+      <!-- Purchase Order Selection -->
+      <div [ngClass]="themeClasses().card" class="rounded-lg shadow-sm p-6">
+        <h2 class="text-lg font-semibold mb-4" [ngClass]="themeClasses().textPrimary">Purchase Order Selection</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label for="purchaseOrderSearch" class="block text-sm font-medium mb-1" [ngClass]="themeClasses().textSecondary">
+              Search Purchase Order
+            </label>
+            <div class="relative">
+              <input
+                id="purchaseOrderSearch"
+                type="text"
+                formControlName="purchaseOrderSearch"
+                placeholder="Enter PO number or search..."
+                (focus)="onSearchInputFocus()"
+                (blur)="hideSearchDropdown()"
+                class="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+              <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                @if (searchingPO()) {
+                  <div class="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full"></div>
+                } @else {
+                  <button
+                    type="button"
+                    (click)="clearSearch()"
+                    class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
+                    <lucide-angular [img]="XCircleIcon" class="w-4 h-4"></lucide-angular>
+                  </button>
+                }
+              </div>
+              
+              <!-- Search Results Dropdown -->
+              @if (showSearchDropdown() && purchaseOrderSearchResults().length > 0) {
+                <div class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  @for (po of purchaseOrderSearchResults(); track po.id) {
+                    <button
+                      type="button"
+                      (click)="selectPurchaseOrder(po)"
+                      class="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-200 dark:border-gray-700 last:border-b-0 focus:outline-none focus:bg-gray-50 dark:focus:bg-gray-700">
+                      <div class="flex justify-between items-start">
+                        <div>
+                          <div class="font-medium text-sm" [ngClass]="themeClasses().textPrimary">
+                            {{ po.poNumber }}
+                          </div>
+                          <div class="text-xs" [ngClass]="themeClasses().textMuted">
+                            {{ po.supplierName || po.supplier?.name }}
+                          </div>
+                          <div class="text-xs" [ngClass]="themeClasses().textMuted">
+                            {{ po.orderDate | date:'MMM d, y' }} • {{ po.status }}
+                          </div>
+                        </div>
+                        <div class="text-right">
+                          <div class="text-sm font-medium" [ngClass]="themeClasses().textPrimary">
+                            {{ po.totalAmount | currency }}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+            <p class="mt-1 text-xs" [ngClass]="themeClasses().textMuted">
+              Search for received purchase orders to create returns
+            </p>
+          </div>
+
+          @if (selectedPurchaseOrder()) {
+            <div>
+              <label class="block text-sm font-medium mb-1" [ngClass]="themeClasses().textSecondary">Selected Purchase Order</label>
+              <div class="p-3 border rounded-lg" [ngClass]="themeClasses().border + ' bg-blue-50 dark:bg-blue-900/20'">
+                <div class="text-sm font-medium" [ngClass]="themeClasses().textPrimary">
+                  {{ selectedPurchaseOrder()!.poNumber }}
+                </div>
+                <div class="text-xs" [ngClass]="themeClasses().textMuted">
+                  {{ selectedPurchaseOrder()!.supplierName }} • {{ selectedPurchaseOrder()!.orderDate | date:'MMM d, y' }}
+                </div>
+                <div class="text-xs" [ngClass]="themeClasses().textMuted">
+                  Total: {{ selectedPurchaseOrder()!.totalAmount | currency }}
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Return Items -->
+      @if (availableItems().length > 0) {
+        <div [ngClass]="themeClasses().card" class="rounded-lg shadow-sm overflow-hidden">
+          <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-semibold" [ngClass]="themeClasses().textPrimary">Return Items</h2>
+                <p class="text-sm" [ngClass]="themeClasses().textMuted">
+                  Select items to return from the purchase order
+                </p>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  (click)="selectAllItems()"
+                  class="px-3 py-1 text-xs font-medium transition-colors rounded"
+                  [ngClass]="themeClasses().buttonSecondary">
+                  Select All
+                </button>
+                <button
+                  type="button"
+                  (click)="deselectAllItems()"
+                  class="px-3 py-1 text-xs font-medium transition-colors rounded"
+                  [ngClass]="themeClasses().buttonSecondary">
+                  Clear All
+                </button>
+              </div>
+            </div>
+            
+            @if (getSelectedItemsCount() > 0) {
+              <div class="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div class="text-sm font-medium" [ngClass]="themeClasses().textPrimary">
+                  {{ getSelectedItemsCount() }} items selected • Total Return Amount: {{ getTotalReturnAmount() | currency }}
+                </div>
+              </div>
+            }
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead class="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Select
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Product
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Available
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Return Qty
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Unit Price
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Reason
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Refund
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700" formArrayName="items">
+                @for (itemControl of itemsFormArray.controls; track $index; let i = $index) {
+                  <tr [formGroupName]="i" class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" 
+                      [ngClass]="{ 'bg-blue-50 dark:bg-blue-900/10': itemControl.get('selected')?.value }">
+                    
+                    <!-- Select Checkbox -->
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        formControlName="selected"
+                        (change)="toggleItemSelection(i)"
+                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    </td>
+
+                    <!-- Product -->
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="flex flex-col">
+                        <div class="text-sm font-medium" [ngClass]="themeClasses().textPrimary">
+                          {{ itemControl.get('productName')?.value }}
+                        </div>
+                        <div class="text-xs" [ngClass]="themeClasses().textMuted">
+                          SKU: {{ itemControl.get('productSKU')?.value }}
+                        </div>
+                      </div>
+                    </td>
+
+                    <!-- Available Quantity -->
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="text-sm" [ngClass]="themeClasses().textPrimary">
+                        {{ itemControl.get('availableForReturn')?.value }}
+                      </div>
+                    </td>
+
+                    <!-- Return Quantity -->
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <input
+                        type="number"
+                        formControlName="returnQuantity"
+                        min="0"
+                        [max]="itemControl.get('availableForReturn')?.value"
+                        class="block w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                    </td>
+
+                    <!-- Unit Price -->
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="text-sm" [ngClass]="themeClasses().textPrimary">
+                        {{ itemControl.get('unitPrice')?.value | currency }}
+                      </div>
+                    </td>
+
+                    <!-- Reason -->
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <select
+                        formControlName="reason"
+                        class="block w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                        <option value="">Select reason...</option>
+                        @for (reason of returnReasonOptions(); track reason.value) {
+                          <option [value]="reason.value">{{ reason.label }}</option>
+                        }
+                      </select>
+                      @if (itemControl.get('reason')?.value === 6) {
+                        <input
+                          type="text"
+                          formControlName="reasonDescription"
+                          placeholder="Describe reason..."
+                          class="mt-1 block w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                      }
+                    </td>
+
+                    <!-- Refund Requested -->
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                      <input
+                        type="checkbox"
+                        formControlName="refundRequested"
+                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    </td>
+
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
+      <!-- Additional Notes -->
+      <div [ngClass]="themeClasses().card" class="rounded-lg shadow-sm p-6">
+        <h2 class="text-lg font-semibold mb-4" [ngClass]="themeClasses().textPrimary">Additional Information</h2>
+        
+        <div>
+          <label for="notes" class="block text-sm font-medium mb-1" [ngClass]="themeClasses().textSecondary">
+            Notes (Optional)
+          </label>
+          <textarea
+            id="notes"
+            formControlName="notes"
+            rows="3"
+            placeholder="Add any additional notes about this return..."
+            class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+          </textarea>
+        </div>
+      </div>
+
+      <!-- Form Actions -->
+      <div class="flex flex-col sm:flex-row gap-3 sm:justify-end">
+        <button
+          type="button"
+          (click)="goBack()"
+          class="px-4 py-2 text-sm font-medium transition-colors rounded-lg"
+          [ngClass]="themeClasses().buttonSecondary">
+          Cancel
+        </button>
+        <button
+          type="submit"
+          [disabled]="saving() || returnForm.invalid || getSelectedItemsCount() === 0"
+          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors rounded-lg"
+          [ngClass]="[
+            themeClasses().buttonPrimary,
+            (saving() || returnForm.invalid || getSelectedItemsCount() === 0) ? 'opacity-50 cursor-not-allowed' : ''
+          ]">
+          @if (saving()) {
+            <div class="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full"></div>
+            Creating...
+          } @else {
+            <lucide-angular [img]="SaveIcon" class="w-4 h-4"></lucide-angular>
+            Create Return
+          }
+        </button>
+      </div>
+
+    </form>
+  }
+
+</div>

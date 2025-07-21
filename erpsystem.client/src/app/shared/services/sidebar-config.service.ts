@@ -99,6 +99,11 @@ export class SidebarConfigService {
           roles: ['admin', 'inventoryuser'] 
         },
         { 
+          label: 'Purchase Order Returns', 
+          route: '/dashboard/supply-chain/purchase-order-returns', 
+          roles: ['admin', 'inventoryuser'] 
+        },
+        { 
           label: 'Stock Movements', 
           route: '/dashboard/supply-chain/stock-movements', 
           roles: ['admin', 'inventoryuser'] 

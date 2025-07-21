@@ -172,3 +172,117 @@ export interface StockMovementCreateDto {
   reason: string;
   notes?: string;
 }
+
+// Purchase Order Returns
+export enum ReturnStatus {
+  Pending = 'Pending',
+  Approved = 'Approved',
+  Processed = 'Processed',
+  Cancelled = 'Cancelled'
+}
+
+export enum ReturnReason {
+  Damaged = 0,
+  DefectiveQuality = 1,
+  WrongItem = 2,
+  Excess = 3,
+  NotAsOrdered = 4,
+  Expired = 5,
+  Other = 6
+}
+
+export interface PurchaseOrderReturn {
+  id: string;
+  returnNumber: string;
+  purchaseOrderId: string;
+  purchaseOrderNumber: string;
+  supplierId: string;
+  supplierName: string;
+  status: ReturnStatus;
+  returnDate: Date;
+  processedDate?: Date;
+  totalReturnAmount: number;
+  notes?: string;
+  createdByUserId: string;
+  approvedByUserId?: string;
+  approvedAt?: Date;
+  processedByUserId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  items: PurchaseOrderReturnItem[];
+}
+
+export interface PurchaseOrderReturnItem {
+  id: string;
+  productId: string;
+  productName: string;
+  productSKU: string;
+  purchaseOrderItemId: string;
+  returnQuantity: number;
+  unitPrice: number;
+  totalReturnAmount: number;
+  reason: ReturnReason;
+  reasonDescription?: string;
+  refundRequested: boolean;
+  refundProcessed: boolean;
+  refundProcessedDate?: Date;
+  notes?: string;
+  createdAt: Date;
+}
+
+export interface CreatePurchaseOrderReturnRequest {
+  purchaseOrderId: string;
+  supplierId: string;
+  notes?: string;
+  items: CreatePurchaseOrderReturnItem[];
+}
+
+export interface CreatePurchaseOrderReturnItem {
+  productId: string;
+  purchaseOrderItemId: string;
+  returnQuantity: number;
+  unitPrice: number;
+  reason: ReturnReason;
+  reasonDescription?: string;
+  refundRequested: boolean;
+  notes?: string;
+}
+
+export interface AvailableReturnItem {
+  purchaseOrderItemId: string;
+  productId: string;
+  productName: string;
+  productSKU: string;
+  orderedQuantity: number;
+  receivedQuantity: number;
+  returnedQuantity: number;
+  availableForReturn: number;
+  unitPrice: number;
+}
+
+export interface UpdateReturnStatusRequest {
+  status: ReturnStatus;
+  notes?: string;
+}
+
+export interface ProcessReturnRequest {
+  items: ProcessReturnItem[];
+  notes?: string;
+}
+
+export interface ProcessReturnItem {
+  returnItemId: string;
+  refundProcessed: boolean;
+  notes?: string;
+}
+
+export interface PurchaseOrderReturnFilters {
+  page: number;
+  pageSize: number;
+  search?: string;
+  status?: ReturnStatus;
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+export interface PurchaseOrderReturnPagedResult extends PagedResult<PurchaseOrderReturn> {}

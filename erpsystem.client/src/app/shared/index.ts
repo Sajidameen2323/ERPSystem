@@ -10,3 +10,4 @@ export { BulkActionsComponent } from './components/bulk-actions/bulk-actions.com
 export type { BulkAction, BulkActionConfirmation } from './components/bulk-actions/bulk-actions.component';
 export { ConfirmationModalComponent } from './components/confirmation-modal/confirmation-modal.component';
 export type { ConfirmationConfig } from './components/confirmation-modal/confirmation-modal.component';
+export { StockMovementModalComponent } from './components/stock-movement-modal/stock-movement-modal.component';

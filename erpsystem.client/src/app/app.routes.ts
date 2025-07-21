@@ -125,6 +125,21 @@ export const routes: Routes = [
         path: 'supply-chain/stock-movements',
         loadComponent: () => import('./supply-chain/stock-movement-list/stock-movement-list.component').then(m => m.StockMovementListComponent),
         canActivate: [inventoryUserGuard]
+      },
+      {
+        path: 'supply-chain/purchase-order-returns',
+        loadComponent: () => import('./supply-chain/purchase-order-returns/return-list/return-list.component').then(m => m.ReturnListComponent),
+        canActivate: [inventoryUserGuard]
+      },
+      {
+        path: 'supply-chain/purchase-order-returns/new',
+        loadComponent: () => import('./supply-chain/purchase-order-returns/return-form/return-form.component').then(m => m.ReturnFormComponent),
+        canActivate: [inventoryUserGuard]
+      },
+      {
+        path: 'supply-chain/purchase-order-returns/:id',
+        loadComponent: () => import('./supply-chain/purchase-order-returns/return-details/return-details.component').then(m => m.ReturnDetailsComponent),
+        canActivate: [inventoryUserGuard]
       }
     ]
   },

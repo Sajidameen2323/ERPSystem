@@ -1,0 +1,178 @@
+<!-- Stock Movement Modal -->
+@if (isVisible && movement) {
+  <div class="fixed inset-0 z-50 overflow-y-auto" 
+       (click)="onBackdropClick($event)"
+       (keydown)="onKeyDown($event)"
+       aria-labelledby="modal-title" 
+       role="dialog" 
+       aria-modal="true"
+       tabindex="-1">
+    
+    <!-- Background overlay -->
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+
+      <!-- Center modal on screen -->
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+      <!-- Modal panel -->
+      <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6">
+        
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-medium leading-6" [ngClass]="themeClasses().textPrimary" id="modal-title">
+            Stock Movement Details
+          </h3>
+          <button 
+            (click)="closeModal()"
+            class="rounded-md p-1 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            [ngClass]="themeClasses().textMuted"
+            aria-label="Close modal">
+            <lucide-angular [img]="XIcon" class="w-5 h-5"></lucide-angular>
+          </button>
+        </div>
+
+        <!-- Modal Content -->
+        <div class="space-y-6">
+          
+          <!-- Movement Type and Date -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label class="text-sm font-medium" [ngClass]="themeClasses().textSecondary">Movement Type</label>
+              <div class="flex items-center gap-2">
+                <span [ngClass]="getMovementTypeClass(movement.movementType)">
+                  <lucide-angular 
+                    [img]="getMovementTypeIcon(movement.movementType)" 
+                    class="w-4 h-4 mr-1.5">
+                  </lucide-angular>
+                  {{ movement.movementType }}
+                </span>
+              </div>
+            </div>
+            
+            <div class="space-y-2">
+              <label class="text-sm font-medium" [ngClass]="themeClasses().textSecondary">Movement Date</label>
+              <div class="flex items-center gap-2" [ngClass]="themeClasses().textPrimary">
+                <lucide-angular [img]="ClockIcon" class="w-4 h-4" [ngClass]="themeClasses().textMuted"></lucide-angular>
+                <span class="text-sm">{{ movement.movementDate | date:'MMM d, y \'at\' h:mm a' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Product Information -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium" [ngClass]="themeClasses().textSecondary">Product Information</label>
+            <div [ngClass]="themeClasses().card" class="rounded-lg p-4">
+              <div class="flex items-start gap-3">
+                <lucide-angular [img]="PackageIcon" class="w-5 h-5 mt-1" [ngClass]="themeClasses().textMuted"></lucide-angular>
+                <div class="space-y-1">
+                  <div class="font-medium" [ngClass]="themeClasses().textPrimary">
+                    {{ movement.productName || movement.product?.name || 'N/A' }}
+                  </div>
+                    <div class="text-sm" [ngClass]="themeClasses().textMuted">
+                      SKU: {{ movement.productSKU || movement.product?.sku || 'N/A' }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>          <!-- Quantity and Stock Information -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="space-y-2">
+              <label class="text-sm font-medium" [ngClass]="themeClasses().textSecondary">Quantity</label>
+              <div class="flex items-center gap-2">
+                @if (isStockDecrease(movement.movementType)) {
+                  <lucide-angular [img]="TrendingDownIcon" class="w-5 h-5 text-red-500"></lucide-angular>
+                  <span class="text-lg font-semibold text-red-600 dark:text-red-400">
+                    -{{ movement.quantity }}
+                  </span>
+                } @else {
+                  <lucide-angular [img]="TrendingUpIcon" class="w-5 h-5 text-green-500"></lucide-angular>
+                  <span class="text-lg font-semibold text-green-600 dark:text-green-400">
+                    +{{ movement.quantity }}
+                  </span>
+                }
+              </div>
+            </div>
+            
+            <div class="space-y-2">
+              <label class="text-sm font-medium" [ngClass]="themeClasses().textSecondary">Stock Before</label>
+              <div class="text-lg font-medium" [ngClass]="themeClasses().textPrimary">
+                {{ movement.stockBeforeMovement || 0 }}
+              </div>
+            </div>
+            
+            <div class="space-y-2">
+              <label class="text-sm font-medium" [ngClass]="themeClasses().textSecondary">Stock After</label>
+              <div class="text-lg font-medium" [ngClass]="themeClasses().textPrimary">
+                {{ movement.stockAfterMovement || 0 }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Reference and Reason -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label class="text-sm font-medium" [ngClass]="themeClasses().textSecondary">Reference</label>
+              <div class="flex items-center gap-2" [ngClass]="themeClasses().textPrimary">
+                <lucide-angular [img]="HashIcon" class="w-4 h-4" [ngClass]="themeClasses().textMuted"></lucide-angular>
+                <span class="text-sm">{{ movement.reference || 'No reference' }}</span>
+              </div>
+            </div>
+            
+            <div class="space-y-2">
+              <label class="text-sm font-medium" [ngClass]="themeClasses().textSecondary">Reason</label>
+              <div class="flex items-center gap-2" [ngClass]="themeClasses().textPrimary">
+                <lucide-angular [img]="FileSearchIcon" class="w-4 h-4" [ngClass]="themeClasses().textMuted"></lucide-angular>
+                <span class="text-sm">{{ movement.reason || 'No reason provided' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- User Information -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium" [ngClass]="themeClasses().textSecondary">Moved By</label>
+            <div class="flex items-center gap-2" [ngClass]="themeClasses().textPrimary">
+              <lucide-angular [img]="UserIcon" class="w-4 h-4" [ngClass]="themeClasses().textMuted"></lucide-angular>
+              <span class="text-sm">{{ movement.movedByUserId || 'Unknown user' }}</span>
+            </div>
+          </div>
+
+          <!-- Notes (if available) -->
+          @if (movement.notes) {
+            <div class="space-y-2">
+              <label class="text-sm font-medium" [ngClass]="themeClasses().textSecondary">Notes</label>
+              <div [ngClass]="themeClasses().card" class="rounded-lg p-4">
+                <p class="text-sm" [ngClass]="themeClasses().textPrimary">
+                  {{ movement.notes }}
+                </p>
+              </div>
+            </div>
+          }
+
+          <!-- Movement ID for reference -->
+          <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between">
+              <span class="text-xs" [ngClass]="themeClasses().textMuted">
+                Movement ID: {{ movement.id }}
+              </span>
+              <span class="text-xs" [ngClass]="themeClasses().textMuted">
+                Date: {{ movement.movementDate | date:'MMM d, y h:mm a' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="mt-6 flex justify-end">
+          <button 
+            (click)="closeModal()"
+            class="px-4 py-2 text-sm font-medium rounded-md transition-colors"
+            [ngClass]="themeClasses().buttonSecondary">
+            Close
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+}

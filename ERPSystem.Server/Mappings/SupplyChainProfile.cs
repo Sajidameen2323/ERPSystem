@@ -93,6 +93,7 @@ public class SupplyChainProfile : Profile
 
         // StockMovement mappings
         CreateMap<StockMovement, StockMovementDto>()
+            .ForMember(dest => dest.MovementType, opt => opt.MapFrom(src => src.MovementType.GetDisplayName()))
             .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product.Name))
             .ForMember(dest => dest.ProductSKU, opt => opt.MapFrom(src => src.Product.SKU));
         
