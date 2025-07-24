@@ -85,6 +85,48 @@ export const routes: Routes = [
         loadComponent: () => import('./inventory/low-stock-alerts/low-stock-alerts.component').then(m => m.LowStockAlertsComponent),
         canActivate: [inventoryUserGuard]
       },
+      // Sales routes
+      {
+        path: 'sales/customers',
+        loadComponent: () => import('./sales/customer-list/customer-list.component').then(m => m.CustomerListComponent),
+        canActivate: [salesUserGuard]
+      },
+      {
+        path: 'sales/customers/new',
+        loadComponent: () => import('./sales/customer-form/customer-form.component').then(m => m.CustomerFormComponent),
+        canActivate: [salesUserGuard]
+      },
+      {
+        path: 'sales/customers/:id',
+        loadComponent: () => import('./sales/customer-detail/customer-detail.component').then(m => m.CustomerDetailComponent),
+        canActivate: [salesUserGuard]
+      },
+      {
+        path: 'sales/customers/:id/edit',
+        loadComponent: () => import('./sales/customer-form/customer-form.component').then(m => m.CustomerFormComponent),
+        canActivate: [salesUserGuard]
+      },
+      // Sales Order routes
+      {
+        path: 'sales/orders',
+        loadComponent: () => import('./sales/sales-order-list/sales-order-list.component').then(m => m.SalesOrderListComponent),
+        canActivate: [salesUserGuard]
+      },
+      {
+        path: 'sales/orders/new',
+        loadComponent: () => import('./sales/sales-order-form/sales-order-form.component').then(m => m.SalesOrderFormComponent),
+        canActivate: [salesUserGuard]
+      },
+      {
+        path: 'sales/orders/:id',
+        loadComponent: () => import('./sales/sales-order-detail/sales-order-detail.component').then(m => m.SalesOrderDetailComponent),
+        canActivate: [salesUserGuard]
+      },
+      {
+        path: 'sales/orders/:id/edit',
+        loadComponent: () => import('./sales/sales-order-form/sales-order-form.component').then(m => m.SalesOrderFormComponent),
+        canActivate: [salesUserGuard]
+      },
       // Supply Chain routes
       {
         path: 'supply-chain/suppliers',

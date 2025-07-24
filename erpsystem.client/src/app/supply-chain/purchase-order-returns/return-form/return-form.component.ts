@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators, AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 import { 
   LucideAngularModule, 
   ArrowLeft,
@@ -12,7 +12,8 @@ import {
   Search,
   AlertCircle,
   CheckCircle,
-  XCircle
+  XCircle,
+  AlertTriangle
 } from 'lucide-angular';
 import { Subject, takeUntil, catchError, of, switchMap, debounceTime, distinctUntilChanged } from 'rxjs';
 
@@ -73,9 +74,68 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
   readonly AlertCircleIcon = AlertCircle;
   readonly CheckCircleIcon = CheckCircle;
   readonly XCircleIcon = XCircle;
+  readonly AlertTriangleIcon = AlertTriangle;
 
   // Reactive streams
   private destroy$ = new Subject<void>();
+
+  // Custom Validators
+  static positiveQuantityValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (value === null || value === undefined || value === '') {
+        return null; // Let required validator handle empty values
+      }
+      
+      if (isNaN(value) || value <= 0) {
+        return { positiveQuantity: { value, message: 'Quantity must be greater than 0' } };
+      }
+      
+      return null;
+    };
+  }
+
+  static maxReturnQuantityValidator(maxQuantity: number): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (value === null || value === undefined || value === '') {
+        return null;
+      }
+      
+      if (isNaN(value) || value > maxQuantity) {
+        return { 
+          maxReturnQuantity: { 
+            value, 
+            maxQuantity, 
+            message: `Cannot return more than ${maxQuantity} items available` 
+          } 
+        };
+      }
+      
+      return null;
+    };
+  }
+
+  static stockAvailabilityValidator(currentStock: number): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (value === null || value === undefined || value === '') {
+        return null;
+      }
+      
+      if (isNaN(value) || value > currentStock) {
+        return { 
+          insufficientStock: { 
+            value, 
+            currentStock, 
+            message: `Insufficient stock. Current stock: ${currentStock}` 
+          } 
+        };
+      }
+      
+      return null;
+    };
+  }
 
   ngOnInit(): void {
     this.initializeForm();
@@ -203,29 +263,93 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
     itemsArray.clear();
 
     items.forEach(item => {
+      const validators = [
+        ReturnFormComponent.positiveQuantityValidator(),
+        ReturnFormComponent.maxReturnQuantityValidator(item.availableForReturn),
+        ReturnFormComponent.stockAvailabilityValidator(item.currentStock)
+      ];
+
       const itemGroup = this.fb.group({
         purchaseOrderItemId: [item.purchaseOrderItemId, Validators.required],
         productId: [item.productId, Validators.required],
         productName: [{ value: item.productName, disabled: true }],
         productSKU: [{ value: item.productSKU, disabled: true }],
         availableForReturn: [{ value: item.availableForReturn, disabled: true }],
+        currentStock: [{ value: item.currentStock, disabled: true }],
         unitPrice: [{ value: item.unitPrice, disabled: true }],
-        returnQuantity: [0, [Validators.min(0), Validators.max(item.availableForReturn)]],
+        returnQuantity: [0, validators],
         reason: ['', Validators.required],
         reasonDescription: [''],
         refundRequested: [false],
-        selected: [false]
+        selected: [false],
+        validationErrors: [{ value: [], disabled: true }] // Track validation errors for display
       });
 
-      // Update total when quantity changes
+      // Real-time validation with enhanced feedback
       itemGroup.get('returnQuantity')?.valueChanges.pipe(
         takeUntil(this.destroy$)
-      ).subscribe(() => {
+      ).subscribe((quantity) => {
+        this.updateItemValidation(itemGroup, item);
         this.updateItemTotal(itemGroup);
+      });
+
+      // Validate when reason changes
+      itemGroup.get('reason')?.valueChanges.pipe(
+        takeUntil(this.destroy$)
+      ).subscribe(() => {
+        this.updateItemValidation(itemGroup, item);
+      });
+
+      // Validate when selected changes
+      itemGroup.get('selected')?.valueChanges.pipe(
+        takeUntil(this.destroy$)
+      ).subscribe((selected) => {
+        if (selected) {
+          this.updateItemValidation(itemGroup, item);
+        }
       });
 
       itemsArray.push(itemGroup);
     });
+  }
+
+  private updateItemValidation(itemGroup: FormGroup, item: AvailableReturnItem): void {
+    const quantity = itemGroup.get('returnQuantity')?.value || 0;
+    const selected = itemGroup.get('selected')?.value;
+    const reason = itemGroup.get('reason')?.value;
+    const errors: string[] = [];
+
+    // Only validate if item is selected
+    if (selected) {
+      // Check if quantity is valid
+      const quantityControl = itemGroup.get('returnQuantity');
+      if (quantityControl?.errors) {
+        Object.keys(quantityControl.errors).forEach(errorKey => {
+          const error = quantityControl.errors![errorKey];
+          if (error.message) {
+            errors.push(error.message);
+          }
+        });
+      }
+
+      // Check if reason is selected when quantity > 0
+      if (quantity > 0 && !reason) {
+        errors.push('Return reason is required');
+      }
+
+      // Check stock availability
+      if (quantity > item.currentStock) {
+        errors.push(`Insufficient stock. Available: ${item.currentStock}`);
+      }
+
+      // Check available return quantity
+      if (quantity > item.availableForReturn) {
+        errors.push(`Exceeds available return quantity: ${item.availableForReturn}`);
+      }
+    }
+
+    // Update validation errors for display
+    itemGroup.patchValue({ validationErrors: errors }, { emitEvent: false });
   }
 
   private updateItemTotal(itemGroup: FormGroup): void {
@@ -250,6 +374,13 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
     if (this.returnForm.invalid) {
       this.markFormGroupTouched(this.returnForm);
       this.error.set('Please fill in all required fields correctly.');
+      return;
+    }
+
+    // Get validation summary
+    const validationErrors = this.getFormValidationSummary();
+    if (validationErrors.length > 0) {
+      this.error.set(`Validation errors: ${validationErrors.join('; ')}`);
       return;
     }
 
@@ -286,7 +417,16 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
     this.returnService.createReturn(request).pipe(
       catchError(error => {
         console.error('Error creating return:', error);
-        this.error.set('Failed to create return. Please try again.');
+        let errorMessage = 'Failed to create return. Please try again.';
+        
+        // Handle specific backend validation errors
+        if (error?.error?.error && typeof error.error.error === 'string') {
+          errorMessage = error.error.error;
+        } else if (error?.message) {
+          errorMessage = error.message;
+        }
+        
+        this.error.set(errorMessage);
         return of(null);
       }),
       takeUntil(this.destroy$)
@@ -319,9 +459,20 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
   }
 
   toggleItemSelection(index: number): void {
+    // No need to manually toggle since the checkbox formControlName handles this
+    // This method can be used for any additional logic when selection changes
     const item = this.itemsFormArray.at(index);
     const isSelected = item.get('selected')?.value;
-    item.patchValue({ selected: !isSelected });
+    
+    // If item is deselected, clear the return quantity and reason
+    if (!isSelected) {
+      item.patchValue({
+        returnQuantity: 0,
+        reason: '',
+        reasonDescription: '',
+        refundRequested: false
+      });
+    }
   }
 
   selectAllItems(): void {
@@ -382,5 +533,54 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
     this.selectedPurchaseOrder.set(null);
     this.availableItems.set([]);
     this.itemsFormArray.clear();
+  }
+
+  // Validation helper methods
+  getItemValidationErrors(index: number): string[] {
+    const item = this.itemsFormArray.at(index);
+    return item.get('validationErrors')?.value || [];
+  }
+
+  hasValidationErrors(index: number): boolean {
+    return this.getItemValidationErrors(index).length > 0;
+  }
+
+  isItemValid(index: number): boolean {
+    const item = this.itemsFormArray.at(index);
+    const selected = item.get('selected')?.value;
+    const quantity = item.get('returnQuantity')?.value;
+    const reason = item.get('reason')?.value;
+    
+    if (!selected) return true;
+    if (quantity <= 0) return false;
+    if (!reason) return false;
+    
+    return !this.hasValidationErrors(index);
+  }
+
+  getFormValidationSummary(): string[] {
+    const errors: string[] = [];
+    
+    // Check if any items selected
+    const selectedItems = this.itemsFormArray.controls.filter(control => 
+      control.get('selected')?.value && control.get('returnQuantity')?.value > 0
+    );
+    
+    if (selectedItems.length === 0) {
+      errors.push('Please select at least one item to return with a quantity greater than 0');
+    }
+    
+    // Check individual item validation
+    this.itemsFormArray.controls.forEach((control, index) => {
+      if (control.get('selected')?.value) {
+        const itemErrors = this.getItemValidationErrors(index);
+        if (itemErrors.length > 0) {
+          const productName = control.get('productName')?.value;
+          errors.push(`${productName}: ${itemErrors.join(', ')}`);
+        }
+      }
+    });
+    
+    return errors;
   }
 }

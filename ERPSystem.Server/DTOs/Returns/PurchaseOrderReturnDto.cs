@@ -10,7 +10,7 @@ public class PurchaseOrderReturnDto
     public string PurchaseOrderNumber { get; set; } = string.Empty;
     public Guid SupplierId { get; set; }
     public string SupplierName { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
+    public int Status { get; set; }
     public DateTime ReturnDate { get; set; }
     public DateTime? ProcessedDate { get; set; }
     public decimal TotalReturnAmount { get; set; }
@@ -34,11 +34,25 @@ public class PurchaseOrderReturnItemDto
     public int ReturnQuantity { get; set; }
     public decimal UnitPrice { get; set; }
     public decimal TotalReturnAmount { get; set; }
-    public string Reason { get; set; } = string.Empty;
+    public int Reason { get; set; } 
     public string? ReasonDescription { get; set; }
     public bool RefundRequested { get; set; }
     public bool RefundProcessed { get; set; }
     public DateTime? RefundProcessedDate { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
+}
+
+public class AvailableReturnItemDto
+{
+    public Guid PurchaseOrderItemId { get; set; }
+    public Guid ProductId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public string ProductSKU { get; set; } = string.Empty;
+    public int OrderedQuantity { get; set; }
+    public int ReceivedQuantity { get; set; }
+    public int ReturnedQuantity { get; set; }
+    public int AvailableForReturn { get; set; }
+    public int CurrentStock { get; set; }
+    public decimal UnitPrice { get; set; }
 }

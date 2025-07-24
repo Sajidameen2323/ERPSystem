@@ -8,8 +8,11 @@ import {
   PurchaseOrderReturnFilters,
   CreatePurchaseOrderReturnRequest,
   AvailableReturnItem,
-  UpdateReturnStatusRequest,
-  ProcessReturnRequest
+  ApproveReturnRequest,
+  CancelReturnRequest,
+  ProcessReturnRequest,
+  ReturnStatus,
+  ReturnReason
 } from '../models/purchase-order.interface';
 import { Result } from '../../core/models/shared.interface';
 
@@ -55,6 +58,13 @@ export class PurchaseOrderReturnService {
   }
 
   /**
+   * Get all returns for a specific purchase order
+   */
+  getReturnsByPurchaseOrder(purchaseOrderId: string): Observable<Result<PurchaseOrderReturn[]>> {
+    return this.http.get<Result<PurchaseOrderReturn[]>>(`${this.baseUrl}/purchase-order/${purchaseOrderId}`);
+  }
+
+  /**
    * Create a new purchase order return
    */
   createReturn(request: CreatePurchaseOrderReturnRequest): Observable<Result<PurchaseOrderReturn>> {
@@ -62,10 +72,17 @@ export class PurchaseOrderReturnService {
   }
 
   /**
-   * Update return status (approve/cancel)
+   * Approve a purchase order return
    */
-  updateReturnStatus(id: string, request: UpdateReturnStatusRequest): Observable<Result<PurchaseOrderReturn>> {
-    return this.http.put<Result<PurchaseOrderReturn>>(`${this.baseUrl}/${id}/status`, request);
+  approveReturn(id: string, request: ApproveReturnRequest): Observable<Result<PurchaseOrderReturn>> {
+    return this.http.put<Result<PurchaseOrderReturn>>(`${this.baseUrl}/${id}/approve`, request);
+  }
+
+  /**
+   * Cancel a purchase order return
+   */
+  cancelReturn(id: string, request: CancelReturnRequest): Observable<Result<PurchaseOrderReturn>> {
+    return this.http.put<Result<PurchaseOrderReturn>>(`${this.baseUrl}/${id}/cancel`, request);
   }
 
   /**
@@ -88,10 +105,10 @@ export class PurchaseOrderReturnService {
   getReturnStatusOptions() {
     return [
       { value: '', label: 'All Status' },
-      { value: 'Pending', label: 'Pending' },
-      { value: 'Approved', label: 'Approved' },
-      { value: 'Processed', label: 'Processed' },
-      { value: 'Cancelled', label: 'Cancelled' }
+      { value: ReturnStatus.Pending, label: 'Pending' },
+      { value: ReturnStatus.Approved, label: 'Approved' },
+      { value: ReturnStatus.Processed, label: 'Processed' },
+      { value: ReturnStatus.Cancelled, label: 'Cancelled' }
     ];
   }
 
@@ -123,20 +140,38 @@ export class PurchaseOrderReturnService {
   /**
    * Get return status badge class
    */
-  getStatusBadgeClass(status: string): string {
+  getStatusBadgeClass(status: ReturnStatus): string {
     const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium';
     
-    switch (status?.toLowerCase()) {
-      case 'pending':
+    switch (status) {
+      case ReturnStatus.Pending:
         return `${baseClasses} bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300`;
-      case 'approved':
+      case ReturnStatus.Approved:
         return `${baseClasses} bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300`;
-      case 'processed':
+      case ReturnStatus.Processed:
         return `${baseClasses} bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300`;
-      case 'cancelled':
+      case ReturnStatus.Cancelled:
         return `${baseClasses} bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300`;
       default:
         return `${baseClasses} bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-300`;
+    }
+  }
+
+  /**
+   * Get status display text
+   */
+  getStatusText(status: ReturnStatus): string {
+    switch (status) {
+      case ReturnStatus.Pending:
+        return 'Pending';
+      case ReturnStatus.Approved:
+        return 'Approved';
+      case ReturnStatus.Processed:
+        return 'Processed';
+      case ReturnStatus.Cancelled:
+        return 'Cancelled';
+      default:
+        return 'Unknown';
     }
   }
 }

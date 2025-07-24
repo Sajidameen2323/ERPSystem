@@ -232,12 +232,12 @@
                       @if (isStockDecrease(movement.movementType)) {
                         <lucide-angular [img]="TrendingDownIcon" class="w-4 h-4 text-red-500 mr-1"></lucide-angular>
                         <span class="text-sm font-medium text-red-600 dark:text-red-400">
-                          -{{ movement.quantity }}
+                          {{ movement.quantity < 0 ? movement.quantity : '-' + movement.quantity }}
                         </span>
                       } @else {
                         <lucide-angular [img]="TrendingUpIcon" class="w-4 h-4 text-green-500 mr-1"></lucide-angular>
                         <span class="text-sm font-medium text-green-600 dark:text-green-400">
-                          +{{ movement.quantity }}
+                          {{ movement.quantity > 0 ? '+' + movement.quantity : movement.quantity }}
                         </span>
                       }
                     </div>

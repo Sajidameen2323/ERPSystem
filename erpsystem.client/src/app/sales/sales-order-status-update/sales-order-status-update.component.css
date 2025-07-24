@@ -1,0 +1,20 @@
+/* Status update component styles */
+.status-icon {
+  @apply transition-colors duration-200;
+}
+
+.status-option {
+  @apply hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200;
+}
+
+.date-field {
+  @apply transition-all duration-300 ease-in-out;
+}
+
+.error-animation {
+  @apply animate-pulse;
+}
+
+.status-badge {
+  @apply transition-all duration-200 hover:scale-105;
+}

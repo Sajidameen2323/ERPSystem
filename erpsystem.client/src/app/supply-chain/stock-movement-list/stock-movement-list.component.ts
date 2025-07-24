@@ -331,6 +331,6 @@ export class StockMovementListComponent implements OnInit, OnDestroy {
    * Check if movement decreases stock
    */
   isStockDecrease(movementType: string): boolean {
-    return ['sale', 'sold', 'damage', 'damaged', 'stockout', 'expired'].includes(movementType?.toLowerCase());
+    return ['sale', 'sold', 'damage', 'damaged', 'stockout', 'expired', 'return'].includes(movementType?.toLowerCase());
   }
 }

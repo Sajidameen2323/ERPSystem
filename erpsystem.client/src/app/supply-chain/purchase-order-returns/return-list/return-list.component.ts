@@ -54,7 +54,7 @@ export class ReturnListComponent implements OnInit, OnDestroy {
   pageSize = signal(10);
   totalCount = signal(0);
   searchTerm = signal('');
-  selectedStatus = signal<string>('');
+  selectedStatus = signal<string | number>('');
   dateFrom = signal<string>('');
   dateTo = signal<string>('');
 
@@ -80,6 +80,9 @@ export class ReturnListComponent implements OnInit, OnDestroy {
   readonly XCircleIcon = XCircle;
   readonly ClockIcon = Clock;
   readonly RotateCcwIcon = RotateCcw;
+
+  // Enum references for template
+  readonly ReturnStatus = ReturnStatus;
 
   // Reactive streams
   private destroy$ = new Subject<void>();
@@ -114,11 +117,23 @@ export class ReturnListComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     this.error.set(null);
 
+    // Convert selectedStatus to proper ReturnStatus enum value
+    let statusFilter: ReturnStatus | undefined;
+    const selectedStatusValue = this.selectedStatus();
+    if (selectedStatusValue !== '' && selectedStatusValue !== null && selectedStatusValue !== undefined) {
+      // If it's a string, convert to number, otherwise use as is
+      const statusNumber = typeof selectedStatusValue === 'string' ? 
+        parseInt(selectedStatusValue) : selectedStatusValue;
+      if (!isNaN(statusNumber)) {
+        statusFilter = statusNumber as ReturnStatus;
+      }
+    }
+
     const filters: PurchaseOrderReturnFilters = {
       page: this.currentPage(),
       pageSize: this.pageSize(),
       search: this.searchTerm() || undefined,
-      status: this.selectedStatus() as ReturnStatus || undefined,
+      status: statusFilter,
       dateFrom: this.dateFrom() ? new Date(this.dateFrom()) : undefined,
       dateTo: this.dateTo() ? new Date(this.dateTo()) : undefined
     };
@@ -185,8 +200,12 @@ export class ReturnListComponent implements OnInit, OnDestroy {
     return this.returnService.getReturnStatusOptions();
   }
 
-  getStatusBadgeClass(status: string): string {
+  getStatusBadgeClass(status: ReturnStatus): string {
     return this.returnService.getStatusBadgeClass(status);
+  }
+
+  getStatusText(status: ReturnStatus): string {
+    return this.returnService.getStatusText(status);
   }
 
   getPaginationPages(): number[] {
@@ -231,14 +250,13 @@ export class ReturnListComponent implements OnInit, OnDestroy {
   }
 
   approveReturn(returnItem: PurchaseOrderReturn): void {
-    if (returnItem.status !== 'Pending') {
+    if (returnItem.status !== ReturnStatus.Pending) {
       return;
     }
 
     this.loading.set(true);
     
-    this.returnService.updateReturnStatus(returnItem.id, {
-      status: ReturnStatus.Approved,
+    this.returnService.approveReturn(returnItem.id, {
       notes: 'Approved via return list'
     }).pipe(
       catchError(error => {
@@ -260,14 +278,13 @@ export class ReturnListComponent implements OnInit, OnDestroy {
   }
 
   cancelReturn(returnItem: PurchaseOrderReturn): void {
-    if (returnItem.status !== 'Pending') {
+    if (returnItem.status !== ReturnStatus.Pending) {
       return;
     }
 
     this.loading.set(true);
     
-    this.returnService.updateReturnStatus(returnItem.id, {
-      status: ReturnStatus.Cancelled,
+    this.returnService.cancelReturn(returnItem.id, {
       notes: 'Cancelled via return list'
     }).pipe(
       catchError(error => {

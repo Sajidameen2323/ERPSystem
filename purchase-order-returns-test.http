@@ -1,0 +1,36 @@
+### Purchase Order Returns - Update Status Endpoint Test
+
+### 1. Update Return Status to Approved
+PUT {{baseUrl}}/api/purchaseorderreturns/{{returnId}}/status
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "status": 1,
+  "notes": "Approved via API test"
+}
+
+### 2. Update Return Status to Cancelled
+PUT {{baseUrl}}/api/purchaseorderreturns/{{returnId}}/status
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "status": 3,
+  "notes": "Cancelled via API test"
+}
+
+### 3. Update Return Status to Processed
+PUT {{baseUrl}}/api/purchaseorderreturns/{{returnId}}/status
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "status": 2,
+  "notes": "Processed via API test"
+}
+
+### Variables
+# @baseUrl = https://localhost:7173
+# @returnId = your-return-id-here
+# @authToken = your-jwt-token-here

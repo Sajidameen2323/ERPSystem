@@ -1,3 +1,6 @@
+---
+applyTo: '**'
+---
 Forntend development Angular 18 guide
 
     -  when developing frontend code adhere to Angular 18 style
@@ -9,6 +12,7 @@ Forntend development Angular 18 guide
     -  For styling use tailwind classes
     -  For backend responses correctly map it to frontend code to avoid error even though server responded with success
     -  Synchronize with backend classes when creating typescript classes/interfaces for frontend
+    - When making API calls keep in mind that vite proxy is used for development so use relative paths with prefix `/api/`
 
 Backend development ASP.NET core .NET version 8 guide
 
@@ -16,11 +20,15 @@ Backend development ASP.NET core .NET version 8 guide
     -  Use Entity Framework Core for database operations
     -  Use Dependency Injection for services
     -  Controller should have prefix of ApiController `api/[controller]`
+    - Use Entity Framework Core 8 conventions for database operations
+    - Refactor code to follow Clean Architecture principles
 
 Running code on terminal guide
 
     -  Always use powershell command as the system is being developed on WIndows machine and vs code
     -  For running the application just start the backend server it will automatically start the frontend thats how this project is configured
+    - Also Frontend application will start in different terminal window not in vs code terminal
+    - To individually test frontend run `npm run build` command in the frontend directory
 
 UI Design guide
 

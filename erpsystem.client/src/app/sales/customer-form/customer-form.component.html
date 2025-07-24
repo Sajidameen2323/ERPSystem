@@ -1,0 +1,190 @@
+<!-- Customer Form Page -->
+<div class="p-6 max-w-4xl mx-auto">
+  <!-- Page Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center space-x-4">
+      <button
+        (click)="goBack()"
+        class="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+        <lucide-angular [img]="ArrowLeftIcon" class="w-5 h-5"></lucide-angular>
+      </button>
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ pageTitle() }}</h1>
+        <p class="text-gray-600 dark:text-gray-400 mt-1">
+          {{ isEditMode() ? 'Update customer information' : 'Add a new customer to your database' }}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Alert -->
+  <div *ngIf="error()" class="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center">
+        <div class="text-red-600 dark:text-red-400">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+          </svg>
+        </div>
+        <p class="ml-3 text-red-800 dark:text-red-200">{{ error() }}</p>
+      </div>
+      <button (click)="clearError()" class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading Spinner -->
+  <div *ngIf="loading()" class="flex justify-center py-8">
+    <app-loading-spinner></app-loading-spinner>
+  </div>
+
+  <!-- Customer Form -->
+  <div *ngIf="!loading()" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+    <form [formGroup]="customerForm" (ngSubmit)="onSubmit()">
+      <!-- Form Header -->
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Customer Information</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          Fill in the details below to {{ isEditMode() ? 'update the' : 'create a new' }} customer.
+        </p>
+      </div>
+
+      <!-- Form Content -->
+      <div class="p-6 space-y-6">
+        <!-- Customer Name -->
+        <div>
+          <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <div class="flex items-center space-x-2">
+              <lucide-angular [img]="UserIcon" class="w-4 h-4"></lucide-angular>
+              <span>Customer Name *</span>
+            </div>
+          </label>
+          <input
+            type="text"
+            id="name"
+            formControlName="name"
+            placeholder="Enter customer name"
+            [class.border-red-500]="hasFieldError('name')"
+            [class.dark:border-red-400]="hasFieldError('name')"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400">
+          
+          <div *ngIf="hasFieldError('name')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+            {{ getFieldError('name') }}
+          </div>
+        </div>
+
+        <!-- Email -->
+        <div>
+          <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <div class="flex items-center space-x-2">
+              <lucide-angular [img]="MailIcon" class="w-4 h-4"></lucide-angular>
+              <span>Email Address</span>
+            </div>
+          </label>
+          <input
+            type="email"
+            id="email"
+            formControlName="email"
+            placeholder="Enter email address"
+            [class.border-red-500]="hasFieldError('email')"
+            [class.dark:border-red-400]="hasFieldError('email')"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400">
+          
+          <div *ngIf="hasFieldError('email')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+            {{ getFieldError('email') }}
+          </div>
+        </div>
+
+        <!-- Phone -->
+        <div>
+          <label for="phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <div class="flex items-center space-x-2">
+              <lucide-angular [img]="PhoneIcon" class="w-4 h-4"></lucide-angular>
+              <span>Phone Number</span>
+            </div>
+          </label>
+          <input
+            type="tel"
+            id="phone"
+            formControlName="phone"
+            placeholder="Enter phone number"
+            [class.border-red-500]="hasFieldError('phone')"
+            [class.dark:border-red-400]="hasFieldError('phone')"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400">
+          
+          <div *ngIf="hasFieldError('phone')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+            {{ getFieldError('phone') }}
+          </div>
+        </div>
+
+        <!-- Address -->
+        <div>
+          <label for="address" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <div class="flex items-center space-x-2">
+              <lucide-angular [img]="MapPinIcon" class="w-4 h-4"></lucide-angular>
+              <span>Address</span>
+            </div>
+          </label>
+          <textarea
+            id="address"
+            formControlName="address"
+            rows="3"
+            placeholder="Enter customer address"
+            [class.border-red-500]="hasFieldError('address')"
+            [class.dark:border-red-400]="hasFieldError('address')"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-vertical"></textarea>
+          
+          <div *ngIf="hasFieldError('address')" class="mt-1 text-sm text-red-600 dark:text-red-400">
+            {{ getFieldError('address') }}
+          </div>
+        </div>
+
+        <!-- Form Info -->
+        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div class="flex items-start">
+            <div class="text-blue-600 dark:text-blue-400 mt-0.5">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+              </svg>
+            </div>
+            <div class="ml-3">
+              <h4 class="text-sm font-medium text-blue-800 dark:text-blue-200">Information</h4>
+              <div class="mt-1 text-sm text-blue-700 dark:text-blue-300">
+                <ul class="list-disc list-inside space-y-1">
+                  <li>Only customer name is required.</li>
+                  <li>Email addresses must be unique across all customers.</li>
+                  <li>All fields except name are optional.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form Footer -->
+      <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 rounded-b-lg">
+        <div class="flex items-center justify-end space-x-3">
+          <button
+            type="button"
+            (click)="goBack()"
+            class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            [disabled]="customerForm.invalid || saving()"
+            class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors">
+            <div *ngIf="saving()" class="mr-2">
+              <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <lucide-angular *ngIf="!saving()" [img]="SaveIcon" class="w-4 h-4 mr-2"></lucide-angular>
+            {{ saving() ? 'Saving...' : (isEditMode() ? 'Update Customer' : 'Create Customer') }}
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>

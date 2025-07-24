@@ -2,9 +2,13 @@ using ERPSystem.Server.Models;
 
 namespace ERPSystem.Server.DTOs.Returns;
 
-public class UpdatePurchaseOrderReturnStatusDto
+public class ApproveReturnDto
 {
-    public ReturnStatus Status { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class CancelReturnDto
+{
     public string? Notes { get; set; }
 }
 

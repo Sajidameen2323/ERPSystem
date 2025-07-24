@@ -22,6 +22,59 @@ namespace ERPSystem.Server.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("ERPSystem.Server.Models.Customer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasFilter("[Email] IS NOT NULL AND [IsDeleted] = 0");
+
+                    b.HasIndex("IsDeleted")
+                        .HasDatabaseName("IX_Customers_IsDeleted");
+
+                    b.HasIndex("Name")
+                        .HasDatabaseName("IX_Customers_Name");
+
+                    b.ToTable("Customers");
+                });
+
             modelBuilder.Entity("ERPSystem.Server.Models.Product", b =>
                 {
                     b.Property<Guid>("Id")
@@ -431,6 +484,126 @@ namespace ERPSystem.Server.Migrations
                     b.ToTable("PurchaseOrderReturnItems");
                 });
 
+            modelBuilder.Entity("ERPSystem.Server.Models.SalesOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeliveredDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime>("OrderDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OrderNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("OrderedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ReferenceNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("ShippedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId")
+                        .HasDatabaseName("IX_SalesOrders_CustomerId");
+
+                    b.HasIndex("OrderDate")
+                        .HasDatabaseName("IX_SalesOrders_OrderDate");
+
+                    b.HasIndex("OrderedByUserId")
+                        .HasDatabaseName("IX_SalesOrders_OrderedByUserId");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_SalesOrders_Status");
+
+                    b.ToTable("SalesOrders");
+                });
+
+            modelBuilder.Entity("ERPSystem.Server.Models.SalesOrderItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<decimal>("LineTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SalesOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("UnitPriceAtTimeOfOrder")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId")
+                        .HasDatabaseName("IX_SalesOrderItems_ProductId");
+
+                    b.HasIndex("SalesOrderId")
+                        .HasDatabaseName("IX_SalesOrderItems_SalesOrderId");
+
+                    b.ToTable("SalesOrderItems", (string)null);
+                });
+
             modelBuilder.Entity("ERPSystem.Server.Models.StockAdjustment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -753,6 +926,36 @@ namespace ERPSystem.Server.Migrations
                     b.Navigation("PurchaseOrderReturn");
                 });
 
+            modelBuilder.Entity("ERPSystem.Server.Models.SalesOrder", b =>
+                {
+                    b.HasOne("ERPSystem.Server.Models.Customer", "Customer")
+                        .WithMany("SalesOrders")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+                });
+
+            modelBuilder.Entity("ERPSystem.Server.Models.SalesOrderItem", b =>
+                {
+                    b.HasOne("ERPSystem.Server.Models.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ERPSystem.Server.Models.SalesOrder", "SalesOrder")
+                        .WithMany("SalesOrderItems")
+                        .HasForeignKey("SalesOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("SalesOrder");
+                });
+
             modelBuilder.Entity("ERPSystem.Server.Models.StockAdjustment", b =>
                 {
                     b.HasOne("ERPSystem.Server.Models.Product", "Product")
@@ -775,6 +978,11 @@ namespace ERPSystem.Server.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("ERPSystem.Server.Models.Customer", b =>
+                {
+                    b.Navigation("SalesOrders");
+                });
+
             modelBuilder.Entity("ERPSystem.Server.Models.Product", b =>
                 {
                     b.Navigation("ProductSuppliers");
@@ -794,6 +1002,11 @@ namespace ERPSystem.Server.Migrations
             modelBuilder.Entity("ERPSystem.Server.Models.PurchaseOrderReturn", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("ERPSystem.Server.Models.SalesOrder", b =>
+                {
+                    b.Navigation("SalesOrderItems");
                 });
 
             modelBuilder.Entity("ERPSystem.Server.Models.Supplier", b =>

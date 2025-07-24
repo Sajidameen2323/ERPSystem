@@ -1,29 +1,26 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using AutoMapper;
-using ERPSystem.Server.Data;
-using ERPSystem.Server.Models;
+using Microsoft.AspNetCore.Authorization;
 using ERPSystem.Server.DTOs.Returns;
+using ERPSystem.Server.Services.Interfaces;
 using ERPSystem.Server.Common;
+using ERPSystem.Server.Models;
 using System.Security.Claims;
 
 namespace ERPSystem.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class PurchaseOrderReturnsController : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
-    private readonly IMapper _mapper;
+    private readonly IPurchaseOrderReturnService _returnService;
     private readonly ILogger<PurchaseOrderReturnsController> _logger;
 
     public PurchaseOrderReturnsController(
-        ApplicationDbContext context,
-        IMapper mapper,
+        IPurchaseOrderReturnService returnService,
         ILogger<PurchaseOrderReturnsController> logger)
     {
-        _context = context;
-        _mapper = mapper;
+        _returnService = returnService;
         _logger = logger;
     }
 
@@ -35,62 +32,21 @@ public class PurchaseOrderReturnsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] string? search = null,
-        [FromQuery] ReturnStatus? status = null,
+        [FromQuery] string? status = null,
         [FromQuery] DateTime? dateFrom = null,
         [FromQuery] DateTime? dateTo = null)
     {
         try
         {
-            var query = _context.PurchaseOrderReturns
-                .Include(r => r.PurchaseOrder)
-                .Include(r => r.Supplier)
-                .Include(r => r.Items)
-                    .ThenInclude(i => i.Product)
-                .AsQueryable();
-
-            // Apply filters
-            if (!string.IsNullOrWhiteSpace(search))
+            // Parse status if provided
+            ReturnStatus? statusEnum = null;
+            if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<ReturnStatus>(status, true, out var parsedStatus))
             {
-                query = query.Where(r => 
-                    r.ReturnNumber.Contains(search) ||
-                    r.PurchaseOrder.PONumber.Contains(search) ||
-                    r.Supplier.Name.Contains(search));
+                statusEnum = parsedStatus;
             }
 
-            if (status.HasValue)
-            {
-                query = query.Where(r => r.Status == status.Value);
-            }
-
-            if (dateFrom.HasValue)
-            {
-                query = query.Where(r => r.ReturnDate >= dateFrom.Value);
-            }
-
-            if (dateTo.HasValue)
-            {
-                query = query.Where(r => r.ReturnDate <= dateTo.Value);
-            }
-
-            // Get total count
-            var totalCount = await query.CountAsync();
-
-            // Apply pagination
-            var items = await query
-                .OrderByDescending(r => r.ReturnDate)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var returnDtos = _mapper.Map<List<PurchaseOrderReturnDto>>(items);
-
-            return Ok(new PagedResult<PurchaseOrderReturnDto>
-            {
-                Items = returnDtos,
-                TotalCount = totalCount,
-                CurrentPage = page,
-                PageSize = pageSize
-            });
+            var result = await _returnService.GetReturnsAsync(page, pageSize, search, statusEnum, dateFrom, dateTo);
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -107,27 +63,43 @@ public class PurchaseOrderReturnsController : ControllerBase
     {
         try
         {
-            var returnEntity = await _context.PurchaseOrderReturns
-                .Include(r => r.PurchaseOrder)
-                .Include(r => r.Supplier)
-                .Include(r => r.Items)
-                    .ThenInclude(i => i.Product)
-                .Include(r => r.Items)
-                    .ThenInclude(i => i.PurchaseOrderItem)
-                .FirstOrDefaultAsync(r => r.Id == id);
-
-            if (returnEntity == null)
+            var result = await _returnService.GetReturnByIdAsync(id);
+            
+            if (!result.IsSuccess)
             {
-                return NotFound(Result.Failure("Purchase order return not found"));
+                return NotFound(result);
             }
 
-            var returnDto = _mapper.Map<PurchaseOrderReturnDto>(returnEntity);
-            return Ok(Result<PurchaseOrderReturnDto>.Success(returnDto));
+            return Ok(result);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving purchase order return {ReturnId}", id);
             return StatusCode(500, Result.Failure("An error occurred while retrieving the return"));
+        }
+    }
+
+    /// <summary>
+    /// Get all returns for a specific purchase order
+    /// </summary>
+    [HttpGet("purchase-order/{purchaseOrderId}")]
+    public async Task<ActionResult<Result<List<PurchaseOrderReturnDto>>>> GetReturnsByPurchaseOrder(Guid purchaseOrderId)
+    {
+        try
+        {
+            var result = await _returnService.GetReturnsByPurchaseOrderIdAsync(purchaseOrderId);
+            
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving returns for purchase order {PurchaseOrderId}", purchaseOrderId);
+            return StatusCode(500, Result.Failure("An error occurred while retrieving returns"));
         }
     }
 
@@ -145,104 +117,14 @@ public class PurchaseOrderReturnsController : ControllerBase
                 ?? User.FindFirst("sub")?.Value 
                 ?? "system";
 
-            // Validate purchase order exists and is received
-            var purchaseOrder = await _context.PurchaseOrders
-                .Include(po => po.Items)
-                .FirstOrDefaultAsync(po => po.Id == request.PurchaseOrderId);
-
-            if (purchaseOrder == null)
+            var result = await _returnService.CreateReturnAsync(request, userId);
+            
+            if (!result.IsSuccess)
             {
-                return BadRequest(Result.Failure("Purchase order not found"));
+                return BadRequest(result);
             }
 
-            if (purchaseOrder.Status != PurchaseOrderStatus.Received && 
-                purchaseOrder.Status != PurchaseOrderStatus.PartiallyReceived)
-            {
-                return BadRequest(Result.Failure("Can only return items from received purchase orders"));
-            }
-
-            // Validate return items
-            foreach (var item in request.Items)
-            {
-                var poItem = purchaseOrder.Items.FirstOrDefault(i => i.Id == item.PurchaseOrderItemId);
-                if (poItem == null)
-                {
-                    return BadRequest(Result.Failure($"Purchase order item {item.PurchaseOrderItemId} not found"));
-                }
-
-                if (item.ReturnQuantity > poItem.ReceivedQuantity)
-                {
-                    return BadRequest(Result.Failure($"Cannot return more items than received for product {item.ProductId}"));
-                }
-
-                // Check if there are already returns for this item
-                var existingReturns = await _context.PurchaseOrderReturnItems
-                    .Where(ri => ri.PurchaseOrderItemId == item.PurchaseOrderItemId)
-                    .SumAsync(ri => ri.ReturnQuantity);
-
-                if (item.ReturnQuantity + existingReturns > poItem.ReceivedQuantity)
-                {
-                    return BadRequest(Result.Failure($"Total return quantity exceeds received quantity for product {item.ProductId}"));
-                }
-            }
-
-            // Generate return number
-            var returnNumber = await GenerateReturnNumberAsync();
-
-            // Create return entity
-            var returnEntity = _mapper.Map<PurchaseOrderReturn>(request);
-            returnEntity.ReturnNumber = returnNumber;
-            returnEntity.CreatedByUserId = userId;
-            returnEntity.TotalReturnAmount = request.Items.Sum(i => i.ReturnQuantity * i.UnitPrice);
-
-            _context.PurchaseOrderReturns.Add(returnEntity);
-            await _context.SaveChangesAsync();
-
-            // Create return items
-            foreach (var itemDto in request.Items)
-            {
-                var returnItem = _mapper.Map<PurchaseOrderReturnItem>(itemDto);
-                returnItem.PurchaseOrderReturnId = returnEntity.Id;
-                returnItem.TotalReturnAmount = itemDto.ReturnQuantity * itemDto.UnitPrice;
-                _context.PurchaseOrderReturnItems.Add(returnItem);
-
-                // Create stock movement for return
-                var stockMovement = new StockMovement
-                {
-                    ProductId = itemDto.ProductId,
-                    MovementType = StockMovementType.Return,
-                    Quantity = -itemDto.ReturnQuantity, // Negative because we're removing from stock
-                    Reference = returnNumber,
-                    Reason = $"Return to supplier: {itemDto.ReasonDescription ?? itemDto.Reason.ToString()}",
-                    MovedByUserId = userId,
-                    Notes = $"Purchase Order Return: {returnNumber}"
-                };
-
-                // Update product stock
-                var product = await _context.Products.FindAsync(itemDto.ProductId);
-                if (product != null)
-                {
-                    stockMovement.StockBeforeMovement = product.CurrentStock;
-                    product.CurrentStock -= itemDto.ReturnQuantity;
-                    stockMovement.StockAfterMovement = product.CurrentStock;
-                    product.UpdatedAt = DateTime.UtcNow;
-                }
-
-                _context.StockMovements.Add(stockMovement);
-            }
-
-            await _context.SaveChangesAsync();
-
-            // Return the created entity
-            var createdReturn = await _context.PurchaseOrderReturns
-                .Include(r => r.PurchaseOrder)
-                .Include(r => r.Supplier)
-                .Include(r => r.Items)
-                    .ThenInclude(i => i.Product)
-                .FirstAsync(r => r.Id == returnEntity.Id);
-
-            var returnDto = _mapper.Map<PurchaseOrderReturnDto>(createdReturn);
-            return CreatedAtAction(nameof(GetReturn), new { id = returnEntity.Id }, Result<PurchaseOrderReturnDto>.Success(returnDto));
+            return CreatedAtAction(nameof(GetReturn), new { id = result.Data!.Id }, result);
         }
         catch (Exception ex)
         {
@@ -252,12 +134,12 @@ public class PurchaseOrderReturnsController : ControllerBase
     }
 
     /// <summary>
-    /// Update return status (approve/cancel)
+    /// Approve a purchase order return
     /// </summary>
-    [HttpPut("{id}/status")]
-    public async Task<ActionResult<Result<PurchaseOrderReturnDto>>> UpdateReturnStatus(
+    [HttpPut("{id}/approve")]
+    public async Task<ActionResult<Result<PurchaseOrderReturnDto>>> ApproveReturn(
         Guid id, 
-        [FromBody] UpdatePurchaseOrderReturnStatusDto request)
+        [FromBody] ApproveReturnDto request)
     {
         try
         {
@@ -265,50 +147,57 @@ public class PurchaseOrderReturnsController : ControllerBase
                 ?? User.FindFirst("sub")?.Value 
                 ?? "system";
 
-            var returnEntity = await _context.PurchaseOrderReturns
-                .Include(r => r.Items)
-                .FirstOrDefaultAsync(r => r.Id == id);
-
-            if (returnEntity == null)
+            var result = await _returnService.ApproveReturnAsync(id, request, userId);
+            
+            if (!result.IsSuccess)
             {
-                return NotFound(Result.Failure("Purchase order return not found"));
+                if (result.Error == "Purchase order return not found")
+                {
+                    return NotFound(result);
+                }
+                return BadRequest(result);
             }
 
-            if (returnEntity.Status != ReturnStatus.Pending)
-            {
-                return BadRequest(Result.Failure("Can only update status of pending returns"));
-            }
-
-            returnEntity.Status = request.Status;
-            returnEntity.UpdatedAt = DateTime.UtcNow;
-
-            if (request.Status == ReturnStatus.Approved)
-            {
-                returnEntity.ApprovedByUserId = userId;
-                returnEntity.ApprovedAt = DateTime.UtcNow;
-            }
-
-            if (!string.IsNullOrWhiteSpace(request.Notes))
-            {
-                returnEntity.Notes = (returnEntity.Notes + "\n" + request.Notes).Trim();
-            }
-
-            await _context.SaveChangesAsync();
-
-            var updatedReturn = await _context.PurchaseOrderReturns
-                .Include(r => r.PurchaseOrder)
-                .Include(r => r.Supplier)
-                .Include(r => r.Items)
-                    .ThenInclude(i => i.Product)
-                .FirstAsync(r => r.Id == id);
-
-            var returnDto = _mapper.Map<PurchaseOrderReturnDto>(updatedReturn);
-            return Ok(Result<PurchaseOrderReturnDto>.Success(returnDto));
+            return Ok(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating return status {ReturnId}", id);
-            return StatusCode(500, Result.Failure("An error occurred while updating the return status"));
+            _logger.LogError(ex, "Error approving return {ReturnId}", id);
+            return StatusCode(500, Result.Failure("An error occurred while approving the return"));
+        }
+    }
+
+    /// <summary>
+    /// Cancel a purchase order return
+    /// </summary>
+    [HttpPut("{id}/cancel")]
+    public async Task<ActionResult<Result<PurchaseOrderReturnDto>>> CancelReturn(
+        Guid id, 
+        [FromBody] CancelReturnDto request)
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                ?? User.FindFirst("sub")?.Value 
+                ?? "system";
+
+            var result = await _returnService.CancelReturnAsync(id, request, userId);
+            
+            if (!result.IsSuccess)
+            {
+                if (result.Error == "Purchase order return not found")
+                {
+                    return NotFound(result);
+                }
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cancelling return {ReturnId}", id);
+            return StatusCode(500, Result.Failure("An error occurred while cancelling the return"));
         }
     }
 
@@ -326,61 +215,18 @@ public class PurchaseOrderReturnsController : ControllerBase
                 ?? User.FindFirst("sub")?.Value 
                 ?? "system";
 
-            var returnEntity = await _context.PurchaseOrderReturns
-                .Include(r => r.Items)
-                .FirstOrDefaultAsync(r => r.Id == id);
-
-            if (returnEntity == null)
+            var result = await _returnService.ProcessReturnAsync(id, request, userId);
+            
+            if (!result.IsSuccess)
             {
-                return NotFound(Result.Failure("Purchase order return not found"));
-            }
-
-            if (returnEntity.Status != ReturnStatus.Approved)
-            {
-                return BadRequest(Result.Failure("Can only process approved returns"));
-            }
-
-            // Update return items
-            foreach (var itemUpdate in request.Items)
-            {
-                var returnItem = returnEntity.Items.FirstOrDefault(i => i.Id == itemUpdate.ReturnItemId);
-                if (returnItem != null)
+                if (result.Error == "Purchase order return not found")
                 {
-                    returnItem.RefundProcessed = itemUpdate.RefundProcessed;
-                    if (itemUpdate.RefundProcessed)
-                    {
-                        returnItem.RefundProcessedDate = DateTime.UtcNow;
-                    }
-                    if (!string.IsNullOrWhiteSpace(itemUpdate.Notes))
-                    {
-                        returnItem.Notes = (returnItem.Notes + "\n" + itemUpdate.Notes).Trim();
-                    }
-                    returnItem.UpdatedAt = DateTime.UtcNow;
+                    return NotFound(result);
                 }
+                return BadRequest(result);
             }
 
-            // Update return status
-            returnEntity.Status = ReturnStatus.Processed;
-            returnEntity.ProcessedByUserId = userId;
-            returnEntity.ProcessedDate = DateTime.UtcNow;
-            returnEntity.UpdatedAt = DateTime.UtcNow;
-
-            if (!string.IsNullOrWhiteSpace(request.Notes))
-            {
-                returnEntity.Notes = (returnEntity.Notes + "\n" + request.Notes).Trim();
-            }
-
-            await _context.SaveChangesAsync();
-
-            var updatedReturn = await _context.PurchaseOrderReturns
-                .Include(r => r.PurchaseOrder)
-                .Include(r => r.Supplier)
-                .Include(r => r.Items)
-                    .ThenInclude(i => i.Product)
-                .FirstAsync(r => r.Id == id);
-
-            var returnDto = _mapper.Map<PurchaseOrderReturnDto>(updatedReturn);
-            return Ok(Result<PurchaseOrderReturnDto>.Success(returnDto));
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -397,51 +243,18 @@ public class PurchaseOrderReturnsController : ControllerBase
     {
         try
         {
-            var purchaseOrder = await _context.PurchaseOrders
-                .Include(po => po.Items)
-                    .ThenInclude(i => i.Product)
-                .FirstOrDefaultAsync(po => po.Id == purchaseOrderId);
-
-            if (purchaseOrder == null)
+            var result = await _returnService.GetAvailableReturnItemsAsync(purchaseOrderId);
+            
+            if (!result.IsSuccess)
             {
-                return NotFound(Result.Failure("Purchase order not found"));
-            }
-
-            if (purchaseOrder.Status != PurchaseOrderStatus.Received && 
-                purchaseOrder.Status != PurchaseOrderStatus.PartiallyReceived)
-            {
-                return BadRequest(Result.Failure("Can only return items from received purchase orders"));
-            }
-
-            var availableItems = new List<AvailableReturnItemDto>();
-
-            foreach (var item in purchaseOrder.Items.Where(i => i.ReceivedQuantity > 0))
-            {
-                // Calculate already returned quantity
-                var returnedQuantity = await _context.PurchaseOrderReturnItems
-                    .Where(ri => ri.PurchaseOrderItemId == item.Id)
-                    .SumAsync(ri => ri.ReturnQuantity);
-
-                var availableForReturn = item.ReceivedQuantity - returnedQuantity;
-
-                if (availableForReturn > 0)
+                if (result.Error == "Purchase order not found")
                 {
-                    availableItems.Add(new AvailableReturnItemDto
-                    {
-                        PurchaseOrderItemId = item.Id,
-                        ProductId = item.ProductId,
-                        ProductName = item.Product.Name,
-                        ProductSKU = item.Product.SKU,
-                        OrderedQuantity = item.OrderedQuantity,
-                        ReceivedQuantity = item.ReceivedQuantity,
-                        ReturnedQuantity = returnedQuantity,
-                        AvailableForReturn = availableForReturn,
-                        UnitPrice = item.UnitPrice
-                    });
+                    return NotFound(result);
                 }
+                return BadRequest(result);
             }
 
-            return Ok(Result<List<AvailableReturnItemDto>>.Success(availableItems));
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -449,41 +262,4 @@ public class PurchaseOrderReturnsController : ControllerBase
             return StatusCode(500, Result.Failure("An error occurred while retrieving available items"));
         }
     }
-
-    private async Task<string> GenerateReturnNumberAsync()
-    {
-        var today = DateTime.UtcNow;
-        var prefix = $"RTN-{today:yyyyMMdd}";
-        
-        var latestReturn = await _context.PurchaseOrderReturns
-            .Where(r => r.ReturnNumber.StartsWith(prefix))
-            .OrderByDescending(r => r.ReturnNumber)
-            .FirstOrDefaultAsync();
-
-        if (latestReturn == null)
-        {
-            return $"{prefix}-001";
-        }
-
-        var lastNumberStr = latestReturn.ReturnNumber.Substring(prefix.Length + 1);
-        if (int.TryParse(lastNumberStr, out var lastNumber))
-        {
-            return $"{prefix}-{(lastNumber + 1):D3}";
-        }
-
-        return $"{prefix}-001";
-    }
-}
-
-public class AvailableReturnItemDto
-{
-    public Guid PurchaseOrderItemId { get; set; }
-    public Guid ProductId { get; set; }
-    public string ProductName { get; set; } = string.Empty;
-    public string ProductSKU { get; set; } = string.Empty;
-    public int OrderedQuantity { get; set; }
-    public int ReceivedQuantity { get; set; }
-    public int ReturnedQuantity { get; set; }
-    public int AvailableForReturn { get; set; }
-    public decimal UnitPrice { get; set; }
 }

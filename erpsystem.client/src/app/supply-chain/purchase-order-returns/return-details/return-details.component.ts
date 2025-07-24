@@ -22,7 +22,8 @@ import { Subject, takeUntil, catchError, of, switchMap } from 'rxjs';
 
 import { 
   PurchaseOrderReturn,
-  UpdateReturnStatusRequest,
+  ApproveReturnRequest,
+  CancelReturnRequest,
   ReturnStatus,
   ProcessReturnRequest,
   ReturnReason
@@ -70,6 +71,9 @@ export class ReturnDetailsComponent implements OnInit, OnDestroy {
   readonly EditIcon = Edit;
   readonly Trash2Icon = Trash2;
 
+  // Enum references for template
+  readonly ReturnStatus = ReturnStatus;
+
   // Reactive streams
   private destroy$ = new Subject<void>();
 
@@ -111,8 +115,12 @@ export class ReturnDetailsComponent implements OnInit, OnDestroy {
     });
   }
 
-  getStatusBadgeClass(status: string): string {
+  getStatusBadgeClass(status: ReturnStatus): string {
     return this.returnService.getStatusBadgeClass(status);
+  }
+
+  getStatusText(status: ReturnStatus): string {
+    return this.returnService.getStatusText(status);
   }
 
   getReasonDisplayText(reason: ReturnReason): string {
@@ -121,18 +129,17 @@ export class ReturnDetailsComponent implements OnInit, OnDestroy {
 
   approveReturn(): void {
     const returnData = this.returnData();
-    if (!returnData || returnData.status !== 'Pending') {
+    if (!returnData || returnData.status !== ReturnStatus.Pending) {
       return;
     }
 
     this.actionLoading.set(true);
     
-    const request: UpdateReturnStatusRequest = {
-      status: ReturnStatus.Approved,
+    const request: ApproveReturnRequest = {
       notes: 'Approved via return details page'
     };
 
-    this.returnService.updateReturnStatus(returnData.id, request).pipe(
+    this.returnService.approveReturn(returnData.id, request).pipe(
       catchError(error => {
         console.error('Error approving return:', error);
         this.error.set('Failed to approve return. Please try again.');
@@ -149,18 +156,17 @@ export class ReturnDetailsComponent implements OnInit, OnDestroy {
 
   cancelReturn(): void {
     const returnData = this.returnData();
-    if (!returnData || returnData.status !== 'Pending') {
+    if (!returnData || returnData.status !== ReturnStatus.Pending) {
       return;
     }
 
     this.actionLoading.set(true);
     
-    const request: UpdateReturnStatusRequest = {
-      status: ReturnStatus.Cancelled,
+    const request: CancelReturnRequest = {
       notes: 'Cancelled via return details page'
     };
 
-    this.returnService.updateReturnStatus(returnData.id, request).pipe(
+    this.returnService.cancelReturn(returnData.id, request).pipe(
       catchError(error => {
         console.error('Error cancelling return:', error);
         this.error.set('Failed to cancel return. Please try again.');
@@ -177,7 +183,7 @@ export class ReturnDetailsComponent implements OnInit, OnDestroy {
 
   processReturn(): void {
     const returnData = this.returnData();
-    if (!returnData || returnData.status !== 'Approved') {
+    if (!returnData || returnData.status !== ReturnStatus.Approved) {
       return;
     }
 
@@ -213,15 +219,15 @@ export class ReturnDetailsComponent implements OnInit, OnDestroy {
   }
 
   canApprove(): boolean {
-    return this.returnData()?.status === 'Pending';
+    return this.returnData()?.status === ReturnStatus.Pending;
   }
 
   canCancel(): boolean {
-    return this.returnData()?.status === 'Pending';
+    return this.returnData()?.status === ReturnStatus.Pending;
   }
 
   canProcess(): boolean {
-    return this.returnData()?.status === 'Approved';
+    return this.returnData()?.status === ReturnStatus.Approved;
   }
 
   getTotalQuantity(): number {

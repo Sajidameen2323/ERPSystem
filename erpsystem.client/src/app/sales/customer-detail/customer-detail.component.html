@@ -1,0 +1,242 @@
+<!-- Customer Detail Page -->
+<div class="p-6 max-w-4xl mx-auto">
+  <!-- Page Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center space-x-4">
+      <button
+        (click)="goBack()"
+        class="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+        <lucide-angular [img]="ArrowLeftIcon" class="w-5 h-5"></lucide-angular>
+      </button>
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Customer Details</h1>
+        <p class="text-gray-600 dark:text-gray-400 mt-1">View and manage customer information</p>
+      </div>
+    </div>
+    
+    <!-- Action Buttons -->
+    <div *ngIf="customer() && !loading()" class="flex items-center space-x-3">
+      <button *ngIf="!customer()?.isDeleted"
+        (click)="editCustomer()"
+        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+        <lucide-angular [img]="EditIcon" class="w-4 h-4 mr-2"></lucide-angular>
+        Edit
+      </button>
+      
+      <button *ngIf="!customer()?.isDeleted"
+        (click)="confirmDelete()"
+        class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors">
+        <lucide-angular [img]="Trash2Icon" class="w-4 h-4 mr-2"></lucide-angular>
+        Delete
+      </button>
+      
+      <button *ngIf="customer()?.isDeleted"
+        (click)="confirmRestore()"
+        class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors">
+        <lucide-angular [img]="RotateCcwIcon" class="w-4 h-4 mr-2"></lucide-angular>
+        Restore
+      </button>
+    </div>
+  </div>
+
+  <!-- Error Alert -->
+  <div *ngIf="error()" class="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center">
+        <div class="text-red-600 dark:text-red-400">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+          </svg>
+        </div>
+        <p class="ml-3 text-red-800 dark:text-red-200">{{ error() }}</p>
+      </div>
+      <button (click)="clearError()" class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading Spinner -->
+  <div *ngIf="loading()" class="flex justify-center py-8">
+    <app-loading-spinner></app-loading-spinner>
+  </div>
+
+  <!-- Customer Information -->
+  <div *ngIf="customer() && !loading()" class="space-y-6">
+    
+    <!-- Customer Overview Card -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div class="p-6">
+        <div class="flex items-start justify-between">
+          <div class="flex items-center space-x-4">
+            <!-- Avatar -->
+            <div class="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+              <span class="text-white font-bold text-xl">
+                {{ getCustomerInitials(customer()!.name) }}
+              </span>
+            </div>
+            
+            <!-- Basic Info -->
+            <div>
+              <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ customer()!.name }}</h2>
+              <p class="text-gray-600 dark:text-gray-400">Customer ID: {{ customer()!.id.slice(0, 8) }}...</p>
+              
+              <!-- Status Badge -->
+              <div class="mt-2">
+                <span *ngIf="!customer()!.isDeleted"
+                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400">
+                  Active
+                </span>
+                <span *ngIf="customer()!.isDeleted"
+                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-400">
+                  Deleted
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contact Information -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Contact Information</h3>
+      </div>
+      <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <!-- Email -->
+          <div class="flex items-start space-x-3">
+            <div class="mt-1">
+              <lucide-angular [img]="MailIcon" class="w-5 h-5 text-gray-400"></lucide-angular>
+            </div>
+            <div>
+              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Email Address</h4>
+              <p class="mt-1 text-sm text-gray-900 dark:text-white">
+                {{ customer()!.email || 'Not provided' }}
+              </p>
+              <a *ngIf="customer()!.email"
+                 [href]="'mailto:' + customer()!.email"
+                 class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm">
+                Send Email
+              </a>
+            </div>
+          </div>
+
+          <!-- Phone -->
+          <div class="flex items-start space-x-3">
+            <div class="mt-1">
+              <lucide-angular [img]="PhoneIcon" class="w-5 h-5 text-gray-400"></lucide-angular>
+            </div>
+            <div>
+              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Phone Number</h4>
+              <p class="mt-1 text-sm text-gray-900 dark:text-white">
+                {{ customer()!.phone || 'Not provided' }}
+              </p>
+              <a *ngIf="customer()!.phone"
+                 [href]="'tel:' + customer()!.phone"
+                 class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm">
+                Call Now
+              </a>
+            </div>
+          </div>
+
+          <!-- Address -->
+          <div class="flex items-start space-x-3 md:col-span-2">
+            <div class="mt-1">
+              <lucide-angular [img]="MapPinIcon" class="w-5 h-5 text-gray-400"></lucide-angular>
+            </div>
+            <div>
+              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Address</h4>
+              <p class="mt-1 text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
+                {{ customer()!.address || 'Not provided' }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- System Information -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">System Information</h3>
+      </div>
+      <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <!-- Created Date -->
+          <div class="flex items-start space-x-3">
+            <div class="mt-1">
+              <lucide-angular [img]="CalendarIcon" class="w-5 h-5 text-gray-400"></lucide-angular>
+            </div>
+            <div>
+              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Created</h4>
+              <p class="mt-1 text-sm text-gray-900 dark:text-white">
+                {{ formatDate(customer()!.createdAt) }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Updated Date -->
+          <div class="flex items-start space-x-3">
+            <div class="mt-1">
+              <lucide-angular [img]="CalendarIcon" class="w-5 h-5 text-gray-400"></lucide-angular>
+            </div>
+            <div>
+              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Last Updated</h4>
+              <p class="mt-1 text-sm text-gray-900 dark:text-white">
+                {{ formatDate(customer()!.updatedAt) }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sales Overview (Placeholder for future implementation) -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Sales Overview</h3>
+      </div>
+      <div class="p-6">
+        <div class="text-center py-8">
+          <lucide-angular [img]="ShoppingCartIcon" class="w-12 h-12 text-gray-400 mx-auto mb-4"></lucide-angular>
+          <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Sales Orders</h4>
+          <p class="text-gray-600 dark:text-gray-400 mb-4">
+            Sales order history will appear here once the sales order feature is implemented.
+          </p>
+          <button class="inline-flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+            <lucide-angular [img]="TrendingUpIcon" class="w-4 h-4 mr-2"></lucide-angular>
+            View Sales History
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Dialog -->
+<app-confirm-dialog
+  *ngIf="showDeleteDialog()"
+  title="Delete Customer"
+  [message]="'Are you sure you want to delete ' + customer()?.name + '? This action cannot be undone if the customer has no sales orders.'"
+  confirmText="Delete"
+  confirmClass="bg-red-600 hover:bg-red-700"
+  (confirmed)="deleteCustomer()"
+  (cancelled)="closeDialogs()">
+</app-confirm-dialog>
+
+<!-- Restore Confirmation Dialog -->
+<app-confirm-dialog
+  *ngIf="showRestoreDialog()"
+  title="Restore Customer"
+  [message]="'Are you sure you want to restore ' + customer()?.name + '?'"
+  confirmText="Restore"
+  confirmClass="bg-green-600 hover:bg-green-700"
+  (confirmed)="restoreCustomer()"
+  (cancelled)="closeDialogs()">
+</app-confirm-dialog>

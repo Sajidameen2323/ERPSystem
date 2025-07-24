@@ -1,0 +1,5 @@
+<!-- Loading Spinner -->
+<div class="flex items-center justify-center space-x-2">
+  <div [class]="sizeClasses + ' ' + colorClasses + ' border-2 rounded-full animate-spin'"></div>
+  <span *ngIf="message" class="text-sm text-gray-600 dark:text-gray-400">{{ message }}</span>
+</div>

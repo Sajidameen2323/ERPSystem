@@ -24,6 +24,11 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ISupplierService, SupplierService>();
 builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IPurchaseOrderReturnService, PurchaseOrderReturnService>();
+builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
+builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+builder.Services.AddScoped<IStockMovementService, StockMovementService>();
 
 // Add Okta authentication for API protection
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

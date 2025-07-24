@@ -1,0 +1,135 @@
+<div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+  <div class="mb-6">
+    <h3 class="text-lg font-medium text-gray-900 dark:text-white flex items-center mb-2">
+      <lucide-angular [img]="RefreshCwIcon" class="h-5 w-5 mr-2"></lucide-angular>
+      Update Order Status
+    </h3>
+    <p class="text-sm text-gray-500 dark:text-gray-400">
+      Change the status of sales order #{{ salesOrder.referenceNumber }}
+    </p>
+  </div>
+
+  <!-- Current Status -->
+  <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Current Status</p>
+        <div class="flex items-center mt-1">
+          <lucide-angular [img]="getStatusIcon(salesOrder.status)" class="h-4 w-4 mr-2"></lucide-angular>
+          <span [class]="'inline-flex px-2 py-1 text-xs font-semibold rounded-full ' + getStatusColor(salesOrder.status)">
+            {{ getStatusLabel(salesOrder.status) }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Alert -->
+  @if (error()) {
+    <div class="mb-6 bg-red-50 border border-red-200 rounded-md p-4 dark:bg-red-900/50 dark:border-red-800">
+      <div class="flex">
+        <lucide-angular [img]="XCircleIcon" class="h-5 w-5 text-red-400 mr-3"></lucide-angular>
+        <div class="text-sm text-red-700 dark:text-red-300">
+          {{ error() }}
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Status Update Form -->
+  <form [formGroup]="statusForm" (ngSubmit)="updateStatus()" class="space-y-6">
+    
+    <!-- New Status Selection -->
+    <div>
+      <label for="status" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        New Status *
+      </label>
+      <select
+        id="status"
+        formControlName="status"
+        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        <option value="">Select new status...</option>
+        @for (statusOption of getValidStatusTransitions(); track statusOption.value) {
+          <option [value]="statusOption.value">{{ statusOption.label }}</option>
+        }
+      </select>
+      @if (getFieldError('status')) {
+        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ getFieldError('status') }}</p>
+      }
+    </div>
+
+    <!-- Status Description -->
+    @if (statusForm.get('status')?.value) {
+      <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+        <div class="flex items-start">
+          <lucide-angular [img]="AlertCircleIcon" class="h-5 w-5 text-blue-500 mr-3 mt-0.5"></lucide-angular>
+          <div>
+            <h4 class="text-sm font-medium text-blue-800 dark:text-blue-200">
+              What happens when you change to "{{ getStatusLabel(statusForm.get('status')?.value) }}"?
+            </h4>
+            <p class="mt-1 text-sm text-blue-700 dark:text-blue-300">
+              {{ getStatusDescription(statusForm.get('status')?.value) }}
+            </p>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Shipped Date (show when status is Shipped) -->
+    @if (shouldShowDateField(SalesOrderStatus.Shipped)) {
+      <div>
+        <label for="shippedDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Shipped Date *
+        </label>
+        <input
+          id="shippedDate"
+          type="datetime-local"
+          formControlName="shippedDate"
+          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+        />
+        @if (getFieldError('shippedDate')) {
+          <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ getFieldError('shippedDate') }}</p>
+        }
+      </div>
+    }
+
+    <!-- Delivered Date (show when status is Completed) -->
+    @if (shouldShowDateField(SalesOrderStatus.Completed)) {
+      <div>
+        <label for="deliveredDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Delivered Date *
+        </label>
+        <input
+          id="deliveredDate"
+          type="datetime-local"
+          formControlName="deliveredDate"
+          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+        />
+        @if (getFieldError('deliveredDate')) {
+          <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ getFieldError('deliveredDate') }}</p>
+        }
+      </div>
+    }
+
+    <!-- Action Buttons -->
+    <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-600">
+      <button
+        type="button"
+        (click)="cancel()"
+        [disabled]="loading()"
+        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600">
+        Cancel
+      </button>
+      <button
+        type="submit"
+        [disabled]="!statusForm.valid || loading()"
+        class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+        @if (loading()) {
+          <app-loading-spinner class="mr-2"></app-loading-spinner>
+        }
+        Update Status
+      </button>
+    </div>
+
+  </form>
+</div>

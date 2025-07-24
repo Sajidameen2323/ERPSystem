@@ -201,7 +201,7 @@
                   <!-- Status -->
                   <td class="px-6 py-4 whitespace-nowrap">
                     <span [ngClass]="getStatusBadgeClass(returnItem.status)">
-                      {{ returnItem.status }}
+                      {{ getStatusText(returnItem.status) }}
                     </span>
                   </td>
 
@@ -235,7 +235,7 @@
                       
                       <!-- View Details -->
                       <button
-                        [routerLink]="['/supply-chain/purchase-order-returns', returnItem.id]"
+                        [routerLink]="['/dashboard/supply-chain/purchase-order-returns', returnItem.id]"
                         class="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors"
                         [ngClass]="[
                           'text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300',
@@ -247,7 +247,7 @@
                       </button>
 
                       <!-- Approve (only for pending) -->
-                      @if (returnItem.status === 'Pending') {
+                      @if (returnItem.status === ReturnStatus.Pending) {
                         <button
                           (click)="approveReturn(returnItem)"
                           [disabled]="loading()"

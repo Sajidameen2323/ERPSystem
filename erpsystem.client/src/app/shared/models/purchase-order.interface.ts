@@ -175,10 +175,10 @@ export interface StockMovementCreateDto {
 
 // Purchase Order Returns
 export enum ReturnStatus {
-  Pending = 'Pending',
-  Approved = 'Approved',
-  Processed = 'Processed',
-  Cancelled = 'Cancelled'
+  Pending = 0,
+  Approved = 1, 
+  Processed = 2,
+  Cancelled = 3
 }
 
 export enum ReturnReason {
@@ -257,11 +257,15 @@ export interface AvailableReturnItem {
   receivedQuantity: number;
   returnedQuantity: number;
   availableForReturn: number;
+  currentStock: number;
   unitPrice: number;
 }
 
-export interface UpdateReturnStatusRequest {
-  status: ReturnStatus;
+export interface ApproveReturnRequest {
+  notes?: string;
+}
+
+export interface CancelReturnRequest {
   notes?: string;
 }
 

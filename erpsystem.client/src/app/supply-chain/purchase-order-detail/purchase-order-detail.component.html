@@ -243,6 +243,18 @@
                     {{ item.receivedQuantity >= item.orderedQuantity ? 'Received' : (item.receivedQuantity > 0 ? 'Partial' : 'Pending') }}
                   </span>
 
+                  <!-- Return Status -->
+                  <span
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                    [ngClass]="getItemReturnStatus(item).class"
+                  >
+                    <lucide-angular 
+                      [img]="getItemReturnStatus(item).icon" 
+                      class="w-3 h-3 mr-1"
+                    ></lucide-angular>
+                    {{ getItemReturnStatus(item).label }}
+                  </span>
+
                   <!-- Receive Item Button (if not fully received and order is Approved/PartiallyReceived) -->
                   <button
                     *ngIf="canReceiveItems(purchaseOrder.status) && item.receivedQuantity < item.orderedQuantity"
@@ -265,6 +277,135 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6" *ngIf="purchaseOrder.notes">
       <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Order Notes</h2>
       <p class="text-sm text-gray-600 dark:text-gray-400">{{ purchaseOrder.notes }}</p>
+    </div>
+
+    <!-- Purchase Order Returns -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6" *ngIf="hasReturns() || loadingReturns">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Purchase Order Returns</h2>
+        <span class="text-sm text-gray-500 dark:text-gray-400">{{ purchaseOrderReturns.length }} return(s)</span>
+      </div>
+
+      <!-- Loading Returns -->
+      <div *ngIf="loadingReturns" class="text-center py-4">
+        <div class="animate-spin inline-block w-6 h-6 border-4 border-current border-t-transparent text-blue-600 rounded-full"></div>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading returns...</p>
+      </div>
+
+      <!-- Returns List -->
+      <div *ngIf="!loadingReturns && hasReturns()" class="space-y-4">
+        <div *ngFor="let returnOrder of purchaseOrderReturns" class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          
+          <!-- Return Header -->
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center space-x-3">
+              <h3 class="text-md font-medium text-gray-900 dark:text-white">{{ returnOrder.returnNumber }}</h3>
+              <span
+                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                [ngClass]="getReturnStatusBadgeClass(returnOrder.status)"
+              >
+                <lucide-angular 
+                  [img]="getReturnStatusIcon(returnOrder.status)" 
+                  class="w-3 h-3 mr-1"
+                ></lucide-angular>
+                {{ getReturnStatusText(returnOrder.status) }}
+              </span>
+            </div>
+            <div class="text-right">
+              <p class="text-sm font-medium text-gray-900 dark:text-white">{{ formatCurrency(returnOrder.totalReturnAmount) }}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(returnOrder.returnDate) }}</p>
+            </div>
+          </div>
+
+          <!-- Return Items -->
+          <div class="overflow-x-auto">
+            <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead class="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Product
+                  </th>
+                  <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Returned Qty
+                  </th>
+                  <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Unit Price
+                  </th>
+                  <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Return Amount
+                  </th>
+                  <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Reason
+                  </th>
+                  <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Refund Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tr *ngFor="let item of returnOrder.items">
+                  <!-- Product -->
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <div class="flex flex-col">
+                      <div class="text-sm font-medium text-gray-900 dark:text-white">{{ item.productName }}</div>
+                      <div class="text-xs text-gray-500 dark:text-gray-400">{{ item.productSKU }}</div>
+                    </div>
+                  </td>
+                  <!-- Returned Quantity -->
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <div class="text-sm text-gray-900 dark:text-white">{{ item.returnQuantity }}</div>
+                  </td>
+                  <!-- Unit Price -->
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <div class="text-sm text-gray-900 dark:text-white">{{ formatCurrency(item.unitPrice) }}</div>
+                  </td>
+                  <!-- Return Amount -->
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900 dark:text-white">{{ formatCurrency(item.totalReturnAmount) }}</div>
+                  </td>
+                  <!-- Reason -->
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <div class="text-xs text-gray-600 dark:text-gray-400" [title]="item.reasonDescription || getReasonDisplayText(item.reason)">
+                      {{ item.reasonDescription || getReasonDisplayText(item.reason) }}
+                    </div>
+                  </td>
+                  <!-- Refund Status -->
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <span
+                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                      [ngClass]="{
+                        'bg-red-100 text-red-800': returnOrder.status === ReturnStatus.Cancelled,
+                        'bg-green-100 text-green-800': returnOrder.status !== ReturnStatus.Cancelled && item.refundProcessed,
+                        'bg-yellow-100 text-yellow-800': returnOrder.status !== ReturnStatus.Cancelled && item.refundRequested && !item.refundProcessed,
+                        'bg-gray-100 text-gray-800': returnOrder.status !== ReturnStatus.Cancelled && !item.refundRequested
+                      }"
+                    >
+                      <lucide-angular 
+                        [img]="returnOrder.status === ReturnStatus.Cancelled ? XCircleIcon : (item.refundProcessed ? CheckCircleIcon : (item.refundRequested ? ClockIcon : XCircleIcon))" 
+                        class="w-3 h-3 mr-1"
+                      ></lucide-angular>
+                      {{ returnOrder.status === ReturnStatus.Cancelled ? 'Cancelled' : (item.refundProcessed ? 'Processed' : (item.refundRequested ? 'Pending' : 'Not Requested')) }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Return Notes -->
+          <div *ngIf="returnOrder.notes" class="mt-3 p-2 bg-gray-50 dark:bg-gray-700 rounded text-sm text-gray-600 dark:text-gray-400">
+            <strong>Notes:</strong> {{ returnOrder.notes }}
+          </div>
+        </div>
+      </div>
+
+      <!-- No Returns Message -->
+      <div *ngIf="!loadingReturns && !hasReturns()" class="text-center py-4">
+        <div class="text-gray-400 dark:text-gray-500 mb-2">
+          <lucide-angular [img]="RotateCcwIcon" class="w-8 h-8 mx-auto"></lucide-angular>
+        </div>
+        <p class="text-sm text-gray-500 dark:text-gray-400">No returns have been created for this purchase order</p>
+      </div>
     </div>
 
     <!-- Order Timeline -->
