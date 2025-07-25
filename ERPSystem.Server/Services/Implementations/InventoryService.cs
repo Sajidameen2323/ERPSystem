@@ -144,57 +144,29 @@ public class StockMovementService : IStockMovementService
     }
 
     public async Task<Result<bool>> ProcessStockMovementAsync(Guid productId, int quantity, 
-        StockMovementType movementType, string reference, string reason, string movedByUserId, string? notes = null)
+        StockMovementType movementType, string reference, string reason, string movedByUserId, string? notes = null, bool useExistingTransaction = false)
     {
+        if (useExistingTransaction)
+        {
+            // When using existing transaction, don't create a new one
+            return await ProcessStockMovementInternalAsync(productId, quantity, movementType, reference, reason, movedByUserId, notes);
+        }
+
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
-            var product = await _context.Products
-                .FirstOrDefaultAsync(p => p.Id == productId && !p.IsDeleted);
-
-            if (product == null)
+            var result = await ProcessStockMovementInternalAsync(productId, quantity, movementType, reference, reason, movedByUserId, notes);
+            
+            if (result.IsSuccess)
             {
-                return Result<bool>.Failure("Product not found");
+                await transaction.CommitAsync();
+            }
+            else
+            {
+                await transaction.RollbackAsync();
             }
 
-            var stockBefore = product.CurrentStock;
-            var movementQuantity = movementType == StockMovementType.StockOut ? -Math.Abs(quantity) : Math.Abs(quantity);
-            var stockAfter = stockBefore + movementQuantity;
-
-            // Validate stock availability for outbound movements
-            if (movementType == StockMovementType.StockOut && stockAfter < 0)
-            {
-                return Result<bool>.Failure($"Insufficient stock. Available: {stockBefore}, Requested: {Math.Abs(quantity)}");
-            }
-
-            // Update product stock
-            product.CurrentStock = stockAfter;
-            product.UpdatedAt = DateTime.UtcNow;
-
-            // Create stock movement record
-            var stockMovement = new StockMovement
-            {
-                Id = Guid.NewGuid(),
-                ProductId = productId,
-                MovementType = movementType,
-                Quantity = movementQuantity,
-                StockBeforeMovement = stockBefore,
-                StockAfterMovement = stockAfter,
-                Reference = reference,
-                Reason = reason,
-                MovedByUserId = movedByUserId,
-                Notes = notes,
-                MovementDate = DateTime.UtcNow
-            };
-
-            _context.StockMovements.Add(stockMovement);
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            _logger.LogInformation("Stock movement processed successfully. Product: {ProductId}, Type: {MovementType}, Quantity: {Quantity}, Reference: {Reference}", 
-                productId, movementType, movementQuantity, reference);
-
-            return Result<bool>.Success(true);
+            return result;
         }
         catch (Exception ex)
         {
@@ -202,6 +174,56 @@ public class StockMovementService : IStockMovementService
             _logger.LogError(ex, "Error processing stock movement. Product: {ProductId}, Type: {MovementType}", productId, movementType);
             return Result<bool>.Failure("An error occurred while processing stock movement");
         }
+    }
+
+    private async Task<Result<bool>> ProcessStockMovementInternalAsync(Guid productId, int quantity, 
+        StockMovementType movementType, string reference, string reason, string movedByUserId, string? notes = null)
+    {
+        var product = await _context.Products
+            .FirstOrDefaultAsync(p => p.Id == productId && !p.IsDeleted);
+
+        if (product == null)
+        {
+            return Result<bool>.Failure("Product not found");
+        }
+
+        var stockBefore = product.CurrentStock;
+        var movementQuantity = movementType == StockMovementType.StockOut ? -Math.Abs(quantity) : Math.Abs(quantity);
+        var stockAfter = stockBefore + movementQuantity;
+
+        // Validate stock availability for outbound movements
+        if (movementType == StockMovementType.StockOut && stockAfter < 0)
+        {
+            return Result<bool>.Failure($"Insufficient stock. Available: {stockBefore}, Requested: {Math.Abs(quantity)}");
+        }
+
+        // Update product stock
+        product.CurrentStock = stockAfter;
+        product.UpdatedAt = DateTime.UtcNow;
+
+        // Create stock movement record
+        var stockMovement = new StockMovement
+        {
+            Id = Guid.NewGuid(),
+            ProductId = productId,
+            MovementType = movementType,
+            Quantity = movementQuantity,
+            StockBeforeMovement = stockBefore,
+            StockAfterMovement = stockAfter,
+            Reference = reference,
+            Reason = reason,
+            MovedByUserId = movedByUserId,
+            Notes = notes,
+            MovementDate = DateTime.UtcNow
+        };
+
+        _context.StockMovements.Add(stockMovement);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Stock movement processed successfully. Product: {ProductId}, Type: {MovementType}, Quantity: {Quantity}, Reference: {Reference}", 
+            productId, movementType, movementQuantity, reference);
+
+        return Result<bool>.Success(true);
     }
 
     public async Task<Result<bool>> ValidateStockAvailabilityAsync(List<(Guid ProductId, int Quantity)> items)

@@ -343,6 +343,17 @@ public class SalesOrderService : ISalesOrderService
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
+            // First, validate and convert the status string to enum
+            SalesOrderStatus newStatus;
+            try
+            {
+                newStatus = statusUpdateDto.GetStatusEnum();
+            }
+            catch (ArgumentException ex)
+            {
+                return Result<SalesOrderDto>.Failure($"Invalid status value: {ex.Message}");
+            }
+
             var salesOrder = await _context.SalesOrders
                 .Include(so => so.SalesOrderItems.Where(soi => !soi.IsDeleted))
                     .ThenInclude(soi => soi.Product)
@@ -354,15 +365,43 @@ public class SalesOrderService : ISalesOrderService
             }
 
             // Validate status transition
-            if (!IsStatusTransitionValid(salesOrder.Status, statusUpdateDto.Status))
+            if (!IsStatusTransitionValid(salesOrder.Status, newStatus))
             {
-                return Result<SalesOrderDto>.Failure($"Cannot change status from {salesOrder.Status} to {statusUpdateDto.Status}");
+                return Result<SalesOrderDto>.Failure($"Cannot change status from {salesOrder.Status} to {newStatus}");
             }
 
             var previousStatus = salesOrder.Status;
 
+            // If status is not changing, just update the metadata and return
+            if (salesOrder.Status == newStatus)
+            {
+                // Update metadata for same-status updates (e.g., date corrections)
+                salesOrder.UpdatedAt = DateTime.UtcNow;
+
+                if (statusUpdateDto.ShippedDate.HasValue)
+                {
+                    salesOrder.ShippedDate = statusUpdateDto.ShippedDate.Value;
+                }
+
+                if (statusUpdateDto.DeliveredDate.HasValue)
+                {
+                    salesOrder.DeliveredDate = statusUpdateDto.DeliveredDate.Value;
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                var sameStatusResult = await GetSalesOrderByIdAsync(id);
+                if (sameStatusResult.IsSuccess)
+                {
+                    _logger.LogInformation("Sales order metadata updated (no status change). ID: {Id}, Status: {Status}", id, newStatus);
+                }
+
+                return sameStatusResult;
+            }
+
             // Update status and related dates
-            salesOrder.Status = statusUpdateDto.Status;
+            salesOrder.Status = newStatus;
             salesOrder.UpdatedAt = DateTime.UtcNow;
 
             if (statusUpdateDto.ShippedDate.HasValue)
@@ -376,7 +415,7 @@ public class SalesOrderService : ISalesOrderService
             }
 
             // ERP Business Logic: Handle status-specific operations
-            switch (statusUpdateDto.Status)
+            switch (newStatus)
             {
                 case SalesOrderStatus.Processing:
                     // When moving to processing, validate stock and create invoice
@@ -410,10 +449,11 @@ public class SalesOrderService : ISalesOrderService
                             item.ProductId,
                             item.Quantity,
                             StockMovementType.StockOut,
-                            salesOrder.ReferenceNumber,
-                            $"Sales Order Shipped - {salesOrder.ReferenceNumber}",
+                            salesOrder.ReferenceNumber ?? $"SO-{salesOrder.Id}",
+                            $"Sales Order Shipped - {salesOrder.ReferenceNumber ?? salesOrder.Id.ToString()}",
                             statusUpdateDto.UpdatedByUserId ?? "System",
-                            $"Stock deducted for shipped sales order"
+                            $"Stock deducted for shipped sales order",
+                            useExistingTransaction: true
                         );
 
                         if (!stockResult.IsSuccess)
@@ -444,10 +484,11 @@ public class SalesOrderService : ISalesOrderService
                             item.ProductId,
                             item.Quantity,
                             StockMovementType.Return,
-                            salesOrder.ReferenceNumber,
-                            $"Sales Order Returned - {salesOrder.ReferenceNumber}",
+                            salesOrder.ReferenceNumber ?? $"SO-{salesOrder.Id}",
+                            $"Sales Order Returned - {salesOrder.ReferenceNumber ?? salesOrder.Id.ToString()}",
                             statusUpdateDto.UpdatedByUserId ?? "System",
-                            "Stock returned from customer"
+                            "Stock returned from customer",
+                            useExistingTransaction: true
                         );
 
                         if (!returnResult.IsSuccess)
@@ -466,7 +507,7 @@ public class SalesOrderService : ISalesOrderService
             if (result.IsSuccess)
             {
                 _logger.LogInformation("Sales order status updated successfully. ID: {Id}, Previous Status: {PreviousStatus}, New Status: {NewStatus}", 
-                    id, previousStatus, statusUpdateDto.Status);
+                    id, previousStatus, newStatus);
             }
 
             return result;
@@ -626,6 +667,12 @@ public class SalesOrderService : ISalesOrderService
 
     public bool IsStatusTransitionValid(SalesOrderStatus currentStatus, SalesOrderStatus newStatus)
     {
+        // Allow transitions to the same status (no change)
+        if (currentStatus == newStatus)
+        {
+            return true;
+        }
+
         // Define valid status transitions
         var validTransitions = new Dictionary<SalesOrderStatus, SalesOrderStatus[]>
         {

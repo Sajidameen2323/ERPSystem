@@ -4,7 +4,7 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
 import { finalize } from 'rxjs';
 
 // Lucide Icons
-import { LucideAngularModule, Package, Truck, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-angular';
+import { LucideAngularModule, Package, Truck, CheckCircle, XCircle, AlertCircle, RefreshCw, AlertTriangle } from 'lucide-angular';
 
 // Services and Models
 import { SalesOrderService } from '../services/sales-order.service';
@@ -45,6 +45,7 @@ export class SalesOrderStatusUpdateComponent {
   readonly XCircleIcon = XCircle;
   readonly AlertCircleIcon = AlertCircle;
   readonly RefreshCwIcon = RefreshCw;
+  readonly AlertTriangleIcon = AlertTriangle;
 
   // Signals
   loading = signal(false);
@@ -60,7 +61,7 @@ export class SalesOrderStatusUpdateComponent {
    */
   initializeForm(): void {
     this.statusForm = this.fb.group({
-      status: [this.salesOrder.status, [Validators.required]],
+      status: ['', [Validators.required]], // Start with empty to force user selection
       shippedDate: [this.salesOrder.shippedDate],
       deliveredDate: [this.salesOrder.deliveredDate]
     });
@@ -110,22 +111,123 @@ export class SalesOrderStatusUpdateComponent {
   /**
    * Get description for status transitions
    */
-  getStatusDescription(status: SalesOrderStatus): string {
-    switch (status) {
+  getStatusDescription(status: SalesOrderStatus | string | null): string {
+    // Convert string to number if needed
+    const statusValue = typeof status === 'string' ? parseInt(status, 10) : status;
+    
+    if (statusValue === null || statusValue === undefined || isNaN(statusValue as number)) {
+      return 'Select a status to see what ERP actions will be performed.';
+    }
+
+    switch (statusValue) {
       case SalesOrderStatus.Processing:
-        return 'Order is being prepared and invoice will be created';
+        return '📋 ERP Actions: Stock will be reserved for this order, an invoice will be automatically generated, and the order moves into the fulfillment queue. Inventory levels will be updated to reflect reserved quantities.';
       case SalesOrderStatus.Shipped:
-        return 'Order is shipped and stock will be deducted';
+        return '🚛 ERP Actions: Stock quantities will be permanently deducted from inventory, shipping documentation will be created, tracking information will be recorded, and customer will be notified automatically.';
       case SalesOrderStatus.Completed:
-        return 'Order is delivered and completed';
+        return '✅ ERP Actions: Order closes successfully, final invoice is marked as paid, delivery confirmation is recorded, customer satisfaction tracking begins, and sales analytics are updated.';
       case SalesOrderStatus.Cancelled:
-        return 'Order is cancelled and stock reservations will be released';
+        return '❌ ERP Actions: All reserved stock will be immediately released back to available inventory, any generated invoices will be voided, and cancellation reason will be logged for analytics.';
       case SalesOrderStatus.Returned:
-        return 'Order is returned and stock will be restored';
+        return '↩️ ERP Actions: Stock quantities will be restored to inventory (pending quality check), return documentation will be created, refund process will be initiated, and return analytics will be updated.';
       case SalesOrderStatus.OnHold:
-        return 'Order is temporarily on hold';
+        return '⏸️ ERP Actions: Order processing is temporarily suspended, stock reservations are maintained, automated workflows are paused, and hold reason will be tracked for resolution.';
+      default:
+        return 'Select a status to see what ERP actions will be performed.';
+    }
+  }
+
+  /**
+   * Get business warning for critical status changes
+   */
+  getBusinessWarning(status: SalesOrderStatus | string | null): string {
+    // Convert string to number if needed
+    const statusValue = typeof status === 'string' ? parseInt(status, 10) : status;
+    
+    if (statusValue === null || statusValue === undefined || isNaN(statusValue as number)) {
+      return '';
+    }
+
+    switch (statusValue) {
+      case SalesOrderStatus.Processing:
+        return 'This action will reserve inventory and generate invoices. Ensure all order details are correct before proceeding.';
+      case SalesOrderStatus.Shipped:
+        return 'This action will permanently deduct stock from inventory. This cannot be easily reversed.';
+      case SalesOrderStatus.Completed:
+        return 'This action finalizes the order and triggers payment collection. Ensure delivery has been confirmed.';
+      case SalesOrderStatus.Cancelled:
+        return 'This action will void invoices and release all reserved stock. Consider putting on hold first if issues might be resolved.';
+      case SalesOrderStatus.Returned:
+        return 'This action initiates the return process and affects inventory levels. Ensure return authorization has been granted.';
+      case SalesOrderStatus.OnHold:
+        return 'This action pauses all automated processing. Remember to resolve the hold reason and update status accordingly.';
       default:
         return '';
+    }
+  }
+
+  /**
+   * Get detailed impact points for a status change
+   */
+  getDetailedImpacts(status: SalesOrderStatus | string | null): string[] {
+    // Convert string to number if needed
+    const statusValue = typeof status === 'string' ? parseInt(status, 10) : status;
+    
+    if (statusValue === null || statusValue === undefined || isNaN(statusValue as number)) {
+      return [];
+    }
+
+    switch (statusValue) {
+      case SalesOrderStatus.Processing:
+        return [
+          'Reserve inventory quantities for all order items',
+          'Generate and send invoice to customer accounting system',
+          'Update order queue for fulfillment team',
+          'Set expected ship date based on inventory availability',
+          'Send order confirmation email to customer'
+        ];
+      case SalesOrderStatus.Shipped:
+        return [
+          'Deduct stock quantities from available inventory',
+          'Create shipping manifest and tracking documents',
+          'Update inventory valuation and COGS calculations',
+          'Generate shipping notification for customer',
+          'Update order expected delivery date'
+        ];
+      case SalesOrderStatus.Completed:
+        return [
+          'Finalize invoice and mark as payable',
+          'Record delivery confirmation and proof of delivery',
+          'Release any remaining inventory reservations',
+          'Trigger customer satisfaction survey',
+          'Update sales analytics and commission calculations'
+        ];
+      case SalesOrderStatus.Cancelled:
+        return [
+          'Release all reserved inventory back to available stock',
+          'Void any generated invoices and credit notes',
+          'Update order analytics with cancellation reason',
+          'Send cancellation notification to customer',
+          'Clear order from fulfillment and shipping queues'
+        ];
+      case SalesOrderStatus.Returned:
+        return [
+          'Create return merchandise authorization (RMA)',
+          'Schedule inventory inspection upon receipt',
+          'Initialize refund processing workflow',
+          'Update customer return history and analytics',
+          'Generate return shipping label if applicable'
+        ];
+      case SalesOrderStatus.OnHold:
+        return [
+          'Pause all automated processing and workflows',
+          'Maintain current inventory reservations',
+          'Flag order for manual review and resolution',
+          'Send hold notification to relevant departments',
+          'Track hold duration for performance metrics'
+        ];
+      default:
+        return [];
     }
   }
 
@@ -207,6 +309,16 @@ export class SalesOrderStatusUpdateComponent {
       const control = this.statusForm.get(key);
       control?.markAsTouched();
     });
+  }
+
+  /**
+   * Format currency amount
+   */
+  formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
   }
 
   /**

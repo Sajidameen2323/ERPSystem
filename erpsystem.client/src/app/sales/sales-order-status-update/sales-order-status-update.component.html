@@ -9,9 +9,9 @@
     </p>
   </div>
 
-  <!-- Current Status -->
+  <!-- Current Order Status & Details -->
   <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-    <div class="flex items-center justify-between">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
         <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Current Status</p>
         <div class="flex items-center mt-1">
@@ -20,6 +20,24 @@
             {{ getStatusLabel(salesOrder.status) }}
           </span>
         </div>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Order Value</p>
+        <p class="text-lg font-semibold text-gray-900 dark:text-white mt-1">
+          {{ formatCurrency(salesOrder.totalAmount) }}
+        </p>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Customer</p>
+        <p class="text-sm text-gray-900 dark:text-white mt-1">
+          {{ salesOrder.customerName || 'Customer information unavailable' }}
+        </p>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Items</p>
+        <p class="text-sm text-gray-900 dark:text-white mt-1">
+          {{ salesOrder.orderItems.length || 0 }} item(s)
+        </p>
       </div>
     </div>
   </div>
@@ -60,16 +78,46 @@
 
     <!-- Status Description -->
     @if (statusForm.get('status')?.value) {
-      <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+      <div class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
         <div class="flex items-start">
-          <lucide-angular [img]="AlertCircleIcon" class="h-5 w-5 text-blue-500 mr-3 mt-0.5"></lucide-angular>
-          <div>
-            <h4 class="text-sm font-medium text-blue-800 dark:text-blue-200">
-              What happens when you change to "{{ getStatusLabel(statusForm.get('status')?.value) }}"?
+          <lucide-angular [img]="AlertCircleIcon" class="h-5 w-5 text-blue-500 mr-3 mt-0.5 flex-shrink-0"></lucide-angular>
+          <div class="flex-1">
+            <h4 class="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">
+              🔄 ERP System Impact: {{ getStatusLabel(statusForm.get('status')?.value) }}
             </h4>
-            <p class="mt-1 text-sm text-blue-700 dark:text-blue-300">
+            <p class="text-sm text-blue-700 dark:text-blue-300 leading-relaxed mb-3">
               {{ getStatusDescription(statusForm.get('status')?.value) }}
             </p>
+            
+            <!-- Detailed Impact Points -->
+            <div class="mt-3">
+              <h5 class="text-xs font-medium text-blue-800 dark:text-blue-200 mb-2 uppercase tracking-wide">
+                📋 Detailed System Actions:
+              </h5>
+              
+              <ul class="space-y-1">
+                @for (impact of getDetailedImpacts(statusForm.get('status')?.value); track $index) {
+                  <li class="flex items-start text-xs text-blue-700 dark:text-blue-300">
+                    <span class="text-blue-500 mr-2 mt-0.5">•</span>
+                    <span>{{ impact }}</span>
+                  </li>
+                }
+                @empty {
+                  <li class="text-xs text-gray-500 italic">Select a status to see detailed ERP system actions.</li>
+                }
+              </ul>
+            </div>
+
+            @if (getBusinessWarning(statusForm.get('status')?.value)) {
+              <div class="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                <div class="flex items-center">
+                  <lucide-angular [img]="AlertTriangleIcon" class="h-4 w-4 text-amber-600 mr-2"></lucide-angular>
+                  <p class="text-sm text-amber-700 dark:text-amber-300 font-medium">
+                    ⚠️ {{ getBusinessWarning(statusForm.get('status')?.value) }}
+                  </p>
+                </div>
+              </div>
+            }
           </div>
         </div>
       </div>

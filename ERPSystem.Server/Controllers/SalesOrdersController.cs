@@ -107,11 +107,18 @@ public class SalesOrdersController : ControllerBase
         {
             return BadRequest(ModelState);
         }
-
+        
+        if (statusUpdate.IsValidStatus())
+        {
+            var enumStatus = statusUpdate.GetStatusEnum();
+            _logger.LogInformation("Converted to enum: {EnumStatus} (value: {EnumValue})", enumStatus, (int)enumStatus);
+        }
+                
         var result = await _salesOrderService.UpdateSalesOrderStatusAsync(id, statusUpdate);
         
         if (!result.IsSuccess)
         {
+            _logger.LogError("Status update failed: {Error}", result.Error);
             return BadRequest(result.Error);
         }
 

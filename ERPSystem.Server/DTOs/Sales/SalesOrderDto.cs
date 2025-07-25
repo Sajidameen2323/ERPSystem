@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using ERPSystem.Server.Models.Enums;
 
 namespace ERPSystem.Server.DTOs.Sales;
@@ -69,12 +70,61 @@ public class SalesOrderUpdateDto
 public class SalesOrderStatusUpdateDto
 {
     [Required(ErrorMessage = "Status is required")]
-    public SalesOrderStatus Status { get; set; }
+    public string Status { get; set; } = string.Empty;
 
     public DateTime? ShippedDate { get; set; }
     public DateTime? DeliveredDate { get; set; }
     
     public string? UpdatedByUserId { get; set; }
+
+    /// <summary>
+    /// Converts the string status value to SalesOrderStatus enum
+    /// Handles both numeric strings and enum names
+    /// </summary>
+    /// <returns>The converted SalesOrderStatus enum value</returns>
+    /// <exception cref="ArgumentException">Thrown when the status value is invalid</exception>
+    public SalesOrderStatus GetStatusEnum()
+    {
+        if (string.IsNullOrWhiteSpace(Status))
+        {
+            throw new ArgumentException("Status cannot be null or empty");
+        }
+
+        // Try to parse as numeric string first (most common case from frontend)
+        if (int.TryParse(Status.Trim(), out int numericValue))
+        {
+            if (Enum.IsDefined(typeof(SalesOrderStatus), numericValue))
+            {
+                return (SalesOrderStatus)numericValue;
+            }
+            throw new ArgumentException($"Invalid status numeric value: {numericValue}");
+        }
+
+        // Try to parse as enum name (case insensitive)
+        if (Enum.TryParse<SalesOrderStatus>(Status.Trim(), true, out SalesOrderStatus enumValue))
+        {
+            return enumValue;
+        }
+
+        throw new ArgumentException($"Invalid status value: '{Status}'. Valid values are 0-6 or enum names (New, Processing, Shipped, Completed, Cancelled, Returned, OnHold)");
+    }
+
+    /// <summary>
+    /// Validates if the status value can be converted to a valid SalesOrderStatus enum
+    /// </summary>
+    /// <returns>True if valid, false otherwise</returns>
+    public bool IsValidStatus()
+    {
+        try
+        {
+            GetStatusEnum();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }
 
 /// <summary>
