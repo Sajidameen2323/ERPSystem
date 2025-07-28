@@ -5,6 +5,7 @@ import { OKTA_AUTH, OktaAuthStateService } from '@okta/okta-angular';
 import { AuthState } from '@okta/okta-auth-js';
 import { GlobalLoadingComponent } from './shared/global-loading/global-loading.component';
 import { GlobalLoadingService } from './core/services/global-loading.service';
+import { RedirectService } from './core/services/redirect.service';
 
 @Component({
   selector: 'app-root',
@@ -22,20 +23,48 @@ export class AppComponent implements OnInit {
   private oktaAuthStateService = inject(OktaAuthStateService);
   private router = inject(Router);
   private globalLoadingService = inject(GlobalLoadingService);
+  private redirectService = inject(RedirectService);
 
   async ngOnInit() {
     try {
+      // Debug session storage functionality
+      this.redirectService.debugSessionStorage();
+      
+      // Store current route if user is trying to access protected route on initial load
+      const currentUrl = this.router.url;
+      console.log('🚀 AppComponent: Initializing with URL:', currentUrl);
+      
+      if (!this.isPublicRoute(currentUrl)) {
+        console.log('📂 AppComponent: Storing intended route on app init:', currentUrl);
+        this.redirectService.storeIntendedRoute(currentUrl);
+        
+        // Verify storage immediately
+        const storedRoute = this.redirectService.getIntendedRoute();
+        console.log('🔍 AppComponent: Verification - stored route:', storedRoute);
+      }
+
       // Subscribe to auth state changes
       this.oktaAuthStateService.authState$.subscribe((authState: AuthState) => {
+        console.log('🔐 AppComponent: Auth state changed:', authState.isAuthenticated);
+        console.log('📍 AppComponent: Current URL during auth change:', this.router.url);
+        
         if (authState.isAuthenticated) {
-          // User is authenticated, redirect to dashboard if on login page
-          if (this.router.url === '/login' || this.router.url === '/' || this.router.url === '/unauthorized') {
-            this.router.navigate(['/dashboard']);
+          // User is authenticated
+          const routerUrl = this.router.url;
+          
+          // If user is on login/unauthorized pages, navigate to intended route
+          if (this.isPublicRoute(routerUrl)) {
+            console.log('✅ AppComponent: User authenticated, navigating from public route');
+            this.redirectService.navigateToIntendedRoute('/dashboard');
           }
         } else {
-          // User is not authenticated, redirect to login if on protected route
-          if (!this.isPublicRoute(this.router.url)) {
-            this.router.navigate(['/login']);
+          // User is not authenticated
+          const routerUrl = this.router.url;
+          
+          if (!this.isPublicRoute(routerUrl)) {
+            console.log('🚫 AppComponent: User not authenticated, storing route and redirecting to login');
+            console.log('📍 AppComponent: Route being stored:', routerUrl);
+            this.redirectService.storeCurrentRouteAndRedirectToLogin();
           }
         }
         

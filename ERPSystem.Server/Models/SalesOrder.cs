@@ -34,8 +34,9 @@ public class SalesOrder
     [StringLength(1000)]
     public string? OrderNotes { get; set; }
 
+    [Required]
     [StringLength(100)]
-    public string? ReferenceNumber { get; set; }
+    public string ReferenceNumber { get; set; } = string.Empty;
 
     public DateTime? ShippedDate { get; set; }
 
@@ -50,4 +51,5 @@ public class SalesOrder
     // Navigation properties
     public virtual Customer Customer { get; set; } = null!;
     public virtual ICollection<SalesOrderItem> SalesOrderItems { get; set; } = new List<SalesOrderItem>();
+    public virtual ICollection<StockReservation> StockReservations { get; set; } = new List<StockReservation>();
 }

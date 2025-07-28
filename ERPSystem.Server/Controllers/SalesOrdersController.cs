@@ -87,7 +87,7 @@ public class SalesOrdersController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var result = await _salesOrderService.UpdateSalesOrderAsync(id, updateDto);
+        var result = await _salesOrderService.UpdateSalesOrderAsync(id, updateDto, User.Identity?.Name);
         
         if (!result.IsSuccess)
         {

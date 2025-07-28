@@ -27,7 +27,7 @@ public interface ISalesOrderService
     /// <summary>
     /// Updates an existing sales order
     /// </summary>
-    Task<Result<SalesOrderDto>> UpdateSalesOrderAsync(Guid id, SalesOrderUpdateDto updateDto);
+    Task<Result<SalesOrderDto>> UpdateSalesOrderAsync(Guid id, SalesOrderUpdateDto updateDto, string? updatedByUserId = null);
 
     /// <summary>
     /// Updates the status of a sales order

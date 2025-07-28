@@ -12,13 +12,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req);
   }
 
-  console.log('🔄 Intercepting API request:', req.url);
-
   // Get access token and add to request headers
   return from(Promise.resolve(oktaAuth.getAccessToken())).pipe(
     switchMap(accessToken => {
       if (accessToken) {
-        console.log('🔑 Adding access token to request headers');
         
         const authReq = req.clone({
           setHeaders: {
@@ -29,7 +26,6 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
         return next(authReq);
       } else {
-        console.log('⚠️ No access token available for API request');
         return next(req);
       }
     }),

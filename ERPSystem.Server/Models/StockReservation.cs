@@ -10,11 +10,14 @@ public class StockReservation
     public Guid ProductId { get; set; }
     
     [Required]
+    public Guid SalesOrderId { get; set; } // Foreign key to SalesOrder
+    
+    [Required]
     public int ReservedQuantity { get; set; }
     
     [Required]
     [MaxLength(255)]
-    public string Reference { get; set; } = string.Empty; // Sales Order reference
+    public string Reference { get; set; } = string.Empty; // Sales Order reference number (for easier lookup)
     
     [Required]
     [MaxLength(255)]
@@ -40,4 +43,5 @@ public class StockReservation
     
     // Navigation properties
     public virtual Product Product { get; set; } = null!;
+    public virtual SalesOrder SalesOrder { get; set; } = null!;
 }

@@ -3,6 +3,7 @@ import { CanActivateFn, Router } from '@angular/router';
 import { OktaAuthStateService, OKTA_AUTH } from '@okta/okta-angular';
 import { map, switchMap } from 'rxjs/operators';
 import { of } from 'rxjs';
+import { RedirectService } from '../services/redirect.service';
 
 export interface RoleGuardData {
   requiredRoles?: string[];
@@ -13,6 +14,7 @@ export const roleGuard: CanActivateFn = (route, state) => {
   const oktaAuthStateService = inject(OktaAuthStateService);
   const oktaAuth = inject(OKTA_AUTH);
   const router = inject(Router);
+  const redirectService = inject(RedirectService);
 
   const requiredRoles = route.data?.['requiredRoles'] as string[] || [];
   const requireAll = route.data?.['requireAll'] as boolean || false;
@@ -20,8 +22,8 @@ export const roleGuard: CanActivateFn = (route, state) => {
   return oktaAuthStateService.authState$.pipe(
     switchMap(authState => {
       if (!authState.isAuthenticated) {
-        console.log('🚫 User not authenticated, redirecting to login');
-        router.navigate(['/login']);
+        // Note: Don't store route here as authGuard should have already done it
+        redirectService.storeCurrentRouteAndRedirectToLogin();
         return of(false);
       }
 
@@ -32,23 +34,19 @@ export const roleGuard: CanActivateFn = (route, state) => {
 
       // Get user roles from token claims
       return getUserRoles(oktaAuth).then(userRoles => {
-        console.log('👤 User roles:', userRoles);
-        console.log('🔐 Required roles:', requiredRoles);
-
         const hasRequiredRoles = requireAll 
           ? requiredRoles.every(role => userRoles.includes(role))
           : requiredRoles.some(role => userRoles.includes(role));
 
         if (!hasRequiredRoles) {
-          console.log('⛔ Access denied - insufficient roles');
           router.navigate(['/unauthorized']);
           return false;
         }
 
-        console.log('✅ Access granted - user has required roles');
         return true;
       }).catch(error => {
         console.error('❌ Error checking user roles:', error);
+        // Don't store route again, just redirect to login
         router.navigate(['/login']);
         return false;
       });
@@ -64,13 +62,10 @@ async function getUserRoles(oktaAuth: any): Promise<string[]> {
     if (accessToken) {
       const accessTokenClaims = oktaAuth.token.decode(accessToken);
       if (accessTokenClaims.payload.roles) {
-        console.log('🎫 Roles found in access token:', accessTokenClaims.roles);
         return accessTokenClaims.payload.roles;
       }
     }
 
-    
-    console.log('⚠️ No roles found in any token');
     return [];
   } catch (error) {
     console.error('❌ Error extracting roles from token:', error);

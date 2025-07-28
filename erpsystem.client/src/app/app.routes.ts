@@ -1,7 +1,8 @@
 import { Routes } from '@angular/router';
-import { OktaAuthGuard, OktaCallbackComponent } from '@okta/okta-angular';
+import { OktaCallbackComponent } from '@okta/okta-angular';
 import { adminGuard, salesUserGuard, inventoryUserGuard, managerGuard, roleGuard } from './core/guards/role.guard';
 import { guestGuard } from './core/guards/guest.guard';
+import { authGuard } from './core/guards/auth.guard';
 import { CurrentUserResolver } from './core/resolvers/current-user.resolver';
 
 export const routes: Routes = [
@@ -29,7 +30,7 @@ export const routes: Routes = [
   { 
     path: 'dashboard', 
     loadComponent: () => import('./dashboard/dashboard.component').then(m => m.DashboardComponent),
-    canActivate: [OktaAuthGuard, roleGuard],
+    canActivate: [authGuard, roleGuard],
     data: { requiredRoles: ['admin', 'salesuser', 'inventoryuser'], requireAll: false },
     resolve: { currentUser: CurrentUserResolver },
     children: [

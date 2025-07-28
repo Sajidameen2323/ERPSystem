@@ -74,14 +74,16 @@ export class SalesOrderFormComponent implements OnInit {
   ngOnInit(): void {
     this.initializeForm();
     this.loadCustomers();
-    this.loadProducts();
 
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEditMode.set(true);
       this.orderId.set(id);
-      this.loadSalesOrder(id);
+      // Load products first, then load sales order after products are loaded
+      this.loadProductsThenSalesOrder(id);
     } else {
+      // For new orders, just load products normally
+      this.loadProducts();
       // Add initial order item for new orders
       this.addOrderItem();
     }
@@ -224,11 +226,46 @@ export class SalesOrderFormComponent implements OnInit {
   /**
    * Get available stock for a product in an order item
    * Now uses availableStock which accounts for reservations
+   * For edit mode, adds back the current order's reserved quantity for this product
    */
   getAvailableStock(itemIndex: number): number {
     const selected = this.selectedProducts();
     const product = selected[itemIndex];
-    return product ? product.availableStock : 0;
+    if (!product) return 0;
+
+    let availableStock = product.availableStock;
+
+    // If we're in edit mode, add back the stock that was reserved by the current order for this product
+    if (this.isEditMode() && this.salesOrder()) {
+      const currentOrder = this.salesOrder()!;
+      const currentReservedForThisProduct = currentOrder.orderItems
+        ?.filter((item: any) => item.productId === product.id && !item.isDeleted)
+        ?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0;
+      
+      availableStock += currentReservedForThisProduct;
+    }
+
+    return availableStock;
+  }
+
+  /**
+   * Get effective available stock for display in dropdown and selection info
+   * This considers the current order's reserved stock in edit mode
+   */
+  getEffectiveAvailableStock(product: Product): number {
+    let availableStock = product.availableStock;
+
+    // If we're in edit mode, add back the stock that was reserved by the current order for this product
+    if (this.isEditMode() && this.salesOrder()) {
+      const currentOrder = this.salesOrder()!;
+      const currentReservedForThisProduct = currentOrder.orderItems
+        ?.filter((item: any) => item.productId === product.id && !item.isDeleted)
+        ?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0;
+      
+      availableStock += currentReservedForThisProduct;
+    }
+
+    return availableStock;
   }
 
   /**
@@ -251,10 +288,10 @@ export class SalesOrderFormComponent implements OnInit {
 
   /**
    * Check if product is out of stock
-   * Now uses availableStock which accounts for reservations
+   * In edit mode, considers the current order's reserved stock
    */
   isProductOutOfStock(product: Product): boolean {
-    return product.availableStock <= 0;
+    return this.getEffectiveAvailableStock(product) <= 0;
   }
 
   /**
@@ -340,6 +377,28 @@ export class SalesOrderFormComponent implements OnInit {
   }
 
   /**
+   * Load products first, then load sales order (for edit mode)
+   */
+  loadProductsThenSalesOrder(salesOrderId: string): void {
+    this.productService.getProducts({ 
+      page: 1, 
+      pageSize: 1000, 
+      includeInactive: false 
+    }).subscribe({
+      next: (result) => {
+        this.products.set(result.items.filter(p => !p.isDeleted));
+        console.log('Products loaded, now loading sales order');
+        // Now that products are loaded, load the sales order
+        this.loadSalesOrder(salesOrderId);
+      },
+      error: (error) => {
+        console.error('Error loading products:', error);
+        this.error.set('Failed to load products. Please try again.');
+      }
+    });
+  }
+
+  /**
    * Load sales order for editing
    */
   loadSalesOrder(id: string): void {
@@ -352,6 +411,8 @@ export class SalesOrderFormComponent implements OnInit {
       )
       .subscribe({
         next: (order) => {
+          console.log('Loaded sales order:', order);
+          console.log('Order items count:', order.orderItems?.length || 0);
           this.salesOrder.set(order);
           this.populateForm(order);
         },
@@ -366,6 +427,9 @@ export class SalesOrderFormComponent implements OnInit {
    * Populate form with sales order data
    */
   populateForm(order: SalesOrder): void {
+    console.log('Populating form with order:', order);
+    console.log('Order items to populate:', order.orderItems);
+    
     // Find customer for display
     const customer = this.customers().find(c => c.id === order.customerId);
     
@@ -382,8 +446,11 @@ export class SalesOrderFormComponent implements OnInit {
       this.orderItems.removeAt(0);
     }
 
+    console.log('Cleared order items, current length:', this.orderItems.length);
+
     // Add order items
     order.orderItems.forEach((item, index) => {
+      console.log(`Adding order item ${index}:`, item);
       const product = this.products().find(p => p.id === item.productId);
       const itemGroup = this.createOrderItemGroup();
       
@@ -416,7 +483,10 @@ export class SalesOrderFormComponent implements OnInit {
       });
       
       this.orderItems.push(itemGroup);
+      console.log(`Added order item ${index}, total items now:`, this.orderItems.length);
     });
+    
+    console.log('Finished populating form, final order items count:', this.orderItems.length);
   }
 
   /**
@@ -472,7 +542,7 @@ export class SalesOrderFormComponent implements OnInit {
       .pipe(finalize(() => this.saving.set(false)))
       .subscribe({
         next: (order) => {
-          this.router.navigate(['/sales/orders', order.id]);
+          this.router.navigate(['/dashboard/sales/orders', order.id]);
         },
         error: (error) => {
           console.error('Error creating sales order:', error);
@@ -505,7 +575,7 @@ export class SalesOrderFormComponent implements OnInit {
       .pipe(finalize(() => this.saving.set(false)))
       .subscribe({
         next: (order) => {
-          this.router.navigate(['/sales/orders', order.id]);
+          this.router.navigate(['/dashboard/sales/orders', order.id]);
         },
         error: (error) => {
           console.error('Error updating sales order:', error);
@@ -519,9 +589,9 @@ export class SalesOrderFormComponent implements OnInit {
    */
   goBack(): void {
     if (this.isEditMode()) {
-      this.router.navigate(['/sales/orders', this.orderId()]);
+      this.router.navigate(['dashboard/sales/orders', this.orderId()]);
     } else {
-      this.router.navigate(['/sales/orders']);
+      this.router.navigate(['dashboard/sales/orders']);
     }
   }
 

@@ -218,9 +218,9 @@ public class SalesOrderService : ISalesOrderService
 
                 _context.SalesOrderItems.Add(orderItem);
             }
-
+            if(string.IsNullOrEmpty(salesOrder.ReferenceNumber)) return Result<SalesOrderDto>.Failure("Reference number is required for the sales order");
             // Reserve stock for new order with proper reason (use existing transaction)
-            var reserveResult = await _stockMovementService.ReserveStockAsync(stockItems, salesOrder.ReferenceNumber ?? $"SO-{salesOrder.Id}", createDto.OrderedByUserId, $"Stock reserved for sales order {salesOrder.ReferenceNumber}", useExistingTransaction: true);
+            var reserveResult = await _stockMovementService.ReserveStockAsync(stockItems, salesOrder.Id, salesOrder.ReferenceNumber, createDto.OrderedByUserId, $"Stock reserved for sales order {salesOrder.ReferenceNumber}", useExistingTransaction: true);
             if (!reserveResult.IsSuccess)
             {
                 return Result<SalesOrderDto>.Failure($"Failed to reserve stock: {reserveResult.Error}");
@@ -246,7 +246,7 @@ public class SalesOrderService : ISalesOrderService
         }
     }
 
-    public async Task<Result<SalesOrderDto>> UpdateSalesOrderAsync(Guid id, SalesOrderUpdateDto updateDto)
+    public async Task<Result<SalesOrderDto>> UpdateSalesOrderAsync(Guid id, SalesOrderUpdateDto updateDto, string? updatedByUserId = null)
     {
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
@@ -269,12 +269,31 @@ public class SalesOrderService : ISalesOrderService
 
             // Update sales order properties
             salesOrder.OrderNotes = updateDto.OrderNotes;
-            salesOrder.ReferenceNumber = updateDto.ReferenceNumber;
             salesOrder.UpdatedAt = DateTime.UtcNow;
+
+            if (String.IsNullOrEmpty(salesOrder.ReferenceNumber))
+            {
+                return Result<SalesOrderDto>.Failure("Reference number is required for the sales order");
+            }
 
             // Update order items if provided
             if (updateDto.OrderItems != null)
             {
+                // Validate stock availability for updated items, excluding current order's reservations
+                var stockItems = updateDto.OrderItems.Select(oi => (oi.ProductId, oi.Quantity)).ToList();
+                var stockValidation = await _stockMovementService.ValidateAvailableStockForUpdateAsync(stockItems, salesOrder.ReferenceNumber);
+                if (!stockValidation.IsSuccess)
+                {
+                    return Result<SalesOrderDto>.Failure(stockValidation.Error);
+                }
+
+                // Release existing stock reservations for this order
+                var releaseResult = await _stockMovementService.ReleaseAllStockReservationsByReferenceAsync(salesOrder.ReferenceNumber, useExistingTransaction: true);
+                if (!releaseResult.IsSuccess)
+                {
+                    return Result<SalesOrderDto>.Failure($"Failed to release existing stock reservations: {releaseResult.Error}");
+                }
+
                 // Handle existing items updates and deletions
                 foreach (var existingItem in salesOrder.SalesOrderItems)
                 {
@@ -321,6 +340,17 @@ public class SalesOrderService : ISalesOrderService
                 // Recalculate total amount
                 var activeItems = salesOrder.SalesOrderItems.Where(soi => !soi.IsDeleted).ToList();
                 salesOrder.TotalAmount = activeItems.Sum(soi => soi.LineTotal);
+
+                // Reserve stock for updated order items
+                var updatedStockItems = activeItems.Select(ai => (ai.ProductId, ai.Quantity)).ToList();
+                if (updatedStockItems.Any())
+                {
+                    var reserveResult = await _stockMovementService.ReserveStockAsync(updatedStockItems, salesOrder.Id, salesOrder.ReferenceNumber ?? $"SO-{salesOrder.Id}", updatedByUserId ?? "system", $"Stock reserved for updated sales order {salesOrder.ReferenceNumber}", useExistingTransaction: true);
+                    if (!reserveResult.IsSuccess)
+                    {
+                        return Result<SalesOrderDto>.Failure($"Failed to reserve updated stock: {reserveResult.Error}");
+                    }
+                }
             }
 
             await _context.SaveChangesAsync();
@@ -426,7 +456,7 @@ public class SalesOrderService : ISalesOrderService
                     if (previousStatus == SalesOrderStatus.New)
                     {
                         var stockItems = salesOrder.SalesOrderItems.Select(soi => (soi.ProductId, soi.Quantity)).ToList();
-                        var stockValidation = await _stockMovementService.ValidateAvailableStockAsync(stockItems);
+                        var stockValidation = await _stockMovementService.ValidateAvailableStockForUpdateAsync(stockItems, salesOrder.ReferenceNumber);
                         if (!stockValidation.IsSuccess)
                         {
                             await transaction.RollbackAsync();
@@ -762,6 +792,7 @@ public class SalesOrderService : ISalesOrderService
 
             // Get the last sales order reference number for this month
             var lastOrder = await _context.SalesOrders
+                .IgnoreQueryFilters()
                 .Where(so => so.ReferenceNumber != null && so.ReferenceNumber.StartsWith(prefix))
                 .OrderByDescending(so => so.ReferenceNumber)
                 .FirstOrDefaultAsync();

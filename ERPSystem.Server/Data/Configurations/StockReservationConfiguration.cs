@@ -12,6 +12,9 @@ public class StockReservationConfiguration : IEntityTypeConfiguration<StockReser
         builder.HasKey(sr => sr.Id);
 
         // Properties
+        builder.Property(sr => sr.SalesOrderId)
+            .IsRequired();
+
         builder.Property(sr => sr.ReservedQuantity)
             .IsRequired();
 
@@ -56,10 +59,17 @@ public class StockReservationConfiguration : IEntityTypeConfiguration<StockReser
             .HasForeignKey(sr => sr.ProductId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasOne(sr => sr.SalesOrder)
+            .WithMany(so => so.StockReservations)
+            .HasForeignKey(sr => sr.SalesOrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Indexes
         builder.HasIndex(sr => sr.ProductId);
+        builder.HasIndex(sr => sr.SalesOrderId);
         builder.HasIndex(sr => sr.Reference);
         builder.HasIndex(sr => new { sr.ProductId, sr.Reference });
+        builder.HasIndex(sr => new { sr.SalesOrderId, sr.ProductId });
         builder.HasIndex(sr => new { sr.IsReleased, sr.IsDeleted });
 
         // Soft delete filter

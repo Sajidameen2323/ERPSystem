@@ -286,18 +286,78 @@ public class StockMovementService : IStockMovementService
         }
     }
 
-    public async Task<Result<bool>> ReserveStockAsync(List<(Guid ProductId, int Quantity)> items, string reference, string userId, string? reason = null, bool useExistingTransaction = false)
+    public async Task<Result<bool>> ValidateAvailableStockForUpdateAsync(List<(Guid ProductId, int Quantity)> items, string salesOrderReferenceNumber)
+    {
+        try
+        {
+            // Group items by ProductId to handle multiple items with same product in the order
+            var groupedItems = items.GroupBy(i => i.ProductId)
+                .Select(g => new { ProductId = g.Key, TotalQuantity = g.Sum(i => i.Quantity) })
+                .ToList();
+
+            foreach (var groupedItem in groupedItems)
+            {
+                var product = await _context.Products
+                    .FirstOrDefaultAsync(p => p.Id == groupedItem.ProductId && !p.IsDeleted);
+
+                if (product == null)
+                {
+                    return Result<bool>.Failure($"Product with ID {groupedItem.ProductId} not found");
+                }
+
+                // Step 1: Get total reserved stock for this specific product (all active reservations)
+                // Use the existing method that properly validates sales order existence
+                var reservedStockResult = await GetReservedStockAsync(groupedItem.ProductId);
+                if (!reservedStockResult.IsSuccess)
+                {
+                    return Result<bool>.Failure(reservedStockResult.Error);
+                }
+                var reservedStockForThisProduct = reservedStockResult.Data;
+
+                var rawAvailableStock = product.CurrentStock - reservedStockForThisProduct;
+
+                // Step 2: Get reserved count for this specific product in the current sales order
+                var currentOrderReservedStock = await _context.StockReservations
+                    .Where(sr => sr.ProductId == groupedItem.ProductId && 
+                                sr.Reference == salesOrderReferenceNumber &&
+                                !sr.IsReleased &&
+                                !sr.IsDeleted)
+                    .SumAsync(sr => sr.ReservedQuantity);
+
+                // Step 3: Calculate available stock for this order update
+                // Raw availability + current order's reserved stock = what's available for this order
+                var calculatedAvailableStockForUpdate = rawAvailableStock + currentOrderReservedStock;
+
+                // Validate if the requested quantity is available
+                if (calculatedAvailableStockForUpdate < groupedItem.TotalQuantity)
+                {
+                    return Result<bool>.Failure($"Insufficient available stock for product {product.Name}. " +
+                        $"Available: {calculatedAvailableStockForUpdate}, Requested: {groupedItem.TotalQuantity} " +
+                        $"(Current Stock: {product.CurrentStock}, Total Reserved: {reservedStockForThisProduct}, Order Reserved: {currentOrderReservedStock})");
+                }
+            }
+
+            return Result<bool>.Success(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating available stock for update. Sales Order Reference: {SalesOrderReference}", salesOrderReferenceNumber);
+            return Result<bool>.Failure("An error occurred while validating available stock for update");
+        }
+    }
+
+    public async Task<Result<bool>> ReserveStockAsync(List<(Guid ProductId, int Quantity)> items, Guid salesOrderId, string reference, string userId, string? reason = null, bool useExistingTransaction = false)
     {
         if (useExistingTransaction)
         {
             // When using existing transaction, don't create a new one
-            return await ReserveStockInternalAsync(items, reference, userId, reason);
+            return await ReserveStockInternalAsync(items, salesOrderId, reference, userId, reason);
         }
 
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
-            var result = await ReserveStockInternalAsync(items, reference, userId, reason);
+            var result = await ReserveStockInternalAsync(items, salesOrderId, reference, userId, reason);
             
             if (result.IsSuccess)
             {
@@ -318,7 +378,7 @@ public class StockMovementService : IStockMovementService
         }
     }
 
-    private async Task<Result<bool>> ReserveStockInternalAsync(List<(Guid ProductId, int Quantity)> items, string reference, string userId, string? reason = null)
+    private async Task<Result<bool>> ReserveStockInternalAsync(List<(Guid ProductId, int Quantity)> items, Guid salesOrderId, string reference, string userId, string? reason = null)
     {
         // First validate available stock
         var validationResult = await ValidateAvailableStockAsync(items);
@@ -344,6 +404,7 @@ public class StockMovementService : IStockMovementService
             {
                 Id = Guid.NewGuid(),
                 ProductId = item.ProductId,
+                SalesOrderId = salesOrderId,
                 ReservedQuantity = item.Quantity,
                 Reference = reference,
                 ReservedByUserId = userId,
