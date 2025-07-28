@@ -367,3 +367,9 @@ appsettings.Development.json
 appsettings.Local.json
 **/appsettings.Development.json
 **/appsettings.Local.json
+
+# Angular environment files with secrets
+erpsystem.client/src/environments/environment.local.ts
+erpsystem.client/src/environments/environment.development.ts
+erpsystem.client/.env
+erpsystem.client/.env.local

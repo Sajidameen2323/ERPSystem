@@ -3,11 +3,10 @@
 ## Configuration Strategy
 
 This project uses a simple file-based configuration approach:
-- **appsettings.json** is tracked in git with empty placeholder values for production
-- **appsettings.Development.json** is NOT tracked in git and contains actual development credentials
-- **appsettings.Development.template.json** is tracked as a template with example values
+- **Backend (ASP.NET Core)**: Uses appsettings files with local development configuration
+- **Frontend (Angular)**: Uses TypeScript environment files with local configuration
 
-## Setting up Development Configuration
+## Backend Server Setup
 
 ### For New Developers
 
@@ -26,36 +25,85 @@ This project uses a simple file-based configuration approach:
    - Set appropriate JWT secret key
    - Configure Okta settings with your credentials
 
-### Configuration Files
+## Frontend Client Setup
 
-- **appsettings.json**: Production configuration with empty placeholder values (tracked in git)
-- **appsettings.Development.json**: Development configuration with real values (NOT tracked in git)
-- **appsettings.Development.template.json**: Template file showing structure and example values (tracked in git)
+### For New Developers
 
-### File Structure
+1. Navigate to the client project directory:
+   ```powershell
+   cd erpsystem.client
+   ```
 
+2. Navigate to the environments directory:
+   ```powershell
+   cd src/environments
+   ```
+
+3. Copy the template file to create your local environment:
+   ```powershell
+   Copy-Item "environment.local.template.ts" "environment.local.ts"
+   ```
+
+4. Edit `environment.local.ts` with your actual Okta credentials:
+   - Update `okta.issuer` with your Okta domain and authorization server ID
+   - Update `okta.clientId` with your Okta client ID
+
+5. Return to the client root and install dependencies:
+   ```powershell
+   cd ../..
+   npm install
+   ```
+
+## File Structure
+
+### Backend
 ```
 ERPSystem.Server/
 ├── appsettings.json                      (tracked - empty values)
 ├── appsettings.Development.json          (NOT tracked - your local config)
-└── appsettings.Development.template.json (tracked - template with examples)
+└── appsettings.Development.template.json (tracked - template)
 ```
 
-### For Production Deployment
+### Frontend
+```
+erpsystem.client/src/environments/
+├── environment.ts                      (tracked - placeholder values)
+├── environment.prod.ts                 (tracked - production config)
+├── environment.local.ts                (NOT tracked - your local config)
+├── environment.local.template.ts       (tracked - template)
+└── README.md                          (setup instructions)
+```
 
+## Running the Application
+
+1. Start the backend server (this will also start the frontend):
+   ```powershell
+   cd ERPSystem.Server
+   dotnet run
+   ```
+
+2. Or individually test frontend:
+   ```powershell
+   cd erpsystem.client
+   npm run build
+   ```
+
+## For Production Deployment
+
+### Backend
 Fill in the empty values in `appsettings.json` or use environment variables:
 - `ConnectionStrings__DefaultConnection`
 - `JwtSettings__SecretKey`
 - `Okta__OktaDomain`
 - `Okta__ClientId`
-- `Okta__ClientAppId`
-- `Okta__AuthorizationServerId`
-- `Okta__Audience`
-- `Okta__ApiToken`
+- etc.
 
-### Security Notes
+### Frontend
+Replace placeholder values in `environment.prod.ts` with actual production values during deployment.
 
-- `appsettings.Development.json` is ignored by git and contains sensitive data
-- Never commit the actual development configuration file
-- Use the template file as a reference for required configuration structure
-- Production deployments should use environment variables or Azure Key Vault
+## Security Notes
+
+- Local development files (`appsettings.Development.json`, `environment.local.ts`) are ignored by git
+- Never commit actual credentials to the repository
+- Use template files as a reference for required configuration structure
+- Production deployments should use secure configuration management (environment variables, Azure Key Vault, etc.)
