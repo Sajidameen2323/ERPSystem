@@ -2,6 +2,7 @@ import { Injectable, signal, computed, inject, Signal } from '@angular/core';
 import { Home, Users, Package, ShoppingCart, FileText, Settings, LogOut, Truck } from 'lucide-angular';
 import { ProductService } from './product.service';
 import { interval, startWith, switchMap, catchError, of } from 'rxjs';
+import { OKTA_AUTH } from '@okta/okta-angular';
 
 export interface NavigationItem {
   label: string;
@@ -12,6 +13,12 @@ export interface NavigationItem {
   badge?: string | Signal<string | undefined>;
   isActive?: boolean;
   isExpanded?: boolean;
+}
+
+export interface SidebarState {
+  isCollapsed: boolean;
+  expandedItems: string[];
+  isMobile: boolean;
 }
 
 export interface SidebarConfig {
@@ -28,6 +35,7 @@ export interface SidebarConfig {
 export class SidebarConfigService {
   private readonly STORAGE_KEY = 'sidebarCollapsed';
   private readonly productService = inject(ProductService);
+  private readonly oktaAuth = inject(OKTA_AUTH);
 
   // Sidebar state
   isCollapsed = signal(false);
@@ -180,31 +188,77 @@ export class SidebarConfigService {
   ];
 
   constructor() {
-    this.loadSidebarState();
+    this.loadCompleteState();
     this.setupResponsiveListener();
     this.initializeLowStockCount();
   }
 
   /**
    * Initialize and setup auto-refresh for low stock count
+   * Only runs if user has inventory access (admin or inventoryuser roles)
    */
-  private initializeLowStockCount(): void {
-    // Initial load
-    this.refreshLowStockCount();
+  private async initializeLowStockCount(): Promise<void> {
+    try {
+      // Check if user has inventory access before initializing
+      const hasInventoryAccess = await this.hasInventoryAccess();
+      
+      if (!hasInventoryAccess) {
+        console.log('User does not have inventory access. Skipping low stock count initialization.');
+        return;
+      }
 
-    // Set up auto-refresh interval
-    interval(this.refreshInterval)
-      .pipe(
-        startWith(0),
-        switchMap(() => this.productService.getStockAlertsCount()),
-        catchError(error => {
-          console.error('Error fetching low stock count:', error);
-          return of(0);
-        })
-      )
-      .subscribe(count => {
-        this.lowStockCount.set(count);
-      });
+      // Initial load
+      this.refreshLowStockCount();
+
+      // Set up auto-refresh interval
+      interval(this.refreshInterval)
+        .pipe(
+          startWith(0),
+          switchMap(() => this.productService.getStockAlertsCount()),
+          catchError(error => {
+            console.error('Error fetching low stock count:', error);
+            return of(0);
+          })
+        )
+        .subscribe(count => {
+          this.lowStockCount.set(count);
+        });
+    } catch (error) {
+      console.error('Error during low stock count initialization:', error);
+    }
+  }
+
+  /**
+   * Check if the current user has inventory access (admin or inventoryuser roles)
+   */
+  private async hasInventoryAccess(): Promise<boolean> {
+    try {
+      const userRoles = await this.getUserRoles();
+      return userRoles.includes('admin') || userRoles.includes('inventoryuser');
+    } catch (error) {
+      console.error('Error checking inventory access:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get user roles from access token claims
+   */
+  private async getUserRoles(): Promise<string[]> {
+    try {
+      // Get roles from access token (same approach as role.guard.ts)
+      const accessToken = await this.oktaAuth.getAccessToken();
+      if (accessToken) {
+        const accessTokenClaims = (this.oktaAuth as any).token.decode(accessToken);
+        if (accessTokenClaims.payload.roles) {
+          return accessTokenClaims.payload.roles;
+        }
+      }
+      return [];
+    } catch (error) {
+      console.error('Error extracting roles from token:', error);
+      return [];
+    }
   }
 
   /**
@@ -287,6 +341,7 @@ export class SidebarConfigService {
   toggleCollapsed(): void {
     this.isCollapsed.set(!this.isCollapsed());
     this.saveSidebarState();
+    this.saveCompleteState();
   }
 
   /**
@@ -295,6 +350,7 @@ export class SidebarConfigService {
   setCollapsed(collapsed: boolean): void {
     this.isCollapsed.set(collapsed);
     this.saveSidebarState();
+    this.saveCompleteState();
   }
 
   /**
@@ -311,6 +367,7 @@ export class SidebarConfigService {
     }
 
     this.expandedItems.set(newExpanded);
+    this.saveCompleteState();
   }
 
   /**
@@ -459,5 +516,70 @@ export class SidebarConfigService {
    */
   getLowStockCountSignal() {
     return this.lowStockCount;
+  }
+
+  /**
+   * Get current sidebar state for preservation during redirects
+   */
+  getSidebarState(): SidebarState {
+    return {
+      isCollapsed: this.isCollapsed(),
+      expandedItems: Array.from(this.expandedItems()),
+      isMobile: this.isMobile()
+    };
+  }
+
+  /**
+   * Restore sidebar state after redirect
+   */
+  restoreSidebarState(state: SidebarState): void {
+    if (!state) return;
+
+    try {
+      // Only restore non-mobile states on non-mobile devices
+      if (!this.isMobile() && !state.isMobile) {
+        this.isCollapsed.set(state.isCollapsed);
+      }
+
+      // Restore expanded items
+      if (state.expandedItems && Array.isArray(state.expandedItems)) {
+        this.expandedItems.set(new Set(state.expandedItems));
+      }
+    } catch (error) {
+      console.error('Error restoring sidebar state:', error);
+    }
+  }
+
+  /**
+   * Enhanced save sidebar state that includes expanded items
+   */
+  saveCompleteState(): void {
+    if (!this.config.persistState) return;
+
+    try {
+      const state = this.getSidebarState();
+      localStorage.setItem('sidebarCompleteState', JSON.stringify(state));
+    } catch (error) {
+      console.error('Error saving complete sidebar state:', error);
+    }
+  }
+
+  /**
+   * Enhanced load sidebar state that includes expanded items
+   */
+  loadCompleteState(): void {
+    if (!this.config.persistState) return;
+
+    try {
+      const savedState = localStorage.getItem('sidebarCompleteState');
+      if (savedState) {
+        const state: SidebarState = JSON.parse(savedState);
+        this.restoreSidebarState(state);
+      }
+    } catch (error) {
+      console.error('Error loading complete sidebar state:', error);
+      // Fallback to basic state loading
+      this.loadSidebarState();
+    }
   }
 }

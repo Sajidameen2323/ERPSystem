@@ -1,11 +1,14 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { SidebarConfigService, SidebarState } from '../../shared/services/sidebar-config.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class RedirectService {
   private readonly REDIRECT_KEY = 'intendedRoute';
+  private readonly SIDEBAR_STATE_KEY = 'redirectSidebarState';
+  private readonly sidebarService = inject(SidebarConfigService);
 
   constructor(private router: Router) {}
 
@@ -25,9 +28,11 @@ export class RedirectService {
       return;
     }
 
-
     try {
       sessionStorage.setItem(this.REDIRECT_KEY, cleanUrl);
+      
+      // Capture and store sidebar state when storing intended route
+      this.storeSidebarState();
       
       // Verify storage
       const storedRoute = sessionStorage.getItem(this.REDIRECT_KEY);
@@ -57,6 +62,9 @@ export class RedirectService {
     try {
       const existingRoute = sessionStorage.getItem(this.REDIRECT_KEY);
       sessionStorage.removeItem(this.REDIRECT_KEY);
+      
+      // Also clear sidebar state when clearing intended route
+      this.clearSidebarState();
     } catch (error) {
     }
   }
@@ -69,9 +77,54 @@ export class RedirectService {
     
     if (intendedRoute && !this.isPublicRoute(intendedRoute)) {
       this.clearIntendedRoute();
+      
+      // Restore sidebar state before navigation
+      this.restoreSidebarState();
+      
       this.router.navigateByUrl(intendedRoute);
     } else {
       this.router.navigate([fallbackRoute]);
+    }
+  }
+
+  /**
+   * Store current sidebar state snapshot
+   */
+  private storeSidebarState(): void {
+    try {
+      const sidebarState = this.sidebarService.getSidebarState();
+      sessionStorage.setItem(this.SIDEBAR_STATE_KEY, JSON.stringify(sidebarState));
+    } catch (error) {
+      console.error('Error storing sidebar state:', error);
+    }
+  }
+
+  /**
+   * Restore sidebar state from snapshot
+   */
+  private restoreSidebarState(): void {
+    try {
+      const storedState = sessionStorage.getItem(this.SIDEBAR_STATE_KEY);
+      if (storedState) {
+        const sidebarState: SidebarState = JSON.parse(storedState);
+        this.sidebarService.restoreSidebarState(sidebarState);
+        
+        // Clear the stored state after restoration
+        this.clearSidebarState();
+      }
+    } catch (error) {
+      console.error('Error restoring sidebar state:', error);
+    }
+  }
+
+  /**
+   * Clear stored sidebar state
+   */
+  private clearSidebarState(): void {
+    try {
+      sessionStorage.removeItem(this.SIDEBAR_STATE_KEY);
+    } catch (error) {
+      console.error('Error clearing sidebar state:', error);
     }
   }
 
@@ -130,6 +183,13 @@ export class RedirectService {
     const currentUrl = this.router.url;
     this.storeIntendedRoute(currentUrl);
     this.router.navigate(['/login']);
+  }
+
+  /**
+   * Manually restore sidebar state (useful for specific scenarios)
+   */
+  restoreSidebarStateManually(): void {
+    this.restoreSidebarState();
   }
 
 }
