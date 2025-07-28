@@ -46,14 +46,24 @@
         <button
           *ngIf="!salesOrder()!.isDeleted"
           (click)="updateStatus()"
-          class="inline-flex items-center px-4 py-2 border border-transparent text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg transition-colors">
+          [disabled]="!canUpdateOrder(salesOrder()!)"
+          [title]="canUpdateOrder(salesOrder()!) ? 'Update Status' : getDisabledTooltip(salesOrder()!, 'update')"
+          [class]="canUpdateOrder(salesOrder()!) 
+            ? 'inline-flex items-center px-4 py-2 border border-transparent text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg transition-colors' 
+            : 'inline-flex items-center px-4 py-2 border border-transparent text-gray-400 bg-gray-300 cursor-not-allowed font-medium rounded-lg opacity-50'"
+          class="disabled:opacity-50 disabled:cursor-not-allowed">
           <lucide-angular [img]="RefreshCwIcon" class="w-4 h-4 mr-2"></lucide-angular>
           Update Status
         </button>
         <button
           *ngIf="!salesOrder()!.isDeleted"
           (click)="editOrder()"
-          class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg transition-colors">
+          [disabled]="!canUpdateOrder(salesOrder()!)"
+          [title]="canUpdateOrder(salesOrder()!) ? 'Edit Order' : getDisabledTooltip(salesOrder()!, 'edit')"
+          [class]="canUpdateOrder(salesOrder()!) 
+            ? 'inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg transition-colors' 
+            : 'inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 cursor-not-allowed font-medium rounded-lg opacity-50'"
+          class="disabled:opacity-50 disabled:cursor-not-allowed">
           <lucide-angular [img]="EditIcon" class="w-4 h-4 mr-2"></lucide-angular>
           Edit Order
         </button>

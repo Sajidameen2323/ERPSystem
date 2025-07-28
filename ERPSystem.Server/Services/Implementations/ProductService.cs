@@ -96,11 +96,37 @@ public class ProductService : IProductService
 
             var totalCount = await query.CountAsync();
             var items = await query
+                .Include(p => p.StockReservations.Where(sr => !sr.IsReleased && !sr.IsDeleted))
                 .Skip((parameters.Page - 1) * parameters.PageSize)
                 .Take(parameters.PageSize)
                 .ToListAsync();
 
-            var productDtos = _mapper.Map<List<ProductDto>>(items);
+            var productDtos = new List<ProductDto>();
+            
+            // Get all sales order references from reservations in one query for efficiency
+            var allReservations = items.SelectMany(p => p.StockReservations.Where(sr => !sr.IsReleased && !sr.IsDeleted)).ToList();
+            var reservationReferences = allReservations.Select(r => r.Reference).Distinct().ToList();
+            
+            // Get all non-deleted sales orders for these references in one query
+            var existingSalesOrders = await _context.SalesOrders
+                .Where(so => so.ReferenceNumber != null && reservationReferences.Contains(so.ReferenceNumber) && !so.IsDeleted)
+                .Select(so => so.ReferenceNumber!)
+                .ToListAsync();
+            
+            foreach (var product in items)
+            {
+                var productDto = _mapper.Map<ProductDto>(product);
+                
+                // Calculate stock reservations (only for non-deleted sales orders)
+                productDto.ReservedStock = product.StockReservations
+                    .Where(sr => !sr.IsReleased && !sr.IsDeleted && existingSalesOrders.Contains(sr.Reference))
+                    .Sum(sr => sr.ReservedQuantity);
+                
+                // Calculate available stock
+                productDto.AvailableStock = Math.Max(0, product.CurrentStock - productDto.ReservedStock);
+                
+                productDtos.Add(productDto);
+            }
 
             return new PagedResult<ProductDto>
             {
@@ -127,7 +153,9 @@ public class ProductService : IProductService
     {
         try
         {
-            var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
+            var product = await _context.Products
+                .Include(p => p.StockReservations.Where(sr => !sr.IsReleased && !sr.IsDeleted))
+                .FirstOrDefaultAsync(p => p.Id == id);
             
             if (product == null)
             {
@@ -135,6 +163,30 @@ public class ProductService : IProductService
             }
 
             var productDto = _mapper.Map<ProductDto>(product);
+            
+            // Calculate stock reservations (only for non-deleted sales orders)
+            var reservationReferences = product.StockReservations
+                .Where(sr => !sr.IsReleased && !sr.IsDeleted)
+                .Select(sr => sr.Reference)
+                .Distinct()
+                .ToList();
+            
+            var existingSalesOrders = new HashSet<string>();
+            if (reservationReferences.Any())
+            {
+                existingSalesOrders = (await _context.SalesOrders
+                    .Where(so => so.ReferenceNumber != null && reservationReferences.Contains(so.ReferenceNumber) && !so.IsDeleted)
+                    .Select(so => so.ReferenceNumber!)
+                    .ToListAsync()).ToHashSet();
+            }
+            
+            productDto.ReservedStock = product.StockReservations
+                .Where(sr => !sr.IsReleased && !sr.IsDeleted && existingSalesOrders.Contains(sr.Reference))
+                .Sum(sr => sr.ReservedQuantity);
+            
+            // Calculate available stock
+            productDto.AvailableStock = Math.Max(0, product.CurrentStock - productDto.ReservedStock);
+
             return Result<ProductDto>.Success(productDto);
         }
         catch (Exception ex)
@@ -162,6 +214,11 @@ public class ProductService : IProductService
             await _context.SaveChangesAsync();
 
             var productDto = _mapper.Map<ProductDto>(product);
+            
+            // Initialize stock values for new product (no reservations yet)
+            productDto.ReservedStock = 0;
+            productDto.AvailableStock = product.CurrentStock;
+            
             _logger.LogInformation("Product created successfully with ID: {ProductId}", product.Id);
             
             return Result<ProductDto>.Success(productDto);
@@ -177,7 +234,9 @@ public class ProductService : IProductService
     {
         try
         {
-            var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
+            var product = await _context.Products
+                .Include(p => p.StockReservations.Where(sr => !sr.IsReleased && !sr.IsDeleted))
+                .FirstOrDefaultAsync(p => p.Id == id);
             
             if (product == null)
             {
@@ -190,6 +249,30 @@ public class ProductService : IProductService
             await _context.SaveChangesAsync();
 
             var productDto = _mapper.Map<ProductDto>(product);
+            
+            // Calculate stock reservations (only for non-deleted sales orders)
+            var reservationReferences = product.StockReservations
+                .Where(sr => !sr.IsReleased && !sr.IsDeleted)
+                .Select(sr => sr.Reference)
+                .Distinct()
+                .ToList();
+            
+            var existingSalesOrders = new HashSet<string>();
+            if (reservationReferences.Any())
+            {
+                existingSalesOrders = (await _context.SalesOrders
+                    .Where(so => so.ReferenceNumber != null && reservationReferences.Contains(so.ReferenceNumber) && !so.IsDeleted)
+                    .Select(so => so.ReferenceNumber!)
+                    .ToListAsync()).ToHashSet();
+            }
+            
+            productDto.ReservedStock = product.StockReservations
+                .Where(sr => !sr.IsReleased && !sr.IsDeleted && existingSalesOrders.Contains(sr.Reference))
+                .Sum(sr => sr.ReservedQuantity);
+            
+            // Calculate available stock
+            productDto.AvailableStock = Math.Max(0, product.CurrentStock - productDto.ReservedStock);
+            
             _logger.LogInformation("Product updated successfully with ID: {ProductId}", id);
             
             return Result<ProductDto>.Success(productDto);
@@ -201,7 +284,7 @@ public class ProductService : IProductService
         }
     }
 
-    public async Task<Result> DeleteProductAsync(Guid id)
+    public async Task<Result<bool>> DeleteProductAsync(Guid id)
     {
         try
         {
@@ -209,7 +292,7 @@ public class ProductService : IProductService
             
             if (product == null)
             {
-                return Result.Failure("Product not found");
+                return Result<bool>.Failure("Product not found");
             }
 
             // Soft delete
@@ -219,16 +302,16 @@ public class ProductService : IProductService
             await _context.SaveChangesAsync();
             
             _logger.LogInformation("Product soft deleted successfully with ID: {ProductId}", id);
-            return Result.Success();
+            return Result<bool>.Success(true);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting product with ID: {ProductId}", id);
-            return Result.Failure("An error occurred while deleting the product");
+            return Result<bool>.Failure("An error occurred while deleting the product");
         }
     }
 
-    public async Task<Result> RestoreProductAsync(Guid id)
+    public async Task<Result<bool>> RestoreProductAsync(Guid id)
     {
         try
         {
@@ -236,12 +319,12 @@ public class ProductService : IProductService
             
             if (product == null)
             {
-                return Result.Failure("Product not found");
+                return Result<bool>.Failure("Product not found");
             }
 
             if (!product.IsDeleted)
             {
-                return Result.Failure("Product is not deleted");
+                return Result<bool>.Failure("Product is not deleted");
             }
 
             // Restore product
@@ -251,16 +334,16 @@ public class ProductService : IProductService
             await _context.SaveChangesAsync();
             
             _logger.LogInformation("Product restored successfully with ID: {ProductId}", id);
-            return Result.Success();
+            return Result<bool>.Success(true);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error restoring product with ID: {ProductId}", id);
-            return Result.Failure("An error occurred while restoring the product");
+            return Result<bool>.Failure("An error occurred while restoring the product");
         }
     }
 
-    public async Task<Result> AdjustStockAsync(Guid productId, StockAdjustmentDto adjustmentDto, string userId)
+        public async Task<Result<bool>> AdjustStockAsync(Guid productId, StockAdjustmentDto adjustmentDto, string userId)
     {
         using var transaction = await _context.Database.BeginTransactionAsync();
         
@@ -270,14 +353,14 @@ public class ProductService : IProductService
             
             if (product == null)
             {
-                return Result.Failure("Product not found");
+                return Result<bool>.Failure("Product not found");
             }
 
             // Check if adjustment would result in negative stock
             var newStock = product.CurrentStock + adjustmentDto.AdjustmentQuantity;
             if (newStock < 0)
             {
-                return Result.Failure("Insufficient stock for this adjustment");
+                return Result<bool>.Failure("Insufficient stock for this adjustment");
             }
 
             // Create stock adjustment record
@@ -316,13 +399,13 @@ public class ProductService : IProductService
             _logger.LogInformation("Stock adjusted successfully for Product ID: {ProductId}, Adjustment: {Adjustment}, Movement ID: {MovementId}", 
                 productId, adjustmentDto.AdjustmentQuantity, stockMovement.Id);
             
-            return Result.Success();
+            return Result<bool>.Success(true);
         }
         catch (Exception ex)
         {
             await transaction.RollbackAsync();
             _logger.LogError(ex, "Error adjusting stock for product ID: {ProductId}", productId);
-            return Result.Failure("An error occurred while adjusting stock");
+            return Result<bool>.Failure("An error occurred while adjusting stock");
         }
     }
 
@@ -388,6 +471,62 @@ public class ProductService : IProductService
                 CurrentPage = page,
                 PageSize = pageSize
             };
+        }
+    }
+
+    public async Task<Result<ProductStockInfoDto>> GetProductStockInfoAsync(Guid productId)
+    {
+        try
+        {
+            var product = await _context.Products
+                .IgnoreQueryFilters()
+                .Include(p => p.StockReservations.Where(sr => !sr.IsReleased && !sr.IsDeleted))
+                .FirstOrDefaultAsync(p => p.Id == productId);
+
+            if (product == null)
+            {
+                return Result<ProductStockInfoDto>.Failure("Product not found");
+            }
+
+            // Calculate reserved stock (only for non-deleted sales orders)
+            var reservationReferences = product.StockReservations
+                .Where(sr => !sr.IsReleased && !sr.IsDeleted)
+                .Select(sr => sr.Reference)
+                .Distinct()
+                .ToList();
+            
+            var existingSalesOrders = new HashSet<string>();
+            if (reservationReferences.Any())
+            {
+                existingSalesOrders = (await _context.SalesOrders
+                    .Where(so => so.ReferenceNumber != null && reservationReferences.Contains(so.ReferenceNumber) && !so.IsDeleted)
+                    .Select(so => so.ReferenceNumber!)
+                    .ToListAsync()).ToHashSet();
+            }
+            
+            var activeReservations = product.StockReservations
+                .Where(sr => !sr.IsReleased && !sr.IsDeleted && existingSalesOrders.Contains(sr.Reference))
+                .ToList();
+            
+            var reservedStock = activeReservations.Sum(sr => sr.ReservedQuantity);
+
+            // Calculate available stock
+            var availableStock = Math.Max(0, product.CurrentStock - reservedStock);
+
+            // Map to DTO
+            var stockInfo = _mapper.Map<ProductStockInfoDto>(product);
+            stockInfo.ReservedStock = reservedStock;
+            stockInfo.AvailableStock = availableStock;
+
+            // Map active reservations
+            stockInfo.ActiveReservations = _mapper.Map<List<StockReservationDto>>(activeReservations);
+
+            return Result<ProductStockInfoDto>.Success(stockInfo);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving stock information for product ID: {ProductId}", productId);
+            return Result<ProductStockInfoDto>.Failure("An error occurred while retrieving product stock information");
         }
     }
 }

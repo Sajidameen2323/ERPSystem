@@ -16,6 +16,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Product> Products { get; set; }
     public DbSet<StockAdjustment> StockAdjustments { get; set; }
     public DbSet<StockMovement> StockMovements { get; set; }
+    public DbSet<StockReservation> StockReservations { get; set; }
     
     // Supply Chain Management
     public DbSet<Supplier> Suppliers { get; set; }

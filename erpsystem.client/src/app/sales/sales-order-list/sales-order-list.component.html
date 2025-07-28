@@ -291,30 +291,42 @@
                   <lucide-angular [img]="EyeIcon" class="w-4 h-4"></lucide-angular>
                 </button>
 
-                <!-- Update Status (only if not deleted) -->
+                <!-- Update Status (only if not deleted and can update) -->
                 <button
                   *ngIf="!order.isDeleted"
                   (click)="updateOrderStatus(order)"
-                  class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300"
-                  title="Update status">
+                  [disabled]="!canUpdateOrder(order)"
+                  [title]="canUpdateOrder(order) ? 'Update status' : getDisabledTooltip(order, 'update')"
+                  [class]="canUpdateOrder(order) 
+                    ? 'text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300' 
+                    : 'text-gray-400 dark:text-gray-600 cursor-not-allowed'"
+                  class="disabled:opacity-50">
                   <lucide-angular [img]="RefreshCwIcon" class="w-4 h-4"></lucide-angular>
                 </button>
 
-                <!-- Edit (only if not deleted) -->
+                <!-- Edit (only if not deleted and can update) -->
                 <button
                   *ngIf="!order.isDeleted"
-                  [routerLink]="['/dashboard/sales/orders', order.id, 'edit']"
-                  class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300"
-                  title="Edit order">
+                  [routerLink]="canUpdateOrder(order) ? ['/dashboard/sales/orders', order.id, 'edit'] : null"
+                  [disabled]="!canUpdateOrder(order)"
+                  [title]="canUpdateOrder(order) ? 'Edit order' : getDisabledTooltip(order, 'update')"
+                  [class]="canUpdateOrder(order) 
+                    ? 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300' 
+                    : 'text-gray-400 dark:text-gray-600 cursor-not-allowed'"
+                  class="disabled:opacity-50">
                   <lucide-angular [img]="EditIcon" class="w-4 h-4"></lucide-angular>
                 </button>
 
-                <!-- Delete/Restore -->
+                <!-- Delete (only if not deleted and can delete) -->
                 <button
                   *ngIf="!order.isDeleted"
-                  (click)="confirmDelete(order)"
-                  class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
-                  title="Delete order">
+                  (click)="canDeleteOrder(order) ? confirmDelete(order) : null"
+                  [disabled]="!canDeleteOrder(order)"
+                  [title]="canDeleteOrder(order) ? 'Delete order' : getDisabledTooltip(order, 'delete')"
+                  [class]="canDeleteOrder(order) 
+                    ? 'text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300' 
+                    : 'text-gray-400 dark:text-gray-600 cursor-not-allowed'"
+                  class="disabled:opacity-50">
                   <lucide-angular [img]="Trash2Icon" class="w-4 h-4"></lucide-angular>
                 </button>
 

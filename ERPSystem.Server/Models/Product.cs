@@ -38,4 +38,5 @@ public class Product
     public virtual ICollection<ProductSupplier> ProductSuppliers { get; set; } = new List<ProductSupplier>();
     public virtual ICollection<PurchaseOrderItem> PurchaseOrderItems { get; set; } = new List<PurchaseOrderItem>();
     public virtual ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
+    public virtual ICollection<StockReservation> StockReservations { get; set; } = new List<StockReservation>();
 }

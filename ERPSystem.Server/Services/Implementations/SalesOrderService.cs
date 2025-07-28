@@ -160,9 +160,9 @@ public class SalesOrderService : ISalesOrderService
                 return Result<SalesOrderDto>.Failure("Customer not found or is inactive");
             }
 
-            // Validate stock availability
+            // Validate stock availability using available stock (current - reserved)
             var stockItems = createDto.OrderItems.Select(oi => (oi.ProductId, oi.Quantity)).ToList();
-            var stockValidation = await _stockMovementService.ValidateStockAvailabilityAsync(stockItems);
+            var stockValidation = await _stockMovementService.ValidateAvailableStockAsync(stockItems);
             if (!stockValidation.IsSuccess)
             {
                 return Result<SalesOrderDto>.Failure(stockValidation.Error);
@@ -219,8 +219,12 @@ public class SalesOrderService : ISalesOrderService
                 _context.SalesOrderItems.Add(orderItem);
             }
 
-            // Reserve stock for new order
-            await _stockMovementService.ReserveStockAsync(stockItems, salesOrder.ReferenceNumber ?? $"SO-{salesOrder.Id}", createDto.OrderedByUserId);
+            // Reserve stock for new order with proper reason (use existing transaction)
+            var reserveResult = await _stockMovementService.ReserveStockAsync(stockItems, salesOrder.ReferenceNumber ?? $"SO-{salesOrder.Id}", createDto.OrderedByUserId, $"Stock reserved for sales order {salesOrder.ReferenceNumber}", useExistingTransaction: true);
+            if (!reserveResult.IsSuccess)
+            {
+                return Result<SalesOrderDto>.Failure($"Failed to reserve stock: {reserveResult.Error}");
+            }
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
@@ -422,7 +426,7 @@ public class SalesOrderService : ISalesOrderService
                     if (previousStatus == SalesOrderStatus.New)
                     {
                         var stockItems = salesOrder.SalesOrderItems.Select(soi => (soi.ProductId, soi.Quantity)).ToList();
-                        var stockValidation = await _stockMovementService.ValidateStockAvailabilityAsync(stockItems);
+                        var stockValidation = await _stockMovementService.ValidateAvailableStockAsync(stockItems);
                         if (!stockValidation.IsSuccess)
                         {
                             await transaction.RollbackAsync();
@@ -442,7 +446,17 @@ public class SalesOrderService : ISalesOrderService
                     if (!salesOrder.ShippedDate.HasValue)
                         salesOrder.ShippedDate = DateTime.UtcNow;
 
-                    // Process stock movements when order is shipped
+                    // Release stock reservations and process actual stock movements when order is shipped
+                    var shippedItems = salesOrder.SalesOrderItems.Where(soi => !soi.IsDeleted).Select(soi => (soi.ProductId, soi.Quantity)).ToList();
+                    
+                    // First release the reservations (use existing transaction)
+                    var releaseResult = await _stockMovementService.ReleaseStockReservationAsync(shippedItems, salesOrder.ReferenceNumber ?? $"SO-{salesOrder.Id}", useExistingTransaction: true);
+                    if (!releaseResult.IsSuccess)
+                    {
+                        _logger.LogWarning("Failed to release stock reservations for shipped order {Id}: {Error}", id, releaseResult.Error);
+                    }
+
+                    // Then process actual stock movements
                     foreach (var item in salesOrder.SalesOrderItems.Where(soi => !soi.IsDeleted))
                     {
                         var stockResult = await _stockMovementService.ProcessStockMovementAsync(
@@ -471,9 +485,12 @@ public class SalesOrderService : ISalesOrderService
                     break;
 
                 case SalesOrderStatus.Cancelled:
-                    // Release any stock reservations
-                    var cancelledItems = salesOrder.SalesOrderItems.Select(soi => (soi.ProductId, soi.Quantity)).ToList();
-                    await _stockMovementService.ReleaseStockReservationAsync(cancelledItems, salesOrder.ReferenceNumber ?? $"SO-{id}");
+                    // Release all stock reservations for cancelled orders (use existing transaction)
+                    var cancelResult = await _stockMovementService.ReleaseAllStockReservationsByReferenceAsync(salesOrder.ReferenceNumber ?? $"SO-{id}", useExistingTransaction: true);
+                    if (!cancelResult.IsSuccess)
+                    {
+                        _logger.LogWarning("Failed to release stock reservations for cancelled order {Id}: {Error}", id, cancelResult.Error);
+                    }
                     break;
 
                 case SalesOrderStatus.Returned:

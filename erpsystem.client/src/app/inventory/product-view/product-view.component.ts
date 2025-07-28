@@ -51,9 +51,9 @@ export class ProductViewComponent implements OnInit {
     const prod = this.product();
     if (!prod) return 'unknown';
     
-    if (prod.currentStock === 0) return 'out-of-stock';
-    if (prod.isLowStock) return 'low-stock';
-    return 'in-stock';
+    if (prod.availableStock === 0) return 'out-of-stock';
+    if (prod.isLowStock || (prod.minimumStock && prod.availableStock <= prod.minimumStock)) return 'low-stock';
+    return 'available';
   });
 
   stockStatusClass = computed(() => {
@@ -63,7 +63,7 @@ export class ProductViewComponent implements OnInit {
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
       case 'low-stock':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      case 'in-stock':
+      case 'available':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
@@ -77,8 +77,8 @@ export class ProductViewComponent implements OnInit {
         return 'Out of Stock';
       case 'low-stock':
         return 'Low Stock';
-      case 'in-stock':
-        return 'In Stock';
+      case 'available':
+        return 'Available';
       default:
         return 'Unknown';
     }

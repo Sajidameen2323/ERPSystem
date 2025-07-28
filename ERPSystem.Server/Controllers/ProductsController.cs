@@ -279,4 +279,23 @@ public class ProductsController : ControllerBase
             return StatusCode(500, Result.Failure("An error occurred while retrieving stock adjustments"));
         }
     }
+
+    /// <summary>
+    /// Get comprehensive stock information for a product including reservations
+    /// </summary>
+    [HttpGet("{id}/stock-info")]
+    [Authorize(Roles = $"{Constants.Roles.Admin},{Constants.Roles.InventoryUser}")]
+    public async Task<ActionResult<Result<ProductStockInfoDto>>> GetProductStockInfo(Guid id)
+    {
+        try
+        {
+            var result = await _productService.GetProductStockInfoAsync(id);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving product stock information");
+            return StatusCode(500, Result.Failure("An error occurred while retrieving product stock information"));
+        }
+    }
 }

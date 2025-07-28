@@ -243,15 +243,23 @@
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">
                                   {{ formatCurrency(product.unitPrice) }}
                                 </p>
-                                <p class="text-xs" 
-                                   [class.text-red-500]="product.currentStock <= 0"
-                                   [class.text-yellow-600]="product.currentStock > 0 && isProductLowStock(product)"
-                                   [class.text-green-600]="product.currentStock > 0 && !isProductLowStock(product)"
-                                   [class.dark:text-red-400]="product.currentStock <= 0"
-                                   [class.dark:text-yellow-400]="product.currentStock > 0 && isProductLowStock(product)"
-                                   [class.dark:text-green-400]="product.currentStock > 0 && !isProductLowStock(product)">
-                                  Stock: {{ product.currentStock }}
-                                </p>
+                                <div class="text-xs space-y-0.5">
+                                  <!-- Available Stock (Primary) -->
+                                  <p [class.text-red-500]="product.availableStock <= 0"
+                                     [class.text-yellow-600]="product.availableStock > 0 && isProductLowStock(product)"
+                                     [class.text-green-600]="product.availableStock > 0 && !isProductLowStock(product)"
+                                     [class.dark:text-red-400]="product.availableStock <= 0"
+                                     [class.dark:text-yellow-400]="product.availableStock > 0 && isProductLowStock(product)"
+                                     [class.dark:text-green-400]="product.availableStock > 0 && !isProductLowStock(product)">
+                                    Available: {{ product.availableStock }}
+                                  </p>
+                                  <!-- Total Stock -->
+                                  @if (product.reservedStock > 0) {
+                                    <p class="text-gray-500 dark:text-gray-400">
+                                      Total: {{ product.currentStock }}
+                                    </p>
+                                  }
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -277,7 +285,7 @@
                             </p>
                             <div class="flex items-center space-x-4 mt-1">
                               <span class="text-xs text-blue-700 dark:text-blue-400">
-                                Available: {{ selectedProducts()[i]?.currentStock }} units
+                                Available: {{ selectedProducts()[i]?.availableStock }} units
                               </span>
                               <span class="text-xs text-blue-700 dark:text-blue-400">
                                 Price: {{ formatCurrency(selectedProducts()[i]?.unitPrice || 0) }}

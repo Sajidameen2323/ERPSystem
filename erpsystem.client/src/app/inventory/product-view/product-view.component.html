@@ -122,24 +122,46 @@
 
         <div class="px-6 py-4">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <!-- Current Stock -->
+            <!-- Available Stock -->
+            <div class="bg-green-50 dark:bg-green-900/50 rounded-lg p-4">
+              <div class="flex items-center">
+                <div class="flex-shrink-0">
+                  <lucide-angular [img]="CheckCircle" class="h-6 w-6 text-green-600"></lucide-angular>
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm font-medium text-green-900 dark:text-green-100">Available Stock</p>
+                  <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ product()?.availableStock }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Ready for orders</p>
+                </div>
+              </div>
+              <div class="mt-3">
+                <button 
+                  (click)="adjustStock()"
+                  class="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 dark:bg-green-800 dark:text-green-100 dark:hover:bg-green-700 transition-colors duration-200">
+                  <lucide-angular [img]="Package" class="h-4 w-4 mr-2"></lucide-angular>
+                  Adjust Stock
+                </button>
+              </div>
+            </div>
+
+            <!-- Total Stock -->
             <div class="bg-blue-50 dark:bg-blue-900/50 rounded-lg p-4">
               <div class="flex items-center">
                 <div class="flex-shrink-0">
                   <lucide-angular [img]="Package" class="h-6 w-6 text-blue-600"></lucide-angular>
                 </div>
                 <div class="ml-3">
-                  <p class="text-sm font-medium text-blue-900 dark:text-blue-100">Current Stock</p>
+                  <p class="text-sm font-medium text-blue-900 dark:text-blue-100">Total Stock</p>
                   <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ product()?.currentStock }}</p>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    @if (product()?.reservedStock && (product()?.reservedStock ?? 0) > 0) {
+                      <div class="flex justify-between">
+                        <span>Reserved:</span>
+                        <span class="text-orange-600 dark:text-orange-400 font-medium">{{ product()?.reservedStock }}</span>
+                      </div>
+                    }
+                  </div>
                 </div>
-              </div>
-              <div class="mt-3">
-                <button 
-                  (click)="adjustStock()"
-                  class="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 dark:bg-blue-800 dark:text-blue-100 dark:hover:bg-blue-700 transition-colors duration-200">
-                  <lucide-angular [img]="Package" class="h-4 w-4 mr-2"></lucide-angular>
-                  Adjust Stock
-                </button>
               </div>
             </div>
 

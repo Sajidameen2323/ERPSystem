@@ -223,11 +223,12 @@ export class SalesOrderFormComponent implements OnInit {
 
   /**
    * Get available stock for a product in an order item
+   * Now uses availableStock which accounts for reservations
    */
   getAvailableStock(itemIndex: number): number {
     const selected = this.selectedProducts();
     const product = selected[itemIndex];
-    return product ? product.currentStock : 0;
+    return product ? product.availableStock : 0;
   }
 
   /**
@@ -242,16 +243,18 @@ export class SalesOrderFormComponent implements OnInit {
 
   /**
    * Check if product is low stock
+   * Now uses availableStock which accounts for reservations
    */
   isProductLowStock(product: Product): boolean {
-    return product.isLowStock || (product.minimumStock !== undefined && product.currentStock <= product.minimumStock);
+    return product.isLowStock || (product.minimumStock !== undefined && product.availableStock <= product.minimumStock);
   }
 
   /**
    * Check if product is out of stock
+   * Now uses availableStock which accounts for reservations
    */
   isProductOutOfStock(product: Product): boolean {
-    return product.currentStock <= 0;
+    return product.availableStock <= 0;
   }
 
   /**

@@ -110,6 +110,41 @@ export class SalesOrderListComponent implements OnInit {
     { value: SalesOrderStatus.OnHold, label: getStatusLabel(SalesOrderStatus.OnHold) }
   ];
 
+  // Business Rules
+  /**
+   * Check if a sales order can be updated
+   * Orders can only be updated when status is New or Processing
+   */
+  canUpdateOrder(order: SalesOrder): boolean {
+    if (order.isDeleted) return false;
+    return order.status === SalesOrderStatus.New || order.status === SalesOrderStatus.Processing;
+  }
+
+  /**
+   * Check if a sales order can be deleted
+   * Orders can only be deleted when status is New or Processing
+   */
+  canDeleteOrder(order: SalesOrder): boolean {
+    if (order.isDeleted) return false;
+    return order.status === SalesOrderStatus.New || order.status === SalesOrderStatus.Processing;
+  }
+
+  /**
+   * Get tooltip text explaining why an action is disabled
+   */
+  getDisabledTooltip(order: SalesOrder, action: 'update' | 'delete'): string {
+    if (order.isDeleted) {
+      return 'Cannot perform this action on deleted orders';
+    }
+    
+    const statusLabel = getStatusLabel(order.status);
+    if (action === 'update') {
+      return `Cannot update orders with status "${statusLabel}". Only "New" and "Processing" orders can be updated.`;
+    } else {
+      return `Cannot delete orders with status "${statusLabel}". Only "New" and "Processing" orders can be deleted.`;
+    }
+  }
+
   ngOnInit(): void {
     this.loadSalesOrders();
   }
@@ -248,6 +283,12 @@ export class SalesOrderListComponent implements OnInit {
    * Show delete confirmation dialog
    */
   confirmDelete(salesOrder: SalesOrder): void {
+    // Check if order can be deleted
+    if (!this.canDeleteOrder(salesOrder)) {
+      this.error.set(this.getDisabledTooltip(salesOrder, 'delete'));
+      return;
+    }
+    
     this.selectedSalesOrder.set(salesOrder);
     this.showDeleteDialog.set(true);
   }
@@ -314,6 +355,12 @@ export class SalesOrderListComponent implements OnInit {
    * Show status update confirmation dialog
    */
   updateOrderStatus(salesOrder: SalesOrder): void {
+    // Check if order can be updated
+    if (!this.canUpdateOrder(salesOrder)) {
+      this.error.set(this.getDisabledTooltip(salesOrder, 'update'));
+      return;
+    }
+    
     this.selectedSalesOrder.set(salesOrder);
     this.showStatusUpdateDialog.set(true);
   }

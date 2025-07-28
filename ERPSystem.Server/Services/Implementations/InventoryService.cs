@@ -255,16 +255,295 @@ public class StockMovementService : IStockMovementService
         }
     }
 
-    public async Task<Result<bool>> ReserveStockAsync(List<(Guid ProductId, int Quantity)> items, string reference, string userId)
+    public async Task<Result<bool>> ValidateAvailableStockAsync(List<(Guid ProductId, int Quantity)> items)
     {
-        // In a full ERP system, this would create stock reservations
-        // For now, we'll validate availability
-        return await ValidateStockAvailabilityAsync(items);
+        try
+        {
+            foreach (var item in items)
+            {
+                var availableStockResult = await GetAvailableStockAsync(item.ProductId);
+                if (!availableStockResult.IsSuccess)
+                {
+                    return Result<bool>.Failure(availableStockResult.Error);
+                }
+
+                var availableStock = availableStockResult.Data;
+                if (availableStock < item.Quantity)
+                {
+                    var product = await _context.Products
+                        .FirstOrDefaultAsync(p => p.Id == item.ProductId && !p.IsDeleted);
+                    
+                    return Result<bool>.Failure($"Insufficient available stock for product {product?.Name ?? item.ProductId.ToString()}. Available: {availableStock}, Requested: {item.Quantity}");
+                }
+            }
+
+            return Result<bool>.Success(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating available stock");
+            return Result<bool>.Failure("An error occurred while validating available stock");
+        }
     }
 
-    public async Task<Result<bool>> ReleaseStockReservationAsync(List<(Guid ProductId, int Quantity)> items, string reference)
+    public async Task<Result<bool>> ReserveStockAsync(List<(Guid ProductId, int Quantity)> items, string reference, string userId, string? reason = null, bool useExistingTransaction = false)
     {
-        // In a full ERP system, this would release stock reservations
+        if (useExistingTransaction)
+        {
+            // When using existing transaction, don't create a new one
+            return await ReserveStockInternalAsync(items, reference, userId, reason);
+        }
+
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            var result = await ReserveStockInternalAsync(items, reference, userId, reason);
+            
+            if (result.IsSuccess)
+            {
+                await transaction.CommitAsync();
+            }
+            else
+            {
+                await transaction.RollbackAsync();
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "Error reserving stock for reference: {Reference}", reference);
+            return Result<bool>.Failure("An error occurred while reserving stock");
+        }
+    }
+
+    private async Task<Result<bool>> ReserveStockInternalAsync(List<(Guid ProductId, int Quantity)> items, string reference, string userId, string? reason = null)
+    {
+        // First validate available stock
+        var validationResult = await ValidateAvailableStockAsync(items);
+        if (!validationResult.IsSuccess)
+        {
+            return validationResult;
+        }
+
+        // Check if reservation already exists for this reference
+        var existingReservations = await _context.StockReservations
+            .Where(sr => sr.Reference == reference && !sr.IsReleased && !sr.IsDeleted)
+            .ToListAsync();
+
+        if (existingReservations.Any())
+        {
+            return Result<bool>.Failure($"Stock reservation already exists for reference: {reference}");
+        }
+
+        // Create reservations
+        foreach (var item in items)
+        {
+            var reservation = new StockReservation
+            {
+                Id = Guid.NewGuid(),
+                ProductId = item.ProductId,
+                ReservedQuantity = item.Quantity,
+                Reference = reference,
+                ReservedByUserId = userId,
+                ReservedAt = DateTime.UtcNow,
+                Reason = reason ?? $"Stock reserved for {reference}",
+                IsReleased = false,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _context.StockReservations.Add(reservation);
+        }
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Stock reserved successfully for reference: {Reference}", reference);
         return Result<bool>.Success(true);
+    }
+
+    public async Task<Result<bool>> ReleaseStockReservationAsync(List<(Guid ProductId, int Quantity)> items, string reference, bool useExistingTransaction = false)
+    {
+        if (useExistingTransaction)
+        {
+            // When using existing transaction, don't create a new one
+            return await ReleaseStockReservationInternalAsync(items, reference);
+        }
+
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            var result = await ReleaseStockReservationInternalAsync(items, reference);
+            
+            if (result.IsSuccess)
+            {
+                await transaction.CommitAsync();
+            }
+            else
+            {
+                await transaction.RollbackAsync();
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "Error releasing stock reservation for reference: {Reference}", reference);
+            return Result<bool>.Failure("An error occurred while releasing stock reservation");
+        }
+    }
+
+    private async Task<Result<bool>> ReleaseStockReservationInternalAsync(List<(Guid ProductId, int Quantity)> items, string reference)
+    {
+        foreach (var item in items)
+        {
+            var reservations = await _context.StockReservations
+                .Where(sr => sr.ProductId == item.ProductId && 
+                           sr.Reference == reference && 
+                           !sr.IsReleased && 
+                           !sr.IsDeleted)
+                .ToListAsync();
+
+            var totalToRelease = item.Quantity;
+            foreach (var reservation in reservations)
+            {
+                if (totalToRelease <= 0) break;
+
+                var releaseQty = Math.Min(reservation.ReservedQuantity, totalToRelease);
+                
+                if (releaseQty == reservation.ReservedQuantity)
+                {
+                    // Release entire reservation
+                    reservation.IsReleased = true;
+                    reservation.ReleasedAt = DateTime.UtcNow;
+                    reservation.UpdatedAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    // Partial release - reduce reservation quantity
+                    reservation.ReservedQuantity -= releaseQty;
+                    reservation.UpdatedAt = DateTime.UtcNow;
+                }
+
+                totalToRelease -= releaseQty;
+            }
+        }
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Stock reservation released for reference: {Reference}", reference);
+        return Result<bool>.Success(true);
+    }
+
+    public async Task<Result<bool>> ReleaseAllStockReservationsByReferenceAsync(string reference, bool useExistingTransaction = false)
+    {
+        if (useExistingTransaction)
+        {
+            // When using existing transaction, don't create a new one
+            return await ReleaseAllStockReservationsByReferenceInternalAsync(reference);
+        }
+
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            var result = await ReleaseAllStockReservationsByReferenceInternalAsync(reference);
+            
+            if (result.IsSuccess)
+            {
+                await transaction.CommitAsync();
+            }
+            else
+            {
+                await transaction.RollbackAsync();
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "Error releasing all stock reservations for reference: {Reference}", reference);
+            return Result<bool>.Failure("An error occurred while releasing stock reservations");
+        }
+    }
+
+    private async Task<Result<bool>> ReleaseAllStockReservationsByReferenceInternalAsync(string reference)
+    {
+        var reservations = await _context.StockReservations
+            .Where(sr => sr.Reference == reference && !sr.IsReleased && !sr.IsDeleted)
+            .ToListAsync();
+
+        foreach (var reservation in reservations)
+        {
+            reservation.IsReleased = true;
+            reservation.ReleasedAt = DateTime.UtcNow;
+            reservation.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("All stock reservations released for reference: {Reference}", reference);
+        return Result<bool>.Success(true);
+    }
+
+    public async Task<Result<int>> GetReservedStockAsync(Guid productId)
+    {
+        try
+        {
+            // Get reservations that are not released and not deleted, and verify sales order is not deleted
+            var reservedStock = 0;
+            var reservations = await _context.StockReservations
+                .Where(sr => sr.ProductId == productId && !sr.IsReleased && !sr.IsDeleted)
+                .ToListAsync();
+
+            foreach (var reservation in reservations)
+            {
+                // Check if the sales order for this reservation is not deleted
+                var salesOrderExists = await _context.SalesOrders
+                    .AnyAsync(so => so.ReferenceNumber == reservation.Reference && !so.IsDeleted);
+                
+                if (salesOrderExists)
+                {
+                    reservedStock += reservation.ReservedQuantity;
+                }
+            }
+
+            return Result<int>.Success(reservedStock);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting reserved stock for product: {ProductId}", productId);
+            return Result<int>.Failure("An error occurred while getting reserved stock");
+        }
+    }
+
+    public async Task<Result<int>> GetAvailableStockAsync(Guid productId)
+    {
+        try
+        {
+            var product = await _context.Products
+                .FirstOrDefaultAsync(p => p.Id == productId && !p.IsDeleted);
+
+            if (product == null)
+            {
+                return Result<int>.Failure("Product not found");
+            }
+
+            var reservedStockResult = await GetReservedStockAsync(productId);
+            if (!reservedStockResult.IsSuccess)
+            {
+                return Result<int>.Failure(reservedStockResult.Error);
+            }
+
+            var availableStock = product.CurrentStock - reservedStockResult.Data;
+            return Result<int>.Success(Math.Max(0, availableStock)); // Ensure non-negative
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting available stock for product: {ProductId}", productId);
+            return Result<int>.Failure("An error occurred while getting available stock");
+        }
     }
 }

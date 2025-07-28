@@ -56,6 +56,32 @@ export class SalesOrderDetailComponent implements OnInit {
   orderId = signal<string>('');
   showStatusUpdate = signal(false);
 
+  // Business Rules
+  /**
+   * Check if a sales order can be updated
+   * Orders can only be updated when status is New or Processing
+   */
+  canUpdateOrder(order: SalesOrder): boolean {
+    if (order.isDeleted) return false;
+    return order.status === SalesOrderStatus.New || order.status === SalesOrderStatus.Processing;
+  }
+
+  /**
+   * Get tooltip text explaining why an action is disabled
+   */
+  getDisabledTooltip(order: SalesOrder, action: 'update' | 'edit'): string {
+    if (order.isDeleted) {
+      return 'Cannot perform this action on deleted orders';
+    }
+    
+    const statusLabel = getStatusLabel(order.status);
+    if (action === 'update') {
+      return `Cannot update orders with status "${statusLabel}". Only "New" and "Processing" orders can be updated.`;
+    } else {
+      return `Cannot edit orders with status "${statusLabel}". Only "New" and "Processing" orders can be edited.`;
+    }
+  }
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -99,6 +125,15 @@ export class SalesOrderDetailComponent implements OnInit {
    * Navigate to edit page
    */
   editOrder(): void {
+    const order = this.salesOrder();
+    if (!order) return;
+    
+    // Check if order can be updated
+    if (!this.canUpdateOrder(order)) {
+      this.error.set(this.getDisabledTooltip(order, 'edit'));
+      return;
+    }
+    
     this.router.navigate(['/dashboard/sales/orders', this.orderId(), 'edit']);
   }
 
@@ -106,6 +141,15 @@ export class SalesOrderDetailComponent implements OnInit {
    * Show status update component
    */
   updateStatus(): void {
+    const order = this.salesOrder();
+    if (!order) return;
+    
+    // Check if order can be updated
+    if (!this.canUpdateOrder(order)) {
+      this.error.set(this.getDisabledTooltip(order, 'update'));
+      return;
+    }
+    
     this.showStatusUpdate.set(true);
   }
 

@@ -245,10 +245,10 @@ export class ProductListComponent implements OnInit {
   }
 
   getStockStatusClass(product: Product): string {
-    if (product.isLowStock) {
+    if (product.isLowStock || (product.minimumStock && product.availableStock <= product.minimumStock)) {
       return 'text-red-600 bg-red-100 dark:bg-red-900/20 dark:text-red-400';
     }
-    return product.currentStock > 0 ? 'text-green-600 bg-green-100 dark:bg-green-900/20 dark:text-green-400' : 'text-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-gray-400';
+    return product.availableStock > 0 ? 'text-green-600 bg-green-100 dark:bg-green-900/20 dark:text-green-400' : 'text-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-gray-400';
   }
 
   getProductStatusText(product: Product): string {

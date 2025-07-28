@@ -11,6 +11,8 @@ public class ProductDto
     public decimal UnitPrice { get; set; }
     public decimal CostPrice { get; set; }
     public int CurrentStock { get; set; }
+    public int ReservedStock { get; set; } // Added: Stock reserved for orders
+    public int AvailableStock { get; set; } // Added: Stock available for new orders
     public int? MinimumStock { get; set; }
     public bool IsLowStock { get; set; } // Computed property
     public bool IsDeleted { get; set; } // Include soft delete status

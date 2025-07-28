@@ -11,7 +11,9 @@ public class InventoryProfile : Profile
         // Product Mappings
         CreateMap<Product, ProductDto>()
             .ForMember(dest => dest.IsLowStock, opt => opt.MapFrom(src => 
-                src.MinimumStock.HasValue && src.CurrentStock <= src.MinimumStock.Value));
+                src.MinimumStock.HasValue && src.CurrentStock <= src.MinimumStock.Value))
+            .ForMember(dest => dest.ReservedStock, opt => opt.Ignore()) // Calculated in service
+            .ForMember(dest => dest.AvailableStock, opt => opt.Ignore()); // Calculated in service
 
         CreateMap<ProductCreateDto, Product>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
@@ -40,5 +42,19 @@ public class InventoryProfile : Profile
         CreateMap<StockAdjustment, StockAdjustmentResponseDto>()
             .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product.Name))
             .ForMember(dest => dest.ProductSKU, opt => opt.MapFrom(src => src.Product.SKU));
+
+        // Stock Reservation Mappings
+        CreateMap<StockReservation, StockReservationDto>()
+            .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product.Name))
+            .ForMember(dest => dest.ProductSKU, opt => opt.MapFrom(src => src.Product.SKU));
+
+        // Product Stock Info Mapping
+        CreateMap<Product, ProductStockInfoDto>()
+            .ForMember(dest => dest.ProductId, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Name))
+            .ForMember(dest => dest.ProductSKU, opt => opt.MapFrom(src => src.SKU))
+            .ForMember(dest => dest.ReservedStock, opt => opt.Ignore()) // Will be set in service
+            .ForMember(dest => dest.AvailableStock, opt => opt.Ignore()) // Will be set in service
+            .ForMember(dest => dest.ActiveReservations, opt => opt.Ignore()); // Will be set in service
     }
 }

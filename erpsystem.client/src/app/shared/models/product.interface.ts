@@ -8,6 +8,8 @@ export interface Product {
   unitPrice: number;
   costPrice: number;
   currentStock: number;
+  reservedStock: number;
+  availableStock: number;
   minimumStock?: number;
   isLowStock: boolean;
   isDeleted: boolean; // Add soft delete status
