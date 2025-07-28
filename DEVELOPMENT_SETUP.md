@@ -1,8 +1,13 @@
 # Development Environment Setup
 
-## Setting up User Secrets
+## Configuration Strategy
 
-This project uses .NET User Secrets to store sensitive configuration data like connection strings, JWT keys, and Okta credentials. This keeps sensitive data out of source control.
+This project uses a simple file-based configuration approach:
+- **appsettings.json** is tracked in git with empty placeholder values for production
+- **appsettings.Development.json** is NOT tracked in git and contains actual development credentials
+- **appsettings.Development.template.json** is tracked as a template with example values
+
+## Setting up Development Configuration
 
 ### For New Developers
 
@@ -11,46 +16,46 @@ This project uses .NET User Secrets to store sensitive configuration data like c
    cd ERPSystem.Server
    ```
 
-2. Initialize user secrets (if not already done):
+2. Copy the template file to create your development configuration:
    ```powershell
-   dotnet user-secrets init
+   Copy-Item "appsettings.Development.template.json" "appsettings.Development.json"
    ```
 
-3. Set the required secrets:
+3. Edit `appsettings.Development.json` with your specific configuration values:
+   - Update the connection string for your local database
+   - Set appropriate JWT secret key
+   - Configure Okta settings with your credentials
 
-   **Connection String:**
-   ```powershell
-   dotnet user-secrets set "ConnectionStrings:DefaultConnection" "YOUR_CONNECTION_STRING"
-   ```
+### Configuration Files
 
-   **JWT Settings:**
-   ```powershell
-   dotnet user-secrets set "JwtSettings:SecretKey" "YOUR_JWT_SECRET_KEY"
-   ```
+- **appsettings.json**: Production configuration with empty placeholder values (tracked in git)
+- **appsettings.Development.json**: Development configuration with real values (NOT tracked in git)
+- **appsettings.Development.template.json**: Template file showing structure and example values (tracked in git)
 
-   **Okta Configuration:**
-   ```powershell
-   dotnet user-secrets set "Okta:OktaDomain" "YOUR_OKTA_DOMAIN"
-   dotnet user-secrets set "Okta:ClientId" "YOUR_CLIENT_ID"
-   dotnet user-secrets set "Okta:ClientAppId" "YOUR_CLIENT_APP_ID"
-   dotnet user-secrets set "Okta:AuthorizationServerId" "YOUR_AUTHORIZATION_SERVER_ID"
-   dotnet user-secrets set "Okta:Audience" "YOUR_AUDIENCE"
-   dotnet user-secrets set "Okta:ApiToken" "YOUR_API_TOKEN"
-   ```
+### File Structure
 
-### Viewing Current Secrets
-
-To see all configured secrets:
-```powershell
-dotnet user-secrets list
+```
+ERPSystem.Server/
+├── appsettings.json                      (tracked - empty values)
+├── appsettings.Development.json          (NOT tracked - your local config)
+└── appsettings.Development.template.json (tracked - template with examples)
 ```
 
-### Template File
+### For Production Deployment
 
-A template file `appsettings.Development.template.json` is provided to show the structure of required configuration.
+Fill in the empty values in `appsettings.json` or use environment variables:
+- `ConnectionStrings__DefaultConnection`
+- `JwtSettings__SecretKey`
+- `Okta__OktaDomain`
+- `Okta__ClientId`
+- `Okta__ClientAppId`
+- `Okta__AuthorizationServerId`
+- `Okta__Audience`
+- `Okta__ApiToken`
 
 ### Security Notes
 
-- User secrets are stored locally on your machine and are not included in source control
-- The `appsettings.Development.json` file now only contains non-sensitive logging configuration
-- Never commit actual credentials to the repository
+- `appsettings.Development.json` is ignored by git and contains sensitive data
+- Never commit the actual development configuration file
+- Use the template file as a reference for required configuration structure
+- Production deployments should use environment variables or Azure Key Vault
