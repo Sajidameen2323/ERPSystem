@@ -80,10 +80,10 @@
             <div class="space-y-2">
               <label class="text-sm font-medium" [ngClass]="themeClasses().textSecondary">Quantity</label>
               <div class="flex items-center gap-2">
-                @if (isStockDecrease(movement.movementType)) {
+                @if (!movement.isIncrease) {
                   <lucide-angular [img]="TrendingDownIcon" class="w-5 h-5 text-red-500"></lucide-angular>
                   <span class="text-lg font-semibold text-red-600 dark:text-red-400">
-                    -{{ movement.quantity }}
+                    {{ movement.quantity }}
                   </span>
                 } @else {
                   <lucide-angular [img]="TrendingUpIcon" class="w-5 h-5 text-green-500"></lucide-angular>

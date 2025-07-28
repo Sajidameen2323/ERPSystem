@@ -295,9 +295,9 @@
                 <button
                   *ngIf="!order.isDeleted"
                   (click)="updateOrderStatus(order)"
-                  [disabled]="!canUpdateOrder(order)"
-                  [title]="canUpdateOrder(order) ? 'Update status' : getDisabledTooltip(order, 'update')"
-                  [class]="canUpdateOrder(order) 
+                  [disabled]="!canUpdateStatus(order)"
+                  [title]="canUpdateStatus(order) ? 'Update status' : getDisabledTooltip(order, 'status')"
+                  [class]="canUpdateStatus(order) 
                     ? 'text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300' 
                     : 'text-gray-400 dark:text-gray-600 cursor-not-allowed'"
                   class="disabled:opacity-50">

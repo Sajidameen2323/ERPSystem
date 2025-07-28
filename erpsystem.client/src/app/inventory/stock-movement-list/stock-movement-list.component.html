@@ -229,7 +229,7 @@
                   <!-- Quantity -->
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
-                      @if (isStockDecrease(movement.movementType)) {
+                      @if (!movement.isIncrease) {
                         <lucide-angular [img]="TrendingDownIcon" class="w-4 h-4 text-red-500 mr-1"></lucide-angular>
                         <span class="text-sm font-medium text-red-600 dark:text-red-400">
                           {{ movement.quantity < 0 ? movement.quantity : '-' + movement.quantity }}

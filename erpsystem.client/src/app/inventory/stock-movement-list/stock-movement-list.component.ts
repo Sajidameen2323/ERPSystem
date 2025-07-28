@@ -328,9 +328,9 @@ export class StockMovementListComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Check if movement decreases stock
+   * Check if user can view previous page
    */
-  isStockDecrease(movementType: string): boolean {
-    return ['sale', 'sold', 'damage', 'damaged', 'stockout', 'expired', 'return'].includes(movementType?.toLowerCase());
+  canViewPreviousPage(): boolean {
+    return this.currentPage() > 1;
   }
 }

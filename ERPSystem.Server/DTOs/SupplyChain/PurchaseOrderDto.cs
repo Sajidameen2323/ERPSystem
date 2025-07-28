@@ -124,6 +124,9 @@ public class StockMovementDto
     public DateTime MovementDate { get; set; }
     public string? Notes { get; set; }
     
+    // UI Helper properties
+    public bool IsIncrease { get; set; }
+    
     // Navigation properties
     public string? ProductName { get; set; }
     public string? ProductSKU { get; set; }

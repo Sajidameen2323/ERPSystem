@@ -28,15 +28,15 @@ export interface SidebarConfig {
 export class SidebarConfigService {
   private readonly STORAGE_KEY = 'sidebarCollapsed';
   private readonly productService = inject(ProductService);
-  
+
   // Sidebar state
   isCollapsed = signal(false);
   isMobile = signal(false);
   expandedItems = signal<Set<string>>(new Set());
-  
+
   // Low stock alerts count
   lowStockCount = signal<number>(0);
-  
+
   // Auto-refresh low stock count every 5 minutes
   private refreshInterval = 5 * 60 * 1000; // 5 minutes
 
@@ -62,24 +62,29 @@ export class SidebarConfigService {
       icon: Package,
       roles: ['admin', 'inventoryuser'],
       children: [
-        { 
-          label: 'Products', 
-          route: '/dashboard/inventory/products', 
-          roles: ['admin', 'inventoryuser'] 
+        {
+          label: 'Products',
+          route: '/dashboard/inventory/products',
+          roles: ['admin', 'inventoryuser']
         },
-        { 
-          label: 'Stock Adjustments', 
-          route: '/dashboard/inventory/adjustments', 
-          roles: ['admin', 'inventoryuser'] 
+        {
+          label: 'Stock Adjustments',
+          route: '/dashboard/inventory/adjustments',
+          roles: ['admin', 'inventoryuser']
         },
-        { 
-          label: 'Low Stock Alerts', 
-          route: '/dashboard/inventory/alerts', 
-          roles: ['admin', 'inventoryuser'], 
+        {
+          label: 'Low Stock Alerts',
+          route: '/dashboard/inventory/alerts',
+          roles: ['admin', 'inventoryuser'],
           badge: computed(() => {
             const count = this.lowStockCount();
             return count > 0 ? count.toString() : undefined;
           })
+        },
+        {
+          label: 'Stock Movements',
+          route: '/dashboard/inventory/stock-movements',
+          roles: ['admin', 'inventoryuser']
         }
       ]
     },
@@ -88,26 +93,22 @@ export class SidebarConfigService {
       icon: Truck,
       roles: ['admin', 'inventoryuser'],
       children: [
-        { 
-          label: 'Suppliers', 
-          route: '/dashboard/supply-chain/suppliers', 
-          roles: ['admin', 'inventoryuser'] 
+        {
+          label: 'Suppliers',
+          route: '/dashboard/supply-chain/suppliers',
+          roles: ['admin', 'inventoryuser']
         },
-        { 
-          label: 'Purchase Orders', 
-          route: '/dashboard/supply-chain/purchase-orders', 
-          roles: ['admin', 'inventoryuser'] 
+        {
+          label: 'Purchase Orders',
+          route: '/dashboard/supply-chain/purchase-orders',
+          roles: ['admin', 'inventoryuser']
         },
-        { 
-          label: 'Purchase Order Returns', 
-          route: '/dashboard/supply-chain/purchase-order-returns', 
-          roles: ['admin', 'inventoryuser'] 
-        },
-        { 
-          label: 'Stock Movements', 
-          route: '/dashboard/supply-chain/stock-movements', 
-          roles: ['admin', 'inventoryuser'] 
+        {
+          label: 'Purchase Order Returns',
+          route: '/dashboard/supply-chain/purchase-order-returns',
+          roles: ['admin', 'inventoryuser']
         }
+
       ]
     },
     {
@@ -115,20 +116,20 @@ export class SidebarConfigService {
       icon: ShoppingCart,
       roles: ['admin', 'salesuser'],
       children: [
-        { 
-          label: 'Customers', 
-          route: '/dashboard/sales/customers', 
-          roles: ['admin', 'salesuser'] 
+        {
+          label: 'Customers',
+          route: '/dashboard/sales/customers',
+          roles: ['admin', 'salesuser']
         },
-        { 
-          label: 'Sales Orders', 
-          route: '/dashboard/sales/orders', 
-          roles: ['admin', 'salesuser'] 
+        {
+          label: 'Sales Orders',
+          route: '/dashboard/sales/orders',
+          roles: ['admin', 'salesuser']
         },
-        { 
-          label: 'Invoices', 
-          route: '/dashboard/sales/invoices', 
-          roles: ['admin', 'salesuser'] 
+        {
+          label: 'Invoices',
+          route: '/dashboard/sales/invoices',
+          roles: ['admin', 'salesuser']
         }
       ]
     },
@@ -137,20 +138,20 @@ export class SidebarConfigService {
       icon: FileText,
       roles: ['admin', 'salesuser', 'inventoryuser'],
       children: [
-        { 
-          label: 'Sales Report', 
-          route: '/dashboard/reports/sales', 
-          roles: ['admin', 'salesuser'] 
+        {
+          label: 'Sales Report',
+          route: '/dashboard/reports/sales',
+          roles: ['admin', 'salesuser']
         },
-        { 
-          label: 'Inventory Report', 
-          route: '/dashboard/reports/inventory', 
-          roles: ['admin', 'inventoryuser'] 
+        {
+          label: 'Inventory Report',
+          route: '/dashboard/reports/inventory',
+          roles: ['admin', 'inventoryuser']
         },
-        { 
-          label: 'Customer Report', 
-          route: '/dashboard/reports/customers', 
-          roles: ['admin', 'salesuser'] 
+        {
+          label: 'Customer Report',
+          route: '/dashboard/reports/customers',
+          roles: ['admin', 'salesuser']
         }
       ]
     },
@@ -159,20 +160,20 @@ export class SidebarConfigService {
       icon: Settings,
       roles: ['admin'],
       children: [
-        { 
-          label: 'User Management', 
-          route: '/dashboard/admin/users', 
-          roles: ['admin'] 
+        {
+          label: 'User Management',
+          route: '/dashboard/admin/users',
+          roles: ['admin']
         },
-        { 
-          label: 'Register User', 
-          route: '/dashboard/admin/register', 
-          roles: ['admin'] 
+        {
+          label: 'Register User',
+          route: '/dashboard/admin/register',
+          roles: ['admin']
         },
-        { 
-          label: 'System Settings', 
-          route: '/dashboard/admin/settings', 
-          roles: ['admin'] 
+        {
+          label: 'System Settings',
+          route: '/dashboard/admin/settings',
+          roles: ['admin']
         }
       ]
     }
@@ -190,7 +191,7 @@ export class SidebarConfigService {
   private initializeLowStockCount(): void {
     // Initial load
     this.refreshLowStockCount();
-    
+
     // Set up auto-refresh interval
     interval(this.refreshInterval)
       .pipe(
@@ -302,13 +303,13 @@ export class SidebarConfigService {
   toggleExpanded(itemLabel: string): void {
     const expanded = this.expandedItems();
     const newExpanded = new Set(expanded);
-    
+
     if (newExpanded.has(itemLabel)) {
       newExpanded.delete(itemLabel);
     } else {
       newExpanded.add(itemLabel);
     }
-    
+
     this.expandedItems.set(newExpanded);
   }
 
@@ -338,11 +339,11 @@ export class SidebarConfigService {
    */
   getSidebarClasses(): string {
     const base = 'fixed lg:static inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out lg:translate-x-0';
-    
+
     if (this.isMobile()) {
       return `${base} ${this.isCollapsed() ? '-translate-x-full' : 'translate-x-0'}`;
     }
-    
+
     return base;
   }
 
@@ -351,11 +352,11 @@ export class SidebarConfigService {
    */
   getMainContentClasses(): string {
     const base = 'flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out';
-    
+
     if (!this.isMobile()) {
       return `${base} ${this.isCollapsed() ? 'lg:ml-16' : ''}`;
     }
-    
+
     return base;
   }
 
@@ -365,7 +366,7 @@ export class SidebarConfigService {
   setMobile(isMobile: boolean): void {
     const wasMobile = this.isMobile();
     this.isMobile.set(isMobile);
-    
+
     if (this.config.autoCollapseOnMobile) {
       // Auto-collapse sidebar on mobile, restore on desktop
       if (isMobile && !wasMobile) {
@@ -391,7 +392,7 @@ export class SidebarConfigService {
    */
   private loadSidebarState(): void {
     if (!this.config.persistState) return;
-    
+
     const savedState = localStorage.getItem(this.STORAGE_KEY);
     if (savedState !== null && !this.isMobile()) {
       this.isCollapsed.set(savedState === 'true');
@@ -403,7 +404,7 @@ export class SidebarConfigService {
    */
   private saveSidebarState(): void {
     if (!this.config.persistState) return;
-    
+
     // Only save state for desktop
     if (!this.isMobile()) {
       localStorage.setItem(this.STORAGE_KEY, this.isCollapsed().toString());
@@ -416,14 +417,14 @@ export class SidebarConfigService {
   private setupResponsiveListener(): void {
     // Initial check
     this.setMobile(window.innerWidth < 1024);
-    
+
     // Listen for resize events
     const handleResize = () => {
       this.setMobile(window.innerWidth < 1024);
     };
-    
+
     window.addEventListener('resize', handleResize);
-    
+
     // Cleanup would be handled by the component using this service
   }
 

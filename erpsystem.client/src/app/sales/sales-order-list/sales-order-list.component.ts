@@ -112,12 +112,22 @@ export class SalesOrderListComponent implements OnInit {
 
   // Business Rules
   /**
-   * Check if a sales order can be updated
-   * Orders can only be updated when status is New or Processing
+   * Check if a sales order can be updated (form editing)
+   * Orders can only be edited when status is New, Processing, or On Hold
    */
   canUpdateOrder(order: SalesOrder): boolean {
     if (order.isDeleted) return false;
-    return order.status === SalesOrderStatus.New || order.status === SalesOrderStatus.Processing;
+    return order.status === SalesOrderStatus.New || 
+           order.status === SalesOrderStatus.Processing || 
+           order.status === SalesOrderStatus.OnHold;
+  }
+
+  /**
+   * Check if a sales order status can be updated
+   * Status updates are available for all non-deleted orders to allow proper workflow transitions
+   */
+  canUpdateStatus(order: SalesOrder): boolean {
+    return !order.isDeleted;
   }
 
   /**
@@ -132,14 +142,16 @@ export class SalesOrderListComponent implements OnInit {
   /**
    * Get tooltip text explaining why an action is disabled
    */
-  getDisabledTooltip(order: SalesOrder, action: 'update' | 'delete'): string {
+  getDisabledTooltip(order: SalesOrder, action: 'update' | 'delete' | 'status'): string {
     if (order.isDeleted) {
       return 'Cannot perform this action on deleted orders';
     }
     
     const statusLabel = getStatusLabel(order.status);
     if (action === 'update') {
-      return `Cannot update orders with status "${statusLabel}". Only "New" and "Processing" orders can be updated.`;
+      return `Cannot edit orders with status "${statusLabel}". Only "New", "Processing", and "On Hold" orders can be edited.`;
+    } else if (action === 'status') {
+      return `Status updates are available for all active orders to ensure proper workflow transitions.`;
     } else {
       return `Cannot delete orders with status "${statusLabel}". Only "New" and "Processing" orders can be deleted.`;
     }
@@ -355,9 +367,9 @@ export class SalesOrderListComponent implements OnInit {
    * Show status update confirmation dialog
    */
   updateOrderStatus(salesOrder: SalesOrder): void {
-    // Check if order can be updated
-    if (!this.canUpdateOrder(salesOrder)) {
-      this.error.set(this.getDisabledTooltip(salesOrder, 'update'));
+    // Check if order status can be updated
+    if (!this.canUpdateStatus(salesOrder)) {
+      this.error.set(this.getDisabledTooltip(salesOrder, 'status'));
       return;
     }
     

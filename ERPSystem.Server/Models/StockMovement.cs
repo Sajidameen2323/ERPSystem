@@ -10,7 +10,8 @@ public enum StockMovementType
     Transfer = 4,       // Stock transfer between locations
     Damaged = 5,        // Stock marked as damaged
     Expired = 6,        // Stock marked as expired
-    Return = 7          // Stock returned from customer
+    Return = 7,         // Stock returned from customer (increases stock)
+    ReturnToSupplier = 8 // Stock returned to supplier (decreases stock)
 }
 
 public class StockMovement

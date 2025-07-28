@@ -561,7 +561,7 @@ public class PurchaseOrderReturnService : IPurchaseOrderReturnService
             var stockMovement = new StockMovement
             {
                 ProductId = returnItem.ProductId,
-                MovementType = StockMovementType.Return,
+                MovementType = StockMovementType.ReturnToSupplier,
                 Quantity = -returnItem.ReturnQuantity, // Negative because we're removing from stock
                 Reference = returnNumber,
                 Reason = $"Return to supplier: {returnItem.ReasonDescription ?? returnItem.Reason.ToString()}",

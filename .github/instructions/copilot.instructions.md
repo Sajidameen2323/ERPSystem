@@ -1,6 +1,11 @@
 ---
 applyTo: '**'
 ---
+General development guide
+
+    -  Always use git for restoring corrupted code or reverting changes
+
+
 Forntend development Angular 18 guide
 
     -  when developing frontend code adhere to Angular 18 style

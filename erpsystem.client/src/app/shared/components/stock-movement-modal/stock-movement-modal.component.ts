@@ -136,11 +136,4 @@ export class StockMovementModalComponent {
         return this.Package2Icon;
     }
   }
-
-  /**
-   * Check if movement decreases stock
-   */
-  isStockDecrease(movementType: string): boolean {
-    return ['sale', 'sold', 'damage', 'damaged', 'stockout', 'expired'].includes(movementType?.toLowerCase());
-  }
 }

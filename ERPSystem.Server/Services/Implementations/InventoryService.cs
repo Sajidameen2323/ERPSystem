@@ -47,6 +47,11 @@ public class InvoiceService : IInvoiceService
                 return Result<bool>.Failure("Failed to generate invoice number");
             }
 
+            if (string.IsNullOrEmpty(invoiceNumberResult.Data))
+            {
+                return Result<bool>.Failure("Generated invoice number is null or empty");
+            }
+
             var invoice = new Invoice
             {
                 Id = Guid.NewGuid(),

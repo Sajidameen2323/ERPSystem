@@ -27,26 +27,20 @@ export class AppComponent implements OnInit {
 
   async ngOnInit() {
     try {
-      // Debug session storage functionality
-      this.redirectService.debugSessionStorage();
       
       // Store current route if user is trying to access protected route on initial load
       const currentUrl = this.router.url;
-      console.log('🚀 AppComponent: Initializing with URL:', currentUrl);
       
       if (!this.isPublicRoute(currentUrl)) {
-        console.log('📂 AppComponent: Storing intended route on app init:', currentUrl);
         this.redirectService.storeIntendedRoute(currentUrl);
         
         // Verify storage immediately
         const storedRoute = this.redirectService.getIntendedRoute();
-        console.log('🔍 AppComponent: Verification - stored route:', storedRoute);
       }
 
       // Subscribe to auth state changes
       this.oktaAuthStateService.authState$.subscribe((authState: AuthState) => {
-        console.log('🔐 AppComponent: Auth state changed:', authState.isAuthenticated);
-        console.log('📍 AppComponent: Current URL during auth change:', this.router.url);
+  
         
         if (authState.isAuthenticated) {
           // User is authenticated
@@ -54,7 +48,6 @@ export class AppComponent implements OnInit {
           
           // If user is on login/unauthorized pages, navigate to intended route
           if (this.isPublicRoute(routerUrl)) {
-            console.log('✅ AppComponent: User authenticated, navigating from public route');
             this.redirectService.navigateToIntendedRoute('/dashboard');
           }
         } else {
@@ -62,8 +55,7 @@ export class AppComponent implements OnInit {
           const routerUrl = this.router.url;
           
           if (!this.isPublicRoute(routerUrl)) {
-            console.log('🚫 AppComponent: User not authenticated, storing route and redirecting to login');
-            console.log('📍 AppComponent: Route being stored:', routerUrl);
+
             this.redirectService.storeCurrentRouteAndRedirectToLogin();
           }
         }
@@ -75,7 +67,6 @@ export class AppComponent implements OnInit {
       await this.oktaAuth.start();
 
     } catch (error) {
-      console.error('Error during app initialization:', error);
       this.initializationError = 'Failed to initialize authentication';
       this.isLoading = false;
     }

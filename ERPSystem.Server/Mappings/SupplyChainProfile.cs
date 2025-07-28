@@ -95,7 +95,11 @@ public class SupplyChainProfile : Profile
         CreateMap<StockMovement, StockMovementDto>()
             .ForMember(dest => dest.MovementType, opt => opt.MapFrom(src => src.MovementType.GetDisplayName()))
             .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product.Name))
-            .ForMember(dest => dest.ProductSKU, opt => opt.MapFrom(src => src.Product.SKU));
+            .ForMember(dest => dest.ProductSKU, opt => opt.MapFrom(src => src.Product.SKU))
+            .ForMember(dest => dest.IsIncrease, opt => opt.MapFrom(src => 
+                src.MovementType == StockMovementType.StockIn || 
+                src.MovementType == StockMovementType.Return ||
+                (src.MovementType == StockMovementType.Adjustment && src.Quantity > 0)));
         
         CreateMap<StockMovementCreateDto, StockMovement>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())

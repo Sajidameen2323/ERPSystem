@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using ERPSystem.Server.Services.Interfaces;
 using ERPSystem.Server.DTOs.Sales;
 using ERPSystem.Server.Common;
+using System.Security.Claims;
 
 namespace ERPSystem.Server.Controllers;
 
@@ -21,6 +22,16 @@ public class SalesOrdersController : ControllerBase
     {
         _salesOrderService = salesOrderService;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Gets user ID from claims
+    /// </summary>
+    private string GetUserIdFromClaims()
+    {
+        return User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+            ?? User.FindFirst("sub")?.Value 
+            ?? "system";
     }
 
     /// <summary>
@@ -66,7 +77,10 @@ public class SalesOrdersController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var result = await _salesOrderService.CreateSalesOrderAsync(createDto);
+        // Get user ID from claims
+        var userId = GetUserIdFromClaims();
+        
+        var result = await _salesOrderService.CreateSalesOrderAsync(createDto, userId);
         
         if (!result.IsSuccess)
         {
@@ -87,7 +101,10 @@ public class SalesOrdersController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var result = await _salesOrderService.UpdateSalesOrderAsync(id, updateDto, User.Identity?.Name);
+        // Get user ID from claims
+        var userId = GetUserIdFromClaims();
+
+        var result = await _salesOrderService.UpdateSalesOrderAsync(id, updateDto, userId);
         
         if (!result.IsSuccess)
         {
@@ -113,8 +130,11 @@ public class SalesOrdersController : ControllerBase
             var enumStatus = statusUpdate.GetStatusEnum();
             _logger.LogInformation("Converted to enum: {EnumStatus} (value: {EnumValue})", enumStatus, (int)enumStatus);
         }
+
+        // Get user ID from claims
+        var userId = GetUserIdFromClaims();
                 
-        var result = await _salesOrderService.UpdateSalesOrderStatusAsync(id, statusUpdate);
+        var result = await _salesOrderService.UpdateSalesOrderStatusAsync(id, statusUpdate, userId);
         
         if (!result.IsSuccess)
         {

@@ -11,12 +11,14 @@ export enum PurchaseOrderStatus {
 }
 
 export enum StockMovementType {
-  Purchase = 'Purchase',
-  Sale = 'Sale',
+  StockIn = 'StockIn',
+  StockOut = 'StockOut',
   Adjustment = 'Adjustment',
   Transfer = 'Transfer',
+  Damaged = 'Damaged',
+  Expired = 'Expired',
   Return = 'Return',
-  Damage = 'Damage'
+  ReturnToSupplier = 'ReturnToSupplier'
 }
 
 export interface PurchaseOrder {
@@ -135,6 +137,8 @@ export interface StockMovement {
   movedByUserId: string;
   movementDate: Date;
   notes?: string;
+  // UI Helper properties
+  isIncrease: boolean;
   // Navigation properties
   productName?: string;
   productSKU?: string;

@@ -58,28 +58,39 @@ export class SalesOrderDetailComponent implements OnInit {
 
   // Business Rules
   /**
-   * Check if a sales order can be updated
-   * Orders can only be updated when status is New or Processing
+   * Check if a sales order can be updated (form editing)
+   * Orders can only be edited when status is New, Processing, or On Hold
    */
   canUpdateOrder(order: SalesOrder): boolean {
     if (order.isDeleted) return false;
-    return order.status === SalesOrderStatus.New || order.status === SalesOrderStatus.Processing;
+    return order.status === SalesOrderStatus.New || 
+           order.status === SalesOrderStatus.Processing || 
+           order.status === SalesOrderStatus.OnHold;
+  }
+
+  /**
+   * Check if a sales order status can be updated
+   * Status updates are available for all non-deleted orders to allow proper workflow transitions
+   */
+  canUpdateStatus(order: SalesOrder): boolean {
+    return !order.isDeleted;
   }
 
   /**
    * Get tooltip text explaining why an action is disabled
    */
-  getDisabledTooltip(order: SalesOrder, action: 'update' | 'edit'): string {
+  getDisabledTooltip(order: SalesOrder, action: 'update' | 'edit' | 'status'): string {
     if (order.isDeleted) {
       return 'Cannot perform this action on deleted orders';
     }
     
     const statusLabel = getStatusLabel(order.status);
-    if (action === 'update') {
-      return `Cannot update orders with status "${statusLabel}". Only "New" and "Processing" orders can be updated.`;
-    } else {
-      return `Cannot edit orders with status "${statusLabel}". Only "New" and "Processing" orders can be edited.`;
+    if (action === 'update' || action === 'edit') {
+      return `Cannot edit orders with status "${statusLabel}". Only "New", "Processing", and "On Hold" orders can be edited.`;
+    } else if (action === 'status') {
+      return `Status updates are available for all active orders to ensure proper workflow transitions.`;
     }
+    return '';
   }
 
   ngOnInit(): void {
@@ -144,9 +155,9 @@ export class SalesOrderDetailComponent implements OnInit {
     const order = this.salesOrder();
     if (!order) return;
     
-    // Check if order can be updated
-    if (!this.canUpdateOrder(order)) {
-      this.error.set(this.getDisabledTooltip(order, 'update'));
+    // Check if order status can be updated
+    if (!this.canUpdateStatus(order)) {
+      this.error.set(this.getDisabledTooltip(order, 'status'));
       return;
     }
     

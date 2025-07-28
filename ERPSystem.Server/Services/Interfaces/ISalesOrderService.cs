@@ -22,17 +22,17 @@ public interface ISalesOrderService
     /// <summary>
     /// Creates a new sales order
     /// </summary>
-    Task<Result<SalesOrderDto>> CreateSalesOrderAsync(SalesOrderCreateDto createDto);
+    Task<Result<SalesOrderDto>> CreateSalesOrderAsync(SalesOrderCreateDto createDto, string orderedByUserId);
 
     /// <summary>
     /// Updates an existing sales order
     /// </summary>
-    Task<Result<SalesOrderDto>> UpdateSalesOrderAsync(Guid id, SalesOrderUpdateDto updateDto, string? updatedByUserId = null);
+    Task<Result<SalesOrderDto>> UpdateSalesOrderAsync(Guid id, SalesOrderUpdateDto updateDto, string updatedByUserId);
 
     /// <summary>
     /// Updates the status of a sales order
     /// </summary>
-    Task<Result<SalesOrderDto>> UpdateSalesOrderStatusAsync(Guid id, SalesOrderStatusUpdateDto statusUpdateDto);
+    Task<Result<SalesOrderDto>> UpdateSalesOrderStatusAsync(Guid id, SalesOrderStatusUpdateDto statusUpdateDto, string updatedByUserId);
 
     /// <summary>
     /// Soft deletes a sales order

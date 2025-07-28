@@ -559,15 +559,15 @@ public class OktaService : IOktaService
     {
         return new UserViewModel
         {
-            Id = oktaUser.Id,
+            Id = oktaUser?.Id ?? string.Empty,
             Status = oktaUser?.Embedded?.User?.Status ?? "N/A",
             Created = oktaUser?.Created,
             LastLoginAt = oktaUser?.Embedded?.User?.LastLogin,
-            FirstName = oktaUser.Profile.GivenName,
-            LastName = oktaUser.Profile.FamilyName,
-            DisplayName = oktaUser.Profile.Name,
-            Email = oktaUser.Profile.Email,
-            Roles = oktaUser.Profile.Roles
+            FirstName = oktaUser?.Profile?.GivenName ?? string.Empty,
+            LastName = oktaUser?.Profile?.FamilyName ?? string.Empty,
+            DisplayName = oktaUser?.Profile?.Name ?? string.Empty,
+            Email = oktaUser?.Profile?.Email ?? string.Empty,
+            Roles = oktaUser?.Profile?.Roles
         };
     }
 

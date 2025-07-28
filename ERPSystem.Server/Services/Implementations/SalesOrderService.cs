@@ -147,7 +147,7 @@ public class SalesOrderService : ISalesOrderService
         }
     }
 
-    public async Task<Result<SalesOrderDto>> CreateSalesOrderAsync(SalesOrderCreateDto createDto)
+    public async Task<Result<SalesOrderDto>> CreateSalesOrderAsync(SalesOrderCreateDto createDto, string orderedByUserId)
     {
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
@@ -182,12 +182,17 @@ public class SalesOrderService : ISalesOrderService
                 return Result<SalesOrderDto>.Failure("Failed to generate reference number");
             }
 
+            if (string.IsNullOrEmpty(referenceNumberResult.Data))
+            {
+                return Result<SalesOrderDto>.Failure("Generated reference number is null or empty");
+            }
+
             // Create sales order
             var salesOrder = new SalesOrder
             {
                 Id = Guid.NewGuid(),
                 CustomerId = createDto.CustomerId,
-                OrderedByUserId = createDto.OrderedByUserId,
+                OrderedByUserId = orderedByUserId, // Use userId from claims
                 OrderNotes = createDto.OrderNotes,
                 ReferenceNumber = referenceNumberResult.Data, // Auto-generated
                 TotalAmount = totalResult.Data,
@@ -220,7 +225,7 @@ public class SalesOrderService : ISalesOrderService
             }
             if(string.IsNullOrEmpty(salesOrder.ReferenceNumber)) return Result<SalesOrderDto>.Failure("Reference number is required for the sales order");
             // Reserve stock for new order with proper reason (use existing transaction)
-            var reserveResult = await _stockMovementService.ReserveStockAsync(stockItems, salesOrder.Id, salesOrder.ReferenceNumber, createDto.OrderedByUserId, $"Stock reserved for sales order {salesOrder.ReferenceNumber}", useExistingTransaction: true);
+            var reserveResult = await _stockMovementService.ReserveStockAsync(stockItems, salesOrder.Id, salesOrder.ReferenceNumber, orderedByUserId, $"Stock reserved for sales order {salesOrder.ReferenceNumber}", useExistingTransaction: true);
             if (!reserveResult.IsSuccess)
             {
                 return Result<SalesOrderDto>.Failure($"Failed to reserve stock: {reserveResult.Error}");
@@ -246,7 +251,7 @@ public class SalesOrderService : ISalesOrderService
         }
     }
 
-    public async Task<Result<SalesOrderDto>> UpdateSalesOrderAsync(Guid id, SalesOrderUpdateDto updateDto, string? updatedByUserId = null)
+    public async Task<Result<SalesOrderDto>> UpdateSalesOrderAsync(Guid id, SalesOrderUpdateDto updateDto, string updatedByUserId)
     {
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
@@ -345,7 +350,7 @@ public class SalesOrderService : ISalesOrderService
                 var updatedStockItems = activeItems.Select(ai => (ai.ProductId, ai.Quantity)).ToList();
                 if (updatedStockItems.Any())
                 {
-                    var reserveResult = await _stockMovementService.ReserveStockAsync(updatedStockItems, salesOrder.Id, salesOrder.ReferenceNumber ?? $"SO-{salesOrder.Id}", updatedByUserId ?? "system", $"Stock reserved for updated sales order {salesOrder.ReferenceNumber}", useExistingTransaction: true);
+                    var reserveResult = await _stockMovementService.ReserveStockAsync(updatedStockItems, salesOrder.Id, salesOrder.ReferenceNumber ?? $"SO-{salesOrder.Id}", updatedByUserId, $"Stock reserved for updated sales order {salesOrder.ReferenceNumber}", useExistingTransaction: true);
                     if (!reserveResult.IsSuccess)
                     {
                         return Result<SalesOrderDto>.Failure($"Failed to reserve updated stock: {reserveResult.Error}");
@@ -372,7 +377,7 @@ public class SalesOrderService : ISalesOrderService
         }
     }
 
-    public async Task<Result<SalesOrderDto>> UpdateSalesOrderStatusAsync(Guid id, SalesOrderStatusUpdateDto statusUpdateDto)
+    public async Task<Result<SalesOrderDto>> UpdateSalesOrderStatusAsync(Guid id, SalesOrderStatusUpdateDto statusUpdateDto, string updatedByUserId)
     {
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
@@ -464,7 +469,7 @@ public class SalesOrderService : ISalesOrderService
                         }
 
                         // Create invoice for processing orders
-                        var invoiceResult = await _invoiceService.CreateInvoiceFromSalesOrderAsync(id, statusUpdateDto.UpdatedByUserId ?? "System");
+                        var invoiceResult = await _invoiceService.CreateInvoiceFromSalesOrderAsync(id, updatedByUserId);
                         if (!invoiceResult.IsSuccess)
                         {
                             _logger.LogWarning("Failed to create invoice for sales order {Id}: {Error}", id, invoiceResult.Error);
@@ -495,7 +500,7 @@ public class SalesOrderService : ISalesOrderService
                             StockMovementType.StockOut,
                             salesOrder.ReferenceNumber ?? $"SO-{salesOrder.Id}",
                             $"Sales Order Shipped - {salesOrder.ReferenceNumber ?? salesOrder.Id.ToString()}",
-                            statusUpdateDto.UpdatedByUserId ?? "System",
+                            updatedByUserId,
                             $"Stock deducted for shipped sales order",
                             useExistingTransaction: true
                         );
@@ -533,7 +538,7 @@ public class SalesOrderService : ISalesOrderService
                             StockMovementType.Return,
                             salesOrder.ReferenceNumber ?? $"SO-{salesOrder.Id}",
                             $"Sales Order Returned - {salesOrder.ReferenceNumber ?? salesOrder.Id.ToString()}",
-                            statusUpdateDto.UpdatedByUserId ?? "System",
+                            updatedByUserId,
                             "Stock returned from customer",
                             useExistingTransaction: true
                         );

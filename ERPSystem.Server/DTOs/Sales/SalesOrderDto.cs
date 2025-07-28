@@ -28,22 +28,17 @@ public class SalesOrderDto
 
 /// <summary>
 /// DTO for creating a new sales order
-/// <summary>
-/// DTO for creating a new sales order
 /// </summary>
 public class SalesOrderCreateDto
 {
     [Required(ErrorMessage = "Customer ID is required")]
     public Guid CustomerId { get; set; }
 
-    [Required(ErrorMessage = "Ordered by user ID is required")]
-    [StringLength(450, ErrorMessage = "User ID cannot exceed 450 characters")]
-    public string OrderedByUserId { get; set; } = string.Empty;
-
     [StringLength(1000, ErrorMessage = "Order notes cannot exceed 1000 characters")]
     public string? OrderNotes { get; set; }
 
     // ReferenceNumber is now auto-generated, removed from create DTO
+    // OrderedByUserId is now extracted from claims, removed from create DTO
 
     [Required(ErrorMessage = "At least one order item is required")]
     [MinLength(1, ErrorMessage = "At least one order item is required")]
@@ -75,7 +70,7 @@ public class SalesOrderStatusUpdateDto
     public DateTime? ShippedDate { get; set; }
     public DateTime? DeliveredDate { get; set; }
     
-    public string? UpdatedByUserId { get; set; }
+    // UpdatedByUserId is now extracted from claims, removed from DTO
 
     /// <summary>
     /// Converts the string status value to SalesOrderStatus enum
