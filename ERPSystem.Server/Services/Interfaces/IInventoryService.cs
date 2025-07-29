@@ -3,12 +3,6 @@ using ERPSystem.Server.Models;
 
 namespace ERPSystem.Server.Services.Interfaces;
 
-public interface IInvoiceService
-{
-    Task<Result<bool>> CreateInvoiceFromSalesOrderAsync(Guid salesOrderId, string generatedByUserId);
-    Task<Result<string>> GenerateInvoiceNumberAsync();
-}
-
 public interface IStockMovementService
 {
     Task<Result<bool>> ProcessStockMovementAsync(Guid productId, int quantity, StockMovementType movementType, 

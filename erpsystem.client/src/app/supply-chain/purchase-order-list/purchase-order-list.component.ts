@@ -266,4 +266,25 @@ export class PurchaseOrderListComponent implements OnInit, OnDestroy {
       day: 'numeric'
     }).format(date);
   }
+
+  getStatusText(status: PurchaseOrderStatus): string {
+    switch (status) {
+      case PurchaseOrderStatus.Draft:
+        return 'Draft';
+      case PurchaseOrderStatus.Pending:
+        return 'Pending';
+      case PurchaseOrderStatus.Approved:
+        return 'Approved';
+      case PurchaseOrderStatus.Sent:
+        return 'Sent';
+      case PurchaseOrderStatus.PartiallyReceived:
+        return 'Partially Received';
+      case PurchaseOrderStatus.Received:
+        return 'Received';
+      case PurchaseOrderStatus.Cancelled:
+        return 'Cancelled';
+      default:
+        return 'Unknown';
+    }
+  }
 }

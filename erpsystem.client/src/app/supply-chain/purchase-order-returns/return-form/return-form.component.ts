@@ -583,4 +583,25 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
     
     return errors;
   }
+
+  getStatusText(status: PurchaseOrderStatus): string {
+    switch (status) {
+      case PurchaseOrderStatus.Draft:
+        return 'Draft';
+      case PurchaseOrderStatus.Pending:
+        return 'Pending';
+      case PurchaseOrderStatus.Approved:
+        return 'Approved';
+      case PurchaseOrderStatus.Sent:
+        return 'Sent';
+      case PurchaseOrderStatus.PartiallyReceived:
+        return 'Partially Received';
+      case PurchaseOrderStatus.Received:
+        return 'Received';
+      case PurchaseOrderStatus.Cancelled:
+        return 'Cancelled';
+      default:
+        return 'Unknown';
+    }
+  }
 }

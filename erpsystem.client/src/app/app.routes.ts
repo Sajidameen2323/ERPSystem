@@ -133,6 +133,32 @@ export const routes: Routes = [
         loadComponent: () => import('./sales/sales-order-form/sales-order-form.component').then(m => m.SalesOrderFormComponent),
         canActivate: [salesUserGuard]
       },
+      // Invoice routes
+      {
+        path: 'sales/invoices',
+        loadComponent: () => import('./sales/invoice-list/invoice-list.component').then(m => m.InvoiceListComponent),
+        canActivate: [salesUserGuard]
+      },
+      {
+        path: 'sales/invoices/new',
+        loadComponent: () => import('./sales/invoice-form/invoice-form.component').then(m => m.InvoiceFormComponent),
+        canActivate: [salesUserGuard]
+      },
+      {
+        path: 'sales/invoices/:id',
+        loadComponent: () => import('./sales/invoice-detail/invoice-detail.component').then(m => m.InvoiceDetailComponent),
+        canActivate: [salesUserGuard]
+      },
+      {
+        path: 'sales/invoices/:id/edit',
+        loadComponent: () => import('./sales/invoice-form/invoice-form.component').then(m => m.InvoiceFormComponent),
+        canActivate: [salesUserGuard]
+      },
+      {
+        path: 'sales/invoices/:id/payment',
+        loadComponent: () => import('./sales/invoice-detail/invoice-detail.component').then(m => m.InvoiceDetailComponent),
+        canActivate: [salesUserGuard]
+      },
       // Supply Chain routes
       {
         path: 'supply-chain/suppliers',

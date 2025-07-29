@@ -1,0 +1,534 @@
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule, ActivatedRoute, Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs';
+
+// Lucide Icons
+import { 
+  LucideAngularModule, 
+  ArrowLeft,
+  Edit, 
+  Trash2, 
+  Download, 
+  Send, 
+  CreditCard, 
+  Copy,
+  FileText,
+  Calendar,
+  DollarSign,
+  User,
+  Phone,
+  Mail,
+  MapPin,
+  Printer,
+  Share,
+  MoreVertical,
+  CheckCircle,
+  AlertTriangle,
+  Clock,
+  XCircle,
+  Eye
+} from 'lucide-angular';
+
+// Services and Models
+import { InvoiceService } from '../services/invoice.service';
+import { Result } from '../../shared/models/common.model';
+import { 
+  Invoice, 
+  InvoiceStatus, 
+  PaymentMethod,
+  InvoicePaymentRequest,
+  InvoiceStatusUpdateRequest
+} from '../models/invoice.model';
+
+// Shared Components
+import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+
+@Component({
+  selector: 'app-invoice-detail',
+  standalone: true,
+  imports: [
+    CommonModule, 
+    RouterModule, 
+    FormsModule, 
+    LucideAngularModule,
+    LoadingSpinnerComponent,
+    ConfirmDialogComponent
+  ],
+  templateUrl: './invoice-detail.component.html',
+  styleUrls: ['./invoice-detail.component.css']
+})
+export class InvoiceDetailComponent implements OnInit {
+  private readonly invoiceService = inject(InvoiceService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+
+  // Icons
+  readonly ArrowLeftIcon = ArrowLeft;
+  readonly EditIcon = Edit;
+  readonly Trash2Icon = Trash2;
+  readonly DownloadIcon = Download;
+  readonly SendIcon = Send;
+  readonly CreditCardIcon = CreditCard;
+  readonly CopyIcon = Copy;
+  readonly FileTextIcon = FileText;
+  readonly CalendarIcon = Calendar;
+  readonly DollarSignIcon = DollarSign;
+  readonly UserIcon = User;
+  readonly PhoneIcon = Phone;
+  readonly MailIcon = Mail;
+  readonly MapPinIcon = MapPin;
+  readonly PrinterIcon = Printer;
+  readonly ShareIcon = Share;
+  readonly MoreVerticalIcon = MoreVertical;
+  readonly CheckCircleIcon = CheckCircle;
+  readonly AlertTriangleIcon = AlertTriangle;
+  readonly ClockIcon = Clock;
+  readonly XCircleIcon = XCircle;
+  readonly EyeIcon = Eye;
+
+  // Expose enums for template
+  readonly InvoiceStatus = InvoiceStatus;
+  readonly PaymentMethod = PaymentMethod;
+
+  // Signals for reactive state management
+  invoice = signal<Invoice | null>(null);
+  loading = signal(false);
+  error = signal<string | null>(null);
+  
+  // UI State
+  showDeleteDialog = signal(false);
+  showPaymentDialog = signal(false);
+  showActionsMenu = signal(false);
+
+  // Payment form
+  paymentForm = signal({
+    amount: 0,
+    paymentDate: new Date().toISOString().split('T')[0],
+    paymentMethod: PaymentMethod.Cash,
+    referenceNumber: '',
+    notes: ''
+  });
+
+  // Computed properties
+  isOverdue = computed(() => {
+    const inv = this.invoice();
+    return inv && 
+           inv.status !== InvoiceStatus.Paid && 
+           inv.status !== InvoiceStatus.Cancelled &&
+           new Date(inv.dueDate) < new Date();
+  });
+
+  daysPastDue = computed(() => {
+    if (!this.isOverdue()) return 0;
+    const inv = this.invoice();
+    if (!inv) return 0;
+    const today = new Date();
+    const dueDate = new Date(inv.dueDate);
+    const diffTime = today.getTime() - dueDate.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  });
+
+  // Action validation based on backend business rules
+  canEdit = computed(() => {
+    const inv = this.invoice();
+    // Only Draft invoices can be edited (synced with backend CanEditInvoiceAsync)
+    return inv && inv.status === InvoiceStatus.Draft;
+  });
+
+  canDelete = computed(() => {
+    const inv = this.invoice();
+    // Only Draft invoices can be deleted (backend DeleteInvoiceAsync uses CanEditInvoiceAsync)
+    return inv && inv.status === InvoiceStatus.Draft;
+  });
+
+  canSend = computed(() => {
+    const inv = this.invoice();
+    // Only Draft invoices can be sent (mark as sent)
+    return inv && inv.status === InvoiceStatus.Draft;
+  });
+
+  canCancel = computed(() => {
+    const inv = this.invoice();
+    // Draft and Sent invoices can be cancelled (synced with backend CanCancelInvoiceAsync)
+    return inv && (inv.status === InvoiceStatus.Draft || inv.status === InvoiceStatus.Sent);
+  });
+
+  canRecordPayment = computed(() => {
+    const inv = this.invoice();
+    return inv && inv.status !== InvoiceStatus.Paid && inv.status !== InvoiceStatus.Cancelled && inv.balanceAmount > 0;
+  });
+
+  canMarkAsPaid = computed(() => {
+    const inv = this.invoice();
+    return inv && inv.status !== InvoiceStatus.Paid && inv.status !== InvoiceStatus.Cancelled;
+  });
+
+  ngOnInit(): void {
+    this.route.params.subscribe(params => {
+      const id = params['id'];
+      if (id) {
+        this.loadInvoice(id);
+      }
+    });
+  }
+
+  loadInvoice(id: string): void {
+    this.loading.set(true);
+    this.error.set(null);
+
+    this.invoiceService.getInvoice(id)
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: (result: Result<Invoice>) => {
+          if (result.isSuccess && result.data) {
+            this.invoice.set(result.data);
+            // Pre-fill payment amount with balance
+            this.paymentForm.update(form => ({
+              ...form,
+              amount: result.data!.balanceAmount
+            }));
+          } else {
+            this.error.set(result.message || 'Failed to load invoice');
+          }
+        },
+        error: (error) => {
+          console.error('Error loading invoice:', error);
+          this.error.set('An unexpected error occurred while loading the invoice');
+        }
+      });
+  }
+
+  goBack(): void {
+    this.router.navigate(['/dashboard/sales/invoices']);
+  }
+
+  editInvoice(): void {
+    const inv = this.invoice();
+    if (inv && this.canEdit()) {
+      this.router.navigate(['/dashboard/sales/invoices', inv.id, 'edit']);
+    }
+  }
+
+  sendInvoice(): void {
+    const inv = this.invoice();
+    if (inv && this.canSend()) {
+      this.invoiceService.markInvoiceAsSent(inv.id).subscribe({
+        next: (result: Result<Invoice>) => {
+          if (result.isSuccess) {
+            this.loadInvoice(inv.id); // Refresh the invoice
+          } else {
+            this.error.set(result.error || 'Failed to send invoice');
+          }
+        },
+        error: (error: any) => {
+          console.error('Error sending invoice:', error);
+          this.error.set('An unexpected error occurred while sending the invoice');
+        }
+      });
+    }
+  }
+
+  duplicateInvoice(): void {
+    const inv = this.invoice();
+    if (inv) {
+      // For now, navigate to create new invoice with pre-filled data
+      // TODO: Implement actual duplicate functionality in service
+      this.router.navigate(['/dashboard/sales/invoices/new'], {
+        queryParams: { duplicateFrom: inv.id }
+      });
+    }
+  }
+
+  downloadPdf(): void {
+    const inv = this.invoice();
+    if (inv) {
+      this.invoiceService.downloadInvoicePdf(inv.id).subscribe({
+        next: (blob: Blob) => {
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `invoice-${inv.invoiceNumber}.pdf`;
+          link.click();
+          window.URL.revokeObjectURL(url);
+        },
+        error: (error: any) => {
+          console.error('Error downloading PDF:', error);
+          this.error.set('An unexpected error occurred while downloading the PDF');
+        }
+      });
+    }
+  }
+
+  printInvoice(): void {
+    window.print();
+  }
+
+  showPaymentForm(): void {
+    this.showPaymentDialog.set(true);
+  }
+
+  recordPayment(): void {
+    const inv = this.invoice();
+    const form = this.paymentForm();
+    
+    if (inv && form.amount > 0) {
+      const payment: InvoicePaymentRequest = {
+        paymentAmount: form.amount,
+        paymentDate: form.paymentDate,
+        paymentNotes: form.notes || undefined
+      };
+
+      this.invoiceService.recordPayment(inv.id, payment).subscribe({
+        next: (result: Result<Invoice>) => {
+          if (result.isSuccess) {
+            this.loadInvoice(inv.id); // Refresh the invoice
+            this.hidePaymentForm();
+          } else {
+            this.error.set(result.error || 'Failed to record payment');
+          }
+        },
+        error: (error: any) => {
+          console.error('Error recording payment:', error);
+          this.error.set('An unexpected error occurred while recording the payment');
+        }
+      });
+    }
+  }
+
+  hidePaymentForm(): void {
+    this.showPaymentDialog.set(false);
+    // Reset form
+    const inv = this.invoice();
+    this.paymentForm.set({
+      amount: inv?.balanceAmount || 0,
+      paymentDate: new Date().toISOString().split('T')[0],
+      paymentMethod: PaymentMethod.Cash,
+      referenceNumber: '',
+      notes: ''
+    });
+  }
+
+  markAsPaid(): void {
+    const inv = this.invoice();
+    if (inv) {
+      const statusUpdate = {
+        status: InvoiceStatus.Paid,
+        paidAmount: inv.totalAmount,
+        paidDate: new Date().toISOString()
+      };
+
+      this.invoiceService.updateInvoiceStatus(inv.id, statusUpdate).subscribe({
+        next: (result: Result<Invoice>) => {
+          if (result.isSuccess) {
+            this.loadInvoice(inv.id); // Refresh the invoice
+          } else {
+            this.error.set(result.error || 'Failed to mark invoice as paid');
+          }
+        },
+        error: (error: any) => {
+          console.error('Error marking invoice as paid:', error);
+          this.error.set('An unexpected error occurred while marking the invoice as paid');
+        }
+      });
+    }
+  }
+
+  confirmDelete(): void {
+    // Show dialog regardless of status to inform user why deletion isn't possible
+    this.showDeleteDialog.set(true);
+  }
+
+  deleteInvoice(): void {
+    const inv = this.invoice();
+    if (inv && this.canDelete()) {
+      this.invoiceService.deleteInvoice(inv.id).subscribe({
+        next: (result: Result<void>) => {
+          if (result.isSuccess) {
+            this.router.navigate(['/dashboard/sales/invoices']);
+          } else {
+            this.error.set(result.error || 'Failed to delete invoice');
+          }
+        },
+        error: (error: any) => {
+          console.error('Error deleting invoice:', error);
+          this.error.set('An unexpected error occurred while deleting the invoice');
+        }
+      });
+    }
+  }
+
+  cancelInvoice(): void {
+    const inv = this.invoice();
+    if (inv && this.canCancel()) {
+      this.invoiceService.cancelInvoice(inv.id).subscribe({
+        next: (result: Result<Invoice>) => {
+          if (result.isSuccess) {
+            this.loadInvoice(inv.id); // Refresh the invoice
+          } else {
+            this.error.set(result.error || 'Failed to cancel invoice');
+          }
+        },
+        error: (error: any) => {
+          console.error('Error cancelling invoice:', error);
+          this.error.set('An unexpected error occurred while cancelling the invoice');
+        }
+      });
+    }
+  }
+
+  cancelDelete(): void {
+    this.showDeleteDialog.set(false);
+  }
+
+  clearError(): void {
+    this.error.set(null);
+  }
+
+  toggleActionsMenu(): void {
+    this.showActionsMenu.set(!this.showActionsMenu());
+  }
+
+  // Utility methods
+  getStatusClass(status: InvoiceStatus): string {
+    switch (status) {
+      case InvoiceStatus.Draft:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+      case InvoiceStatus.Sent:
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+      case InvoiceStatus.Paid:
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      case InvoiceStatus.PartiallyPaid:
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+      case InvoiceStatus.Overdue:
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+      case InvoiceStatus.Cancelled:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+      case InvoiceStatus.Refunded:
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+    }
+  }
+
+  getStatusIcon(status: InvoiceStatus) {
+    switch (status) {
+      case InvoiceStatus.Draft:
+        return this.FileTextIcon;
+      case InvoiceStatus.Sent:
+        return this.SendIcon;
+      case InvoiceStatus.Paid:
+        return this.CheckCircleIcon;
+      case InvoiceStatus.PartiallyPaid:
+        return this.ClockIcon;
+      case InvoiceStatus.Overdue:
+        return this.AlertTriangleIcon;
+      case InvoiceStatus.Cancelled:
+        return this.XCircleIcon;
+      case InvoiceStatus.Refunded:
+        return this.XCircleIcon; // Using same icon as cancelled for now
+      default:
+        return this.FileTextIcon;
+    }
+  }
+
+  formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  }
+
+  formatDate(date: string | Date): string {
+    return new Date(date).toLocaleDateString();
+  }
+
+  formatDateTime(date: string | Date): string {
+    return new Date(date).toLocaleString();
+  }
+
+  getPaymentMethodDisplayName(method: PaymentMethod): string {
+    switch (method) {
+      case PaymentMethod.CreditCard:
+        return 'Credit Card';
+      case PaymentMethod.BankTransfer:
+        return 'Bank Transfer';
+      default:
+        return method;
+    }
+  }
+
+  // Payment form update methods
+  updatePaymentAmount(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    this.paymentForm.update(form => ({
+      ...form,
+      amount: +target.value
+    }));
+  }
+
+  updatePaymentDate(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    this.paymentForm.update(form => ({
+      ...form,
+      paymentDate: target.value
+    }));
+  }
+
+  updatePaymentMethod(event: Event): void {
+    const target = event.target as HTMLSelectElement;
+    this.paymentForm.update(form => ({
+      ...form,
+      paymentMethod: target.value as PaymentMethod
+    }));
+  }
+
+  updateReferenceNumber(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    this.paymentForm.update(form => ({
+      ...form,
+      referenceNumber: target.value
+    }));
+  }
+
+  updateNotes(event: Event): void {
+    const target = event.target as HTMLTextAreaElement;
+    this.paymentForm.update(form => ({
+      ...form,
+      notes: target.value
+    }));
+  }
+
+  getDaysPastDue(): number {
+    if (!this.isOverdue()) return 0;
+    const inv = this.invoice();
+    if (!inv) return 0;
+    const today = new Date();
+    const dueDate = new Date(inv.dueDate);
+    const diffTime = today.getTime() - dueDate.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }
+
+  getStatusText(status: InvoiceStatus): string {
+    switch (status) {
+      case InvoiceStatus.Draft:
+        return 'Draft';
+      case InvoiceStatus.Sent:
+        return 'Sent';
+      case InvoiceStatus.Paid:
+        return 'Paid';
+      case InvoiceStatus.PartiallyPaid:
+        return 'Partially Paid';
+      case InvoiceStatus.Overdue:
+        return 'Overdue';
+      case InvoiceStatus.Cancelled:
+        return 'Cancelled';
+      case InvoiceStatus.Refunded:
+        return 'Refunded';
+      default:
+        return 'Unknown';
+    }
+  }
+}

@@ -25,23 +25,23 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
 
         builder.Property(i => i.SubTotal)
             .IsRequired()
-            .HasColumnType("decimal(18,2)");
+            .HasPrecision(18, 2);
 
         builder.Property(i => i.TaxAmount)
-            .HasColumnType("decimal(18,2)");
+            .HasPrecision(18, 2);
 
         builder.Property(i => i.DiscountAmount)
-            .HasColumnType("decimal(18,2)");
+            .HasPrecision(18, 2);
 
         builder.Property(i => i.TotalAmount)
             .IsRequired()
-            .HasColumnType("decimal(18,2)");
+            .HasPrecision(18, 2);
 
         builder.Property(i => i.PaidAmount)
-            .HasColumnType("decimal(18,2)");
+            .HasPrecision(18, 2);
 
         builder.Property(i => i.BalanceAmount)
-            .HasColumnType("decimal(18,2)");
+            .HasPrecision(18, 2);
 
         builder.Property(i => i.Notes)
             .HasMaxLength(1000);
@@ -93,11 +93,11 @@ public class InvoiceItemConfiguration : IEntityTypeConfiguration<InvoiceItem>
 
         builder.Property(ii => ii.UnitPrice)
             .IsRequired()
-            .HasColumnType("decimal(18,2)");
+            .HasPrecision(18, 2);
 
         builder.Property(ii => ii.LineTotal)
             .IsRequired()
-            .HasColumnType("decimal(18,2)");
+            .HasPrecision(18, 2);
 
         builder.Property(ii => ii.Description)
             .HasMaxLength(500);

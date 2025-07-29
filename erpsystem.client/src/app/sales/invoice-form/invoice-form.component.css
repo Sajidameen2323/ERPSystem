@@ -1,0 +1,71 @@
+/* Invoice Form Component Styles */
+
+.form-section {
+  transition: all 0.2s ease-in-out;
+}
+
+.form-section:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.save-button {
+  transition: all 0.2s ease-in-out;
+}
+
+.save-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.back-button {
+  transition: all 0.2s ease-in-out;
+}
+
+.back-button:hover {
+  transform: translateX(-2px);
+}
+
+/* Error message styling */
+.error-message {
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* Form validation styles */
+.form-control.ng-invalid.ng-touched {
+  border-color: #ef4444;
+}
+
+.form-control.ng-valid.ng-touched {
+  border-color: #10b981;
+}
+
+/* Loading state */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.dark .loading-overlay {
+  background: rgba(31, 41, 55, 0.8);
+}

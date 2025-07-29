@@ -9,7 +9,7 @@ import { LucideAngularModule,
   Eye, CheckCircle, XCircle, AlertTriangle, Clock } from 'lucide-angular';
 
 import { Supplier } from '../../shared/models/supplier.interface';
-import { PurchaseOrder, PurchaseOrderQueryParameters } from '../../shared/models/purchase-order.interface';
+import { PurchaseOrder, PurchaseOrderQueryParameters, PurchaseOrderStatus } from '../../shared/models/purchase-order.interface';
 import { SupplierService } from '../../shared/services/supplier.service';
 import { PurchaseOrderService } from '../../shared/services/purchase-order.service';
 
@@ -241,5 +241,26 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     if (rating >= 3.5) return 'text-yellow-600 dark:text-yellow-400';
     if (rating >= 3.0) return 'text-orange-600 dark:text-orange-400';
     return 'text-red-600 dark:text-red-400';
+  }
+
+  getStatusText(status: PurchaseOrderStatus): string {
+    switch (status) {
+      case PurchaseOrderStatus.Draft:
+        return 'Draft';
+      case PurchaseOrderStatus.Pending:
+        return 'Pending';
+      case PurchaseOrderStatus.Approved:
+        return 'Approved';
+      case PurchaseOrderStatus.Sent:
+        return 'Sent';
+      case PurchaseOrderStatus.PartiallyReceived:
+        return 'Partially Received';
+      case PurchaseOrderStatus.Received:
+        return 'Received';
+      case PurchaseOrderStatus.Cancelled:
+        return 'Cancelled';
+      default:
+        return 'Unknown';
+    }
   }
 }

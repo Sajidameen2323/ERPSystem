@@ -1,0 +1,355 @@
+/* Invoice Detail Component Styles */
+
+/* Print styles for invoice */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-optimized {
+    break-inside: avoid;
+  }
+  
+  .invoice-header {
+    page-break-after: avoid;
+  }
+  
+  .invoice-items {
+    page-break-inside: avoid;
+  }
+  
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  .bg-gray-50 {
+    background-color: #f9fafb !important;
+  }
+  
+  .border {
+    border: 1px solid #e5e7eb !important;
+  }
+}
+
+/* Action button animations */
+.action-button {
+  transition: all 0.2s ease-in-out;
+}
+
+.action-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Status badge animations */
+.status-badge {
+  transition: all 0.3s ease-in-out;
+}
+
+.status-overdue {
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Card hover effects */
+.info-card {
+  transition: all 0.3s ease-in-out;
+}
+
+.info-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Dropdown menu animations */
+.dropdown-menu {
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Payment dialog animations */
+.payment-dialog {
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Currency highlighting */
+.amount-positive {
+  color: #10b981;
+}
+
+.amount-negative {
+  color: #ef4444;
+}
+
+.amount-due {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+/* Table row hover effects */
+.item-row {
+  transition: background-color 0.15s ease-in-out;
+}
+
+.item-row:hover {
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+/* Payment history styling */
+.payment-item {
+  transition: all 0.2s ease-in-out;
+  border-left: 4px solid transparent;
+}
+
+.payment-item:hover {
+  border-left-color: #10b981;
+  background-color: rgba(16, 185, 129, 0.05);
+}
+
+/* Invoice summary styling */
+.summary-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.dark .summary-card {
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .invoice-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .action-buttons {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  
+  .action-buttons button {
+    flex: 1;
+    min-width: 120px;
+  }
+  
+  .invoice-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .invoice-summary {
+    order: -1;
+  }
+}
+
+/* Loading state */
+.loading-container {
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Error state styling */
+.error-state {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.error-icon {
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* Customer info styling */
+.customer-info .contact-link {
+  transition: all 0.2s ease-in-out;
+}
+
+.customer-info .contact-link:hover {
+  transform: translateX(2px);
+}
+
+/* Invoice items table */
+.items-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.items-table th {
+  position: sticky;
+  top: 0;
+  background: inherit;
+  z-index: 1;
+}
+
+.items-table td {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dark .items-table td {
+  border-bottom-color: #374151;
+}
+
+/* Payment method icons */
+.payment-method-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: 0.5rem;
+}
+
+/* Notes section */
+.notes-section {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-left: 4px solid #f59e0b;
+}
+
+.dark .notes-section {
+  background: linear-gradient(135deg, #78350f 0%, #92400e 100%);
+  border-left-color: #f59e0b;
+}
+
+/* Overdue highlighting */
+.overdue-highlight {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border: 1px solid #fca5a5;
+}
+
+.dark .overdue-highlight {
+  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+  border-color: #dc2626;
+}
+
+/* Action menu positioning */
+.action-menu {
+  position: relative;
+  z-index: 50;
+}
+
+.action-menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 0.5rem;
+  min-width: 12rem;
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+}
+
+.dark .action-menu-dropdown {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.action-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.875rem;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.action-menu-item:hover {
+  background-color: #f3f4f6;
+}
+
+.dark .action-menu-item:hover {
+  background-color: #374151;
+}
+
+.action-menu-item.danger {
+  color: #dc2626;
+}
+
+.dark .action-menu-item.danger {
+  color: #ef4444;
+}
+
+/* Back button styling */
+.back-button {
+  transition: all 0.2s ease-in-out;
+}
+
+.back-button:hover {
+  transform: translateX(-2px);
+}
+
+/* Form input focus states */
+.form-input:focus {
+  outline: none;
+  ring: 2px;
+  ring-color: #3b82f6;
+  border-color: transparent;
+}
+
+/* Success states */
+.success-message {
+  animation: slideInFromTop 0.5s ease-out;
+}
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Dark mode specific adjustments */
+@media (prefers-color-scheme: dark) {
+  .summary-card {
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  }
+  
+  .notes-section {
+    background: linear-gradient(135deg, #78350f 0%, #92400e 100%);
+  }
+  
+  .overdue-highlight {
+    background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+    border-color: #dc2626;
+  }
+}
