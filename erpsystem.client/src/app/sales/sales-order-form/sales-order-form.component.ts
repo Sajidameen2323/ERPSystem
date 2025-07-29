@@ -86,6 +86,28 @@ export class SalesOrderFormComponent implements OnInit {
       this.loadProducts();
       // Add initial order item for new orders
       this.addOrderItem();
+      
+      // Check for pre-selected customer from query params
+      this.route.queryParams.subscribe(params => {
+        if (params['customerId']) {
+          this.preselectCustomer(params['customerId']);
+        }
+      });
+    }
+  }
+
+  /**
+   * Pre-select a customer when coming from customer detail page
+   */
+  private preselectCustomer(customerId: string): void {
+    // Find customer in the loaded customers
+    const customer = this.customers().find(c => c.id === customerId);
+    if (customer) {
+      this.salesOrderForm.patchValue({
+        customerId: customer.id,
+        customerSearch: customer.name
+      });
+      this.showCustomerDropdown.set(false);
     }
   }
 

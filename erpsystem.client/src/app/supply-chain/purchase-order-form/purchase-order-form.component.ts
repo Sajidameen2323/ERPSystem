@@ -67,6 +67,15 @@ export class PurchaseOrderFormComponent implements OnInit, OnDestroy {
     } else {
       // Add one empty item for new purchase orders
       this.addItem();
+      
+      // Check for pre-selected supplier from query params
+      this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
+        if (params['supplierId']) {
+          this.purchaseOrderForm.patchValue({
+            supplierId: params['supplierId']
+          });
+        }
+      });
     }
   }
 

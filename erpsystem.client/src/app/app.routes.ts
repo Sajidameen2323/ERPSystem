@@ -145,6 +145,11 @@ export const routes: Routes = [
         canActivate: [inventoryUserGuard]
       },
       {
+        path: 'supply-chain/suppliers/:id',
+        loadComponent: () => import('./supply-chain/supplier-detail/supplier-detail.component').then(m => m.SupplierDetailComponent),
+        canActivate: [inventoryUserGuard]
+      },
+      {
         path: 'supply-chain/suppliers/:id/edit',
         loadComponent: () => import('./supply-chain/supplier-form/supplier-form.component').then(m => m.SupplierFormComponent),
         canActivate: [inventoryUserGuard]
