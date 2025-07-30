@@ -88,7 +88,8 @@ public class PurchaseOrderItemCreateDto
 
 public class PurchaseOrderItemUpdateDto
 {
-    public Guid Id { get; set; }
+    [Required(ErrorMessage = "Product ID is required")]
+    public Guid ProductId { get; set; }
     
     [Range(1, int.MaxValue, ErrorMessage = "Ordered quantity must be at least 1")]
     public int OrderedQuantity { get; set; }

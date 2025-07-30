@@ -73,7 +73,7 @@ export class SalesOrderDetailComponent implements OnInit {
    * Status updates are available for all non-deleted orders to allow proper workflow transitions
    */
   canUpdateStatus(order: SalesOrder): boolean {
-    return !order.isDeleted;
+    return !order.isDeleted && order.status !== SalesOrderStatus.Returned;
   }
 
   /**

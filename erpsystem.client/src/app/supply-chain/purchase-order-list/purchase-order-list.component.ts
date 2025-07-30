@@ -9,6 +9,7 @@ import { PurchaseOrderService } from '../../shared/services/purchase-order.servi
 import { SupplierService } from '../../shared/services/supplier.service';
 import { PurchaseOrder, PurchaseOrderQueryParameters, PurchaseOrderStatus } from '../../shared/models/purchase-order.interface';
 import { Supplier } from '../../shared/models/supplier.interface';
+import { ConfirmationModalComponent, ConfirmationConfig } from '../../shared/components/confirmation-modal/confirmation-modal.component';
 
 @Component({
   selector: 'app-purchase-order-list',
@@ -17,7 +18,8 @@ import { Supplier } from '../../shared/models/supplier.interface';
     CommonModule,
     RouterModule,
     FormsModule,
-    LucideAngularModule
+    LucideAngularModule,
+    ConfirmationModalComponent
   ],
   templateUrl: './purchase-order-list.component.html',
   styleUrl: './purchase-order-list.component.css'
@@ -27,6 +29,17 @@ export class PurchaseOrderListComponent implements OnInit, OnDestroy {
   suppliers: Supplier[] = [];
   loading = false;
   error: string | null = null;
+  
+  // Confirmation modal properties
+  showConfirmationModal = false;
+  confirmationConfig: ConfirmationConfig = {
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    type: 'warning'
+  };
+  pendingAction: { type: string; id: string } | null = null;
 
   // Expose Math and enum for template
   readonly Math = Math;
@@ -209,20 +222,15 @@ export class PurchaseOrderListComponent implements OnInit, OnDestroy {
   }
 
   approvePurchaseOrder(purchaseOrder: PurchaseOrder): void {
-    if (confirm(`Are you sure you want to approve purchase order ${purchaseOrder.poNumber}?`)) {
-      this.purchaseOrderService.approvePurchaseOrder(purchaseOrder.id)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: () => {
-            this.loadPurchaseOrders();
-            console.log('Purchase order approved successfully');
-          },
-          error: (error) => {
-            this.error = 'Failed to approve purchase order';
-            console.error('Error approving purchase order:', error);
-          }
-        });
-    }
+    this.confirmationConfig = {
+      title: 'Approve Purchase Order',
+      message: `Are you sure you want to approve purchase order ${purchaseOrder.poNumber}?`,
+      confirmText: 'Approve',
+      cancelText: 'Cancel',
+      type: 'info'
+    };
+    this.pendingAction = { type: 'approve', id: purchaseOrder.id };
+    this.showConfirmationModal = true;
   }
 
   /**
@@ -237,18 +245,16 @@ export class PurchaseOrderListComponent implements OnInit, OnDestroy {
    */
   markAsPending(po: PurchaseOrder): void {
     if (!po || po.status !== PurchaseOrderStatus.Draft) return;
-    if (!confirm(`Mark purchase order ${po.poNumber} as Pending?`)) return;
-    this.loading = true;
-    this.error = null;
-    this.purchaseOrderService.markAsPending(po.id).pipe(takeUntil(this.destroy$)).subscribe({
-      next: () => {
-        this.loadPurchaseOrders();
-      },
-      error: (err) => {
-        this.error = err?.message || 'Failed to mark as pending.';
-        this.loading = false;
-      }
-    });
+    
+    this.confirmationConfig = {
+      title: 'Mark as Pending',
+      message: `Are you sure you want to mark purchase order ${po.poNumber} as Pending?`,
+      confirmText: 'Mark as Pending',
+      cancelText: 'Cancel',
+      type: 'warning'
+    };
+    this.pendingAction = { type: 'markAsPending', id: po.id };
+    this.showConfirmationModal = true;
   }
 
 
@@ -286,5 +292,53 @@ export class PurchaseOrderListComponent implements OnInit, OnDestroy {
       default:
         return 'Unknown';
     }
+  }
+
+  onConfirmationConfirmed(): void {
+    this.showConfirmationModal = false;
+    
+    if (!this.pendingAction) return;
+    
+    this.loading = true;
+    this.error = null;
+    
+    switch (this.pendingAction.type) {
+      case 'markAsPending':
+        this.purchaseOrderService.markAsPending(this.pendingAction.id)
+          .pipe(takeUntil(this.destroy$))
+          .subscribe({
+            next: () => {
+              this.loadPurchaseOrders();
+            },
+            error: (err) => {
+              this.error = err?.message || 'Failed to mark as pending.';
+              this.loading = false;
+            }
+          });
+        break;
+      case 'approve':
+        this.purchaseOrderService.approvePurchaseOrder(this.pendingAction.id)
+          .pipe(takeUntil(this.destroy$))
+          .subscribe({
+            next: () => {
+              this.loadPurchaseOrders();
+              console.log('Purchase order approved successfully');
+            },
+            error: (error) => {
+              this.error = 'Failed to approve purchase order';
+              console.error('Error approving purchase order:', error);
+              this.loading = false;
+            }
+          });
+        break;
+      // Add more cases here for other actions
+    }
+    
+    this.pendingAction = null;
+  }
+
+  onConfirmationCancelled(): void {
+    this.showConfirmationModal = false;
+    this.pendingAction = null;
   }
 }

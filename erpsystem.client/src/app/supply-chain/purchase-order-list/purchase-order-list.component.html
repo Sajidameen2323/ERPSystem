@@ -276,3 +276,12 @@
     </nav>
   </div>
 </div>
+
+<!-- Confirmation Modal -->
+<app-confirmation-modal
+  [isVisible]="showConfirmationModal"
+  [config]="confirmationConfig"
+  (confirmed)="onConfirmationConfirmed()"
+  (cancelled)="onConfirmationCancelled()"
+  (visibilityChanged)="showConfirmationModal = $event">
+</app-confirmation-modal>

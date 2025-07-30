@@ -23,7 +23,7 @@
       <!-- Edit (Draft only) -->
       <a
         *ngIf="canEdit(purchaseOrder.status)"
-        [routerLink]="[purchaseOrder.id, 'edit']"
+        [routerLink]="['/dashboard/supply-chain/purchase-orders', purchaseOrder.id, 'edit']"
         class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         title="Edit Order"
       >
@@ -427,6 +427,19 @@
           </div>
         </div>
 
+        <!-- Updated -->
+        <div class="flex items-start space-x-3" *ngIf="purchaseOrder.updatedAt && purchaseOrder.updatedAt !== purchaseOrder.createdAt">
+          <div class="flex-shrink-0">
+            <div class="w-8 h-8 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center">
+              <lucide-angular [img]="EditIcon" class="w-4 h-4 text-orange-600 dark:text-orange-400"></lucide-angular>
+            </div>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-white">Order Updated</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{ formatDateTime(purchaseOrder.updatedAt) }}</p>
+          </div>
+        </div>
+
         <!-- Approved -->
         <div class="flex items-start space-x-3" *ngIf="purchaseOrder.approvedAt">
           <div class="flex-shrink-0">
@@ -455,5 +468,118 @@
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Confirmation Modal -->
+<app-confirmation-modal
+  [isVisible]="showConfirmationModal"
+  [config]="confirmationConfig"
+  (confirmed)="onConfirmationConfirmed()"
+  (cancelled)="onConfirmationCancelled()"
+  (visibilityChanged)="showConfirmationModal = $event">
+</app-confirmation-modal>
+
+<!-- Receive Item Modal -->
+<div *ngIf="showReceiveItemModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" (click)="onReceiveItemCancel()">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 transform transition-all duration-200" (click)="$event.stopPropagation()">
+    
+    <!-- Header -->
+    <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+      <div class="flex items-center space-x-3">
+        <div class="flex items-center justify-center w-10 h-10 bg-indigo-100 dark:bg-indigo-900 rounded-full">
+          <lucide-angular [img]="PackageIcon" class="w-5 h-5 text-indigo-600 dark:text-indigo-400"></lucide-angular>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Receive Item</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400" *ngIf="currentReceiveItem">
+            {{ currentReceiveItem.productName || currentReceiveItem.product?.name }} ({{ currentReceiveItem.productSKU || currentReceiveItem.product?.sku }})
+          </p>
+        </div>
+      </div>
+      <button (click)="onReceiveItemCancel()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+        <lucide-angular [img]="XCircleIcon" class="w-5 h-5"></lucide-angular>
+      </button>
+    </div>
+
+    <!-- Content -->
+    <form [formGroup]="receiveItemForm" (ngSubmit)="onReceiveItemConfirm()" class="p-6">
+      <div class="space-y-4">
+        <!-- Quantity Info -->
+        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+          <div class="grid grid-cols-3 gap-4 text-sm">
+            <div>
+              <span class="text-gray-500 dark:text-gray-400">Ordered:</span>
+              <div class="font-medium text-gray-900 dark:text-white">{{ currentReceiveItem?.orderedQuantity }}</div>
+            </div>
+            <div>
+              <span class="text-gray-500 dark:text-gray-400">Received:</span>
+              <div class="font-medium text-gray-900 dark:text-white">{{ currentReceiveItem?.receivedQuantity }}</div>
+            </div>
+            <div>
+              <span class="text-gray-500 dark:text-gray-400">Remaining:</span>
+              <div class="font-medium text-indigo-600 dark:text-indigo-400">{{ getRemainingQuantity() }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quantity Input -->
+        <div>
+          <label for="receiveQuantity" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Quantity to Receive <span class="text-red-500">*</span>
+          </label>
+          <input
+            id="receiveQuantity"
+            type="number"
+            formControlName="quantity"
+            [max]="getRemainingQuantity()"
+            min="1"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            placeholder="Enter quantity"
+          >
+          <div *ngIf="receiveItemForm.get('quantity')?.invalid && receiveItemForm.get('quantity')?.touched" class="mt-1 text-sm text-red-600 dark:text-red-400">
+            <div *ngIf="receiveItemForm.get('quantity')?.errors?.['required']">Quantity is required</div>
+            <div *ngIf="receiveItemForm.get('quantity')?.errors?.['min']">Quantity must be at least 1</div>
+            <div *ngIf="receiveItemForm.get('quantity')?.errors?.['max']">Quantity cannot exceed {{ getRemainingQuantity() }}</div>
+          </div>
+        </div>
+
+        <!-- Notes Input -->
+        <div>
+          <label for="receiveNotes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Notes (Optional)
+          </label>
+          <textarea
+            id="receiveNotes"
+            formControlName="notes"
+            rows="3"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            placeholder="Add any notes about the received items..."
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700 mt-6">
+        <button
+          type="button"
+          (click)="onReceiveItemCancel()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          [disabled]="!receiveItemForm.valid || loading"
+          class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <span *ngIf="loading" class="inline-flex items-center">
+            <div class="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+            Receiving...
+          </span>
+          <span *ngIf="!loading">Receive Items</span>
+        </button>
+      </div>
+    </form>
   </div>
 </div>

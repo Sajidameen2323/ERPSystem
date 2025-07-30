@@ -251,6 +251,7 @@ public class PurchaseOrderService : IPurchaseOrderService
 
     public async Task<Result<PurchaseOrderDto>> UpdatePurchaseOrderAsync(Guid id, PurchaseOrderUpdateDto dto)
     {
+        using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
             var purchaseOrder = await _context.PurchaseOrders
@@ -269,14 +270,31 @@ public class PurchaseOrderService : IPurchaseOrderService
                 return Result<PurchaseOrderDto>.Failure("Only draft purchase orders can be updated");
             }
 
+            // Update basic purchase order properties
             _mapper.Map(dto, purchaseOrder);
             purchaseOrder.UpdatedAt = DateTime.UtcNow;
 
             // Update items if provided
             if (dto.Items != null)
             {
-                // Remove existing items
-                _context.PurchaseOrderItems.RemoveRange(purchaseOrder.Items);
+                // Validate all products exist
+                var productIds = dto.Items.Select(i => i.ProductId).ToList();
+                var products = await _context.Products
+                    .Where(p => productIds.Contains(p.Id))
+                    .ToListAsync();
+
+                if (products.Count != productIds.Count)
+                {
+                    return Result<PurchaseOrderDto>.Failure("One or more products not found");
+                }
+
+                // Remove existing items in a separate operation
+                var existingItems = await _context.PurchaseOrderItems
+                    .Where(poi => poi.PurchaseOrderId == id)
+                    .ToListAsync();
+                
+                _context.PurchaseOrderItems.RemoveRange(existingItems);
+                await _context.SaveChangesAsync(); // Save the removal first
 
                 // Add new items
                 decimal totalAmount = 0;
@@ -285,28 +303,34 @@ public class PurchaseOrderService : IPurchaseOrderService
                 foreach (var itemDto in dto.Items)
                 {
                     var item = _mapper.Map<PurchaseOrderItem>(itemDto);
-                    if (item.Id == Guid.Empty)
-                    {
-                        item.Id = Guid.NewGuid();
-                    }
+                    item.Id = Guid.NewGuid();
                     item.PurchaseOrderId = purchaseOrder.Id;
                     totalAmount += item.TotalPrice;
                     newItems.Add(item);
                 }
 
-                purchaseOrder.Items = newItems;
+                _context.PurchaseOrderItems.AddRange(newItems);
                 purchaseOrder.TotalAmount = totalAmount;
             }
 
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
-            var purchaseOrderDto = _mapper.Map<PurchaseOrderDto>(purchaseOrder);
+            // Reload the purchase order with navigation properties for return
+            var updatedPurchaseOrder = await _context.PurchaseOrders
+                .Include(po => po.Supplier)
+                .Include(po => po.Items)
+                    .ThenInclude(poi => poi.Product)
+                .FirstOrDefaultAsync(po => po.Id == id);
+
+            var purchaseOrderDto = _mapper.Map<PurchaseOrderDto>(updatedPurchaseOrder);
             _logger.LogInformation("Updated purchase order {PurchaseOrderId} - {PONumber}", purchaseOrder.Id, purchaseOrder.PONumber);
 
             return Result<PurchaseOrderDto>.Success(purchaseOrderDto);
         }
         catch (Exception ex)
         {
+            await transaction.RollbackAsync();
             _logger.LogError(ex, "Error updating purchase order {PurchaseOrderId}", id);
             return Result<PurchaseOrderDto>.Failure($"Failed to update purchase order: {ex.Message}");
         }
@@ -460,7 +484,7 @@ public class PurchaseOrderService : IPurchaseOrderService
 
             if (item.PurchaseOrder.Status != PurchaseOrderStatus.Sent && item.PurchaseOrder.Status != PurchaseOrderStatus.PartiallyReceived)
             {
-                return Result<bool>.Failure("Can only receive items from sent purchase orders");
+                return Result<bool>.Failure("Can only receive items from sent purchase orders or partially received purchase orders");
             }
 
             var remainingQuantity = item.OrderedQuantity - item.ReceivedQuantity;
@@ -550,9 +574,9 @@ public class PurchaseOrderService : IPurchaseOrderService
                 return Result<bool>.Failure("Purchase order not found");
             }
 
-            if (purchaseOrder.Status != PurchaseOrderStatus.Sent)
+            if (purchaseOrder.Status != PurchaseOrderStatus.Sent && purchaseOrder.Status != PurchaseOrderStatus.PartiallyReceived)
             {
-                return Result<bool>.Failure("Can only receive items from sent purchase orders");
+                return Result<bool>.Failure("Can only receive items from sent purchase orders or partially received purchase orders");
             }
 
             foreach (var item in purchaseOrder.Items)

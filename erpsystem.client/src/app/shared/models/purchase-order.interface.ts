@@ -90,14 +90,15 @@ export interface PurchaseOrderItemCreate {
 }
 
 export interface PurchaseOrderUpdate {
-  supplierId?: string;
   expectedDeliveryDate?: Date;
   notes?: string;
+  items?: PurchaseOrderItemUpdate[];
 }
 
 export interface PurchaseOrderItemUpdate {
-  orderedQuantity?: number;
-  unitPrice?: number;
+  productId: string;
+  orderedQuantity: number;
+  unitPrice: number;
   notes?: string;
 }
 

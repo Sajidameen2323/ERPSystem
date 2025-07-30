@@ -86,9 +86,9 @@ public class SupplyChainProfile : Profile
             .ForMember(dest => dest.ReceivedQuantity, opt => opt.MapFrom(src => 0));
         
         CreateMap<PurchaseOrderItemUpdateDto, PurchaseOrderItem>()
-            .ForMember(dest => dest.PurchaseOrderId, opt => opt.Ignore())
-            .ForMember(dest => dest.ProductId, opt => opt.Ignore())
-            .ForMember(dest => dest.ReceivedQuantity, opt => opt.Ignore())
+            .ForMember(dest => dest.Id, opt => opt.Ignore()) // Will be set in service
+            .ForMember(dest => dest.PurchaseOrderId, opt => opt.Ignore()) // Will be set in service
+            .ForMember(dest => dest.ReceivedQuantity, opt => opt.MapFrom(src => 0))
             .ForMember(dest => dest.ReceivedDate, opt => opt.Ignore());
 
         // StockMovement mappings

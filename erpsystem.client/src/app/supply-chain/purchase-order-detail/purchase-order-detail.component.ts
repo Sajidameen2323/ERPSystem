@@ -3,12 +3,14 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 import { LucideAngularModule, ArrowLeft, Edit, FileText, Truck, CheckCircle, XCircle, Clock, Package, RotateCcw, AlertTriangle } from 'lucide-angular';
 
 import { PurchaseOrderService } from '../../shared/services/purchase-order.service';
 import { PurchaseOrderReturnService } from '../../shared/services/purchase-order-return.service';
 import { PurchaseOrder, PurchaseOrderStatus, PurchaseOrderReturn, ReturnStatus } from '../../shared/models/purchase-order.interface';
+import { ConfirmationModalComponent, ConfirmationConfig } from '../../shared/components/confirmation-modal/confirmation-modal.component';
 
 @Component({
   selector: 'app-purchase-order-detail',
@@ -16,7 +18,9 @@ import { PurchaseOrder, PurchaseOrderStatus, PurchaseOrderReturn, ReturnStatus }
   imports: [
     CommonModule,
     RouterModule,
-    LucideAngularModule
+    ReactiveFormsModule,
+    LucideAngularModule,
+    ConfirmationModalComponent
   ],
   templateUrl: './purchase-order-detail.component.html',
   styleUrl: './purchase-order-detail.component.css'
@@ -27,6 +31,19 @@ export class PurchaseOrderDetailComponent implements OnInit, OnDestroy {
   loading = false;
   loadingReturns = false;
   error: string | null = null;
+
+  // Confirmation modal
+  showConfirmationModal = false;
+  confirmationConfig: ConfirmationConfig = {
+    title: '',
+    message: ''
+  };
+  pendingAction: (() => void) | null = null;
+
+  // Receive item modal
+  showReceiveItemModal = false;
+  receiveItemForm: FormGroup;
+  currentReceiveItem: any = null;
 
   // Expose enums for template
   readonly PurchaseOrderStatus = PurchaseOrderStatus;
@@ -49,7 +66,20 @@ export class PurchaseOrderDetailComponent implements OnInit, OnDestroy {
 
   markAsPending(po: PurchaseOrder): void {
     if (!po || po.status !== PurchaseOrderStatus.Draft) return;
-    if (!confirm(`Mark purchase order ${po.poNumber} as Pending?`)) return;
+    
+    this.confirmationConfig = {
+      title: 'Mark as Pending',
+      message: `Are you sure you want to mark purchase order ${po.poNumber} as pending?`,
+      confirmText: 'Mark as Pending',
+      cancelText: 'Cancel',
+      type: 'warning'
+    };
+    
+    this.pendingAction = () => this.executeMarkAsPending(po);
+    this.showConfirmationModal = true;
+  }
+
+  private executeMarkAsPending(po: PurchaseOrder): void {
     this.loading = true;
     this.error = null;
     this.purchaseOrderService.markAsPending(po.id).pipe(takeUntil(this.destroy$)).subscribe({
@@ -69,7 +99,25 @@ export class PurchaseOrderDetailComponent implements OnInit, OnDestroy {
 
   sendPurchaseOrder(po: PurchaseOrder): void {
     if (!po || !this.canSend(po.status)) return;
-    if (!confirm(`Send purchase order ${po.poNumber} to supplier?`)) return;
+    
+    this.confirmationConfig = {
+      title: 'Send to Supplier',
+      message: `Are you sure you want to send purchase order ${po.poNumber} to the supplier?`,
+      confirmText: 'Send Order',
+      cancelText: 'Cancel',
+      type: 'info',
+      details: [
+        'This will notify the supplier about the order',
+        'The order status will be updated to "Sent"',
+        'You can then receive items when they arrive'
+      ]
+    };
+    
+    this.pendingAction = () => this.executeSendPurchaseOrder(po);
+    this.showConfirmationModal = true;
+  }
+
+  private executeSendPurchaseOrder(po: PurchaseOrder): void {
     this.loading = true;
     this.error = null;
     this.purchaseOrderService.sendPurchaseOrder(po.id).pipe(takeUntil(this.destroy$)).subscribe({
@@ -89,8 +137,31 @@ export class PurchaseOrderDetailComponent implements OnInit, OnDestroy {
 
   cancelPurchaseOrder(po: PurchaseOrder): void {
     if (!po || !this.canCancel(po.status)) return;
+    
+    this.confirmationConfig = {
+      title: 'Cancel Purchase Order',
+      message: `Are you sure you want to cancel purchase order ${po.poNumber}?`,
+      confirmText: 'Cancel Order',
+      cancelText: 'Keep Order',
+      type: 'danger',
+      details: [
+        'This action cannot be undone',
+        'The order will be marked as cancelled',
+        'You will need to provide a cancellation reason'
+      ]
+    };
+    
+    this.pendingAction = () => this.promptForCancellationReason(po);
+    this.showConfirmationModal = true;
+  }
+
+  private promptForCancellationReason(po: PurchaseOrder): void {
     const reason = prompt('Please provide a reason for cancellation:');
     if (!reason) return;
+    this.executeCancelPurchaseOrder(po, reason);
+  }
+
+  private executeCancelPurchaseOrder(po: PurchaseOrder, reason: string): void {
     this.loading = true;
     this.error = null;
     this.purchaseOrderService.cancelPurchaseOrder(po.id, reason).pipe(takeUntil(this.destroy$)).subscribe({
@@ -106,7 +177,27 @@ export class PurchaseOrderDetailComponent implements OnInit, OnDestroy {
 
   receiveFullOrder(po: PurchaseOrder): void {
     if (!po || !this.canReceiveItems(po.status)) return;
-    if (!confirm(`Mark all items in purchase order ${po.poNumber} as received?`)) return;
+    
+    const pendingItems = po.items?.filter(item => item.receivedQuantity < item.orderedQuantity) || [];
+    
+    this.confirmationConfig = {
+      title: 'Receive Full Order',
+      message: `Mark all remaining items in purchase order ${po.poNumber} as received?`,
+      confirmText: 'Receive All',
+      cancelText: 'Cancel',
+      type: 'success',
+      details: [
+        `${pendingItems.length} item(s) will be marked as received`,
+        'Stock levels will be updated automatically',
+        'This action cannot be undone'
+      ]
+    };
+    
+    this.pendingAction = () => this.executeReceiveFullOrder(po);
+    this.showConfirmationModal = true;
+  }
+
+  private executeReceiveFullOrder(po: PurchaseOrder): void {
     this.loading = true;
     this.error = null;
     this.purchaseOrderService.receiveFullOrder(po.id).pipe(takeUntil(this.destroy$)).subscribe({
@@ -122,31 +213,48 @@ export class PurchaseOrderDetailComponent implements OnInit, OnDestroy {
 
   receiveItem(item: any): void {
     if (!item || !this.purchaseOrder) return;
+    
+    this.currentReceiveItem = item;
     const maxQty = item.orderedQuantity - item.receivedQuantity;
-    let qtyStr = prompt(`Enter quantity to receive (max ${maxQty}):`, maxQty.toString());
-    if (!qtyStr) return;
-    let qty = parseInt(qtyStr, 10);
-    if (isNaN(qty) || qty < 1 || qty > maxQty) {
-      alert('Invalid quantity.');
-      return;
-    }
-    this.loading = true;
-    this.error = null;
-    const dto = { receivedQuantity: qty };
-    this.purchaseOrderService.receiveItem(item.id, dto).pipe(takeUntil(this.destroy$)).subscribe({
-      next: () => {
-        this.loadPurchaseOrder(this.purchaseOrder!.id);
-      },
-      error: (err) => {
-        this.error = err?.message || 'Failed to receive item.';
-        this.loading = false;
-      }
+    
+    // Reset and setup form
+    this.receiveItemForm.patchValue({
+      quantity: maxQty,
+      notes: ''
     });
+    
+    // Update quantity validator to max allowable
+    this.receiveItemForm.get('quantity')?.setValidators([
+      Validators.required,
+      Validators.min(1),
+      Validators.max(maxQty)
+    ]);
+    this.receiveItemForm.get('quantity')?.updateValueAndValidity();
+    
+    this.showReceiveItemModal = true;
   }
 
   approvePurchaseOrder(po: PurchaseOrder): void {
     if (!po || !this.canApprove(po.status)) return;
-    if (!confirm(`Approve purchase order ${po.poNumber}?`)) return;
+    
+    this.confirmationConfig = {
+      title: 'Approve Purchase Order',
+      message: `Are you sure you want to approve purchase order ${po.poNumber}?`,
+      confirmText: 'Approve',
+      cancelText: 'Cancel',
+      type: 'success',
+      details: [
+        'This will approve the order for processing',
+        'Once approved, the order can be sent to supplier',
+        'Order amount: ' + this.formatCurrency(po.totalAmount)
+      ]
+    };
+    
+    this.pendingAction = () => this.executeApprovePurchaseOrder(po);
+    this.showConfirmationModal = true;
+  }
+
+  private executeApprovePurchaseOrder(po: PurchaseOrder): void {
     this.loading = true;
     this.error = null;
     this.purchaseOrderService.approvePurchaseOrder(po.id).pipe(takeUntil(this.destroy$)).subscribe({
@@ -165,8 +273,64 @@ export class PurchaseOrderDetailComponent implements OnInit, OnDestroy {
   constructor(
     private route: ActivatedRoute,
     private purchaseOrderService: PurchaseOrderService,
-    private returnService: PurchaseOrderReturnService
-  ) { }
+    private returnService: PurchaseOrderReturnService,
+    private fb: FormBuilder
+  ) {
+    this.receiveItemForm = this.fb.group({
+      quantity: [0, [Validators.required, Validators.min(1)]],
+      notes: ['']
+    });
+  }
+
+  // Confirmation modal handlers
+  onConfirmationConfirmed(): void {
+    if (this.pendingAction) {
+      this.pendingAction();
+      this.pendingAction = null;
+    }
+  }
+
+  onConfirmationCancelled(): void {
+    this.pendingAction = null;
+  }
+
+  // Receive item modal handlers
+  onReceiveItemConfirm(): void {
+    if (!this.receiveItemForm.valid || !this.currentReceiveItem || !this.purchaseOrder) return;
+    
+    const formValue = this.receiveItemForm.value;
+    this.loading = true;
+    this.error = null;
+    
+    const dto = { 
+      receivedQuantity: formValue.quantity,
+      notes: formValue.notes || undefined
+    };
+    
+    this.purchaseOrderService.receiveItem(this.currentReceiveItem.id, dto)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.loadPurchaseOrder(this.purchaseOrder!.id);
+          this.onReceiveItemCancel(); // Close modal
+        },
+        error: (err) => {
+          this.error = err?.message || 'Failed to receive item.';
+          this.loading = false;
+        }
+      });
+  }
+
+  onReceiveItemCancel(): void {
+    this.showReceiveItemModal = false;
+    this.currentReceiveItem = null;
+    this.receiveItemForm.reset();
+  }
+
+  getRemainingQuantity(): number {
+    if (!this.currentReceiveItem) return 0;
+    return this.currentReceiveItem.orderedQuantity - this.currentReceiveItem.receivedQuantity;
+  }
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');

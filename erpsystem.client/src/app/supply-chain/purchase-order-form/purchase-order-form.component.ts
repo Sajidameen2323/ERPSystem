@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray } from '@angular/forms';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil, combineLatest } from 'rxjs';
 import { LucideAngularModule, Save, ArrowLeft, Plus, Trash2, X } from 'lucide-angular';
 
 import { PurchaseOrderService } from '../../shared/services/purchase-order.service';
@@ -34,6 +34,7 @@ export class PurchaseOrderFormComponent implements OnInit, OnDestroy {
 
   suppliers: Supplier[] = [];
   products: Product[] = [];
+  private productsLoaded$ = new Subject<boolean>();
 
   // Icons
   readonly SaveIcon = Save;
@@ -68,12 +69,25 @@ export class PurchaseOrderFormComponent implements OnInit, OnDestroy {
       // Add one empty item for new purchase orders
       this.addItem();
       
-      // Check for pre-selected supplier from query params
-      this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      // Check for pre-selected supplier and product from query params
+      combineLatest([
+        this.route.queryParams,
+        this.productsLoaded$
+      ]).pipe(takeUntil(this.destroy$)).subscribe(([params, productsLoaded]) => {
         if (params['supplierId']) {
           this.purchaseOrderForm.patchValue({
             supplierId: params['supplierId']
           });
+        }
+        
+        // Preselect product if productId is provided and products are loaded
+        if (params['productId'] && this.itemsFormArray.length > 0 && productsLoaded) {
+          const firstItem = this.itemsFormArray.at(0);
+          firstItem.patchValue({
+            productId: params['productId']
+          });
+          // Trigger product change to set unit price
+          this.onProductChange(0);
         }
       });
     }
@@ -82,6 +96,7 @@ export class PurchaseOrderFormComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    this.productsLoaded$.complete();
   }
 
   private createForm(): FormGroup {
@@ -129,9 +144,11 @@ export class PurchaseOrderFormComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           this.products = response.items;
+          this.productsLoaded$.next(true);
         },
         error: (error) => {
           console.error('Error loading products:', error);
+          this.productsLoaded$.next(false);
         }
       });
   }
@@ -162,6 +179,9 @@ export class PurchaseOrderFormComponent implements OnInit, OnDestroy {
         new Date(purchaseOrder.expectedDeliveryDate).toISOString().split('T')[0] : '',
       notes: purchaseOrder.notes
     });
+
+    // Disable supplier field when editing (backend doesn't allow supplier change)
+    this.purchaseOrderForm.get('supplierId')?.disable();
 
     // Clear existing items and add purchase order items
     this.itemsFormArray.clear();
@@ -270,9 +290,14 @@ export class PurchaseOrderFormComponent implements OnInit, OnDestroy {
 
     const formValue = this.purchaseOrderForm.value;
     const purchaseOrderData: PurchaseOrderUpdate = {
-      supplierId: formValue.supplierId,
       expectedDeliveryDate: formValue.expectedDeliveryDate ? new Date(formValue.expectedDeliveryDate) : undefined,
-      notes: formValue.notes
+      notes: formValue.notes,
+      items: formValue.items.map((item: any) => ({
+        productId: item.productId,
+        orderedQuantity: item.orderedQuantity,
+        unitPrice: item.unitPrice,
+        notes: item.notes
+      }))
     };
 
     this.purchaseOrderService.updatePurchaseOrder(this.purchaseOrderId, purchaseOrderData)
