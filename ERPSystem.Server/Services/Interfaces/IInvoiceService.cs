@@ -50,6 +50,11 @@ public interface IInvoiceService
     Task<Result<InvoiceDto>> UpdateInvoiceStatusAsync(Guid id, InvoiceStatusUpdateDto statusUpdateDto, string updatedByUserId);
 
     /// <summary>
+    /// Updates invoice status based on sales order status changes (for internal service calls)
+    /// </summary>
+    Task<Result<InvoiceDto>> UpdateInvoiceStatusFromSalesOrderAsync(Guid invoiceId, InvoiceStatus newStatus, string reason, string updatedByUserId);
+
+    /// <summary>
     /// Records a payment for an invoice
     /// </summary>
     Task<Result<InvoiceDto>> RecordPaymentAsync(Guid id, InvoicePaymentDto paymentDto, string processedByUserId);

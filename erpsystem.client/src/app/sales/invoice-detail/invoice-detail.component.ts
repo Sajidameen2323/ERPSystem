@@ -28,7 +28,8 @@ import {
   AlertTriangle,
   Clock,
   XCircle,
-  Eye
+  Eye,
+  RefreshCw
 } from 'lucide-angular';
 
 // Services and Models
@@ -88,6 +89,7 @@ export class InvoiceDetailComponent implements OnInit {
   readonly ClockIcon = Clock;
   readonly XCircleIcon = XCircle;
   readonly EyeIcon = Eye;
+  readonly RefreshCwIcon = RefreshCw;
 
   // Expose enums for template
   readonly InvoiceStatus = InvoiceStatus;
@@ -115,9 +117,11 @@ export class InvoiceDetailComponent implements OnInit {
   // Computed properties
   isOverdue = computed(() => {
     const inv = this.invoice();
+    // Backend logic: overdue if DueDate < DateTime.UtcNow && Status != Paid && Status != Cancelled && Status != Refunded
     return inv && 
            inv.status !== InvoiceStatus.Paid && 
            inv.status !== InvoiceStatus.Cancelled &&
+           inv.status !== InvoiceStatus.Refunded &&
            new Date(inv.dueDate) < new Date();
   });
 
@@ -134,36 +138,114 @@ export class InvoiceDetailComponent implements OnInit {
   // Action validation based on backend business rules
   canEdit = computed(() => {
     const inv = this.invoice();
-    // Only Draft invoices can be edited (synced with backend CanEditInvoiceAsync)
+    // Only Draft invoices can be edited (backend: CanEditInvoiceAsync)
     return inv && inv.status === InvoiceStatus.Draft;
   });
 
   canDelete = computed(() => {
     const inv = this.invoice();
-    // Only Draft invoices can be deleted (backend DeleteInvoiceAsync uses CanEditInvoiceAsync)
+    // Only Draft invoices can be deleted (backend: DeleteInvoiceAsync uses CanEditInvoiceAsync)
     return inv && inv.status === InvoiceStatus.Draft;
   });
 
   canSend = computed(() => {
     const inv = this.invoice();
-    // Only Draft invoices can be sent (mark as sent)
+    // Only Draft invoices can be sent (backend: MarkInvoiceAsSentAsync -> UpdateInvoiceStatusAsync)
+    // Valid transition: Draft -> Sent
     return inv && inv.status === InvoiceStatus.Draft;
   });
 
   canCancel = computed(() => {
     const inv = this.invoice();
-    // Draft and Sent invoices can be cancelled (synced with backend CanCancelInvoiceAsync)
+    // Draft and Sent invoices can be cancelled (backend: CanCancelInvoiceAsync)
+    // Valid transitions: Draft -> Cancelled, Sent -> Cancelled
     return inv && (inv.status === InvoiceStatus.Draft || inv.status === InvoiceStatus.Sent);
   });
 
   canRecordPayment = computed(() => {
     const inv = this.invoice();
-    return inv && inv.status !== InvoiceStatus.Paid && inv.status !== InvoiceStatus.Cancelled && inv.balanceAmount > 0;
+    // Backend: RecordPaymentAsync excludes Paid, Cancelled, Refunded and requires balance > 0
+    return inv && inv.status !== InvoiceStatus.Paid && 
+           inv.status !== InvoiceStatus.Cancelled && 
+           inv.status !== InvoiceStatus.Refunded && 
+           inv.balanceAmount > 0;
   });
 
   canMarkAsPaid = computed(() => {
     const inv = this.invoice();
-    return inv && inv.status !== InvoiceStatus.Paid && inv.status !== InvoiceStatus.Cancelled;
+    // Backend: UpdateInvoiceStatusAsync with valid transitions to Paid
+    // Valid transitions: Sent -> Paid, PartiallyPaid -> Paid, Overdue -> Paid
+    return inv && (inv.status === InvoiceStatus.Sent || 
+                   inv.status === InvoiceStatus.PartiallyPaid || 
+                   inv.status === InvoiceStatus.Overdue);
+  });
+
+  canDownloadPdf = computed(() => {
+    const inv = this.invoice();
+    // PDF can be downloaded for any non-deleted invoice (usually Sent, Paid, etc.)
+    return inv && inv.status !== InvoiceStatus.Draft;
+  });
+
+  canDuplicate = computed(() => {
+    const inv = this.invoice();
+    // Any invoice can be duplicated (creates new draft)
+    return inv !== null;
+  });
+
+  canRefund = computed(() => {
+    const inv = this.invoice();
+    // Only Paid invoices can be refunded (backend: IsValidStatusTransition)
+    // Valid transition: Paid -> Refunded
+    return inv && inv.status === InvoiceStatus.Paid;
+  });
+
+  canPrint = computed(() => {
+    const inv = this.invoice();
+    // Can print if invoice has been sent or is in later status
+    return inv && inv.status !== InvoiceStatus.Draft;
+  });
+
+  // New computed properties for enhanced transition validation
+  canTransitionFromSent = computed(() => {
+    const inv = this.invoice();
+    // Sent can transition to: Paid, PartiallyPaid, Overdue, Cancelled, Refunded
+    return inv && inv.status === InvoiceStatus.Sent;
+  });
+
+  canTransitionFromPartiallyPaid = computed(() => {
+    const inv = this.invoice();
+    // PartiallyPaid can transition to: Paid, Overdue, Refunded
+    return inv && inv.status === InvoiceStatus.PartiallyPaid;
+  });
+
+  canTransitionFromOverdue = computed(() => {
+    const inv = this.invoice();
+    // Overdue can transition to: Paid, PartiallyPaid, Cancelled
+    return inv && inv.status === InvoiceStatus.Overdue;
+  });
+
+  canBeCancelledFromOverdue = computed(() => {
+    const inv = this.invoice();
+    // New rule: Overdue invoices can now be cancelled (e.g., when order is returned)
+    return inv && inv.status === InvoiceStatus.Overdue;
+  });
+
+  canBeRefundedFromSent = computed(() => {
+    const inv = this.invoice();
+    // New rule: Sent invoices can be refunded (e.g., when order is returned after being sent but before payment)
+    return inv && inv.status === InvoiceStatus.Sent;
+  });
+
+  canBeRefundedFromPartiallyPaid = computed(() => {
+    const inv = this.invoice();
+    // New rule: PartiallyPaid invoices can be refunded (e.g., when order is returned)
+    return inv && inv.status === InvoiceStatus.PartiallyPaid;
+  });
+
+  isTerminalStatus = computed(() => {
+    const inv = this.invoice();
+    // Terminal statuses that cannot transition further
+    return inv && (inv.status === InvoiceStatus.Cancelled || inv.status === InvoiceStatus.Refunded);
   });
 
   ngOnInit(): void {
@@ -233,7 +315,7 @@ export class InvoiceDetailComponent implements OnInit {
 
   duplicateInvoice(): void {
     const inv = this.invoice();
-    if (inv) {
+    if (inv && this.canDuplicate()) {
       // For now, navigate to create new invoice with pre-filled data
       // TODO: Implement actual duplicate functionality in service
       this.router.navigate(['/dashboard/sales/invoices/new'], {
@@ -244,7 +326,7 @@ export class InvoiceDetailComponent implements OnInit {
 
   downloadPdf(): void {
     const inv = this.invoice();
-    if (inv) {
+    if (inv && this.canDownloadPdf()) {
       this.invoiceService.downloadInvoicePdf(inv.id).subscribe({
         next: (blob: Blob) => {
           const url = window.URL.createObjectURL(blob);
@@ -263,7 +345,9 @@ export class InvoiceDetailComponent implements OnInit {
   }
 
   printInvoice(): void {
-    window.print();
+    if (this.canPrint()) {
+      window.print();
+    }
   }
 
   showPaymentForm(): void {
@@ -274,7 +358,7 @@ export class InvoiceDetailComponent implements OnInit {
     const inv = this.invoice();
     const form = this.paymentForm();
     
-    if (inv && form.amount > 0) {
+    if (inv && this.canRecordPayment() && form.amount > 0) {
       const payment: InvoicePaymentRequest = {
         paymentAmount: form.amount,
         paymentDate: form.paymentDate,
@@ -313,7 +397,7 @@ export class InvoiceDetailComponent implements OnInit {
 
   markAsPaid(): void {
     const inv = this.invoice();
-    if (inv) {
+    if (inv && this.canMarkAsPaid()) {
       const statusUpdate = {
         status: InvoiceStatus.Paid,
         paidAmount: inv.totalAmount,
@@ -331,6 +415,31 @@ export class InvoiceDetailComponent implements OnInit {
         error: (error: any) => {
           console.error('Error marking invoice as paid:', error);
           this.error.set('An unexpected error occurred while marking the invoice as paid');
+        }
+      });
+    }
+  }
+
+  refundInvoice(): void {
+    const inv = this.invoice();
+    if (inv && this.canRefund()) {
+      const statusUpdate = {
+        status: InvoiceStatus.Refunded,
+        paidAmount: 0, // Reset paid amount on refund
+        paidDate: undefined // Use undefined instead of null
+      };
+
+      this.invoiceService.updateInvoiceStatus(inv.id, statusUpdate).subscribe({
+        next: (result: Result<Invoice>) => {
+          if (result.isSuccess) {
+            this.loadInvoice(inv.id); // Refresh the invoice
+          } else {
+            this.error.set(result.error || 'Failed to refund invoice');
+          }
+        },
+        error: (error: any) => {
+          console.error('Error refunding invoice:', error);
+          this.error.set('An unexpected error occurred while refunding the invoice');
         }
       });
     }
@@ -428,7 +537,7 @@ export class InvoiceDetailComponent implements OnInit {
       case InvoiceStatus.Cancelled:
         return this.XCircleIcon;
       case InvoiceStatus.Refunded:
-        return this.XCircleIcon; // Using same icon as cancelled for now
+        return this.RefreshCwIcon; // Better icon for refunds
       default:
         return this.FileTextIcon;
     }

@@ -130,6 +130,7 @@ public class SalesOrderService : ISalesOrderService
                 .Include(so => so.Customer)
                 .Include(so => so.SalesOrderItems.Where(soi => !soi.IsDeleted))
                     .ThenInclude(soi => soi.Product)
+                .Include(so => so.Invoice)
                 .FirstOrDefaultAsync(so => so.Id == id);
 
             if (salesOrder == null)
@@ -410,6 +411,7 @@ public class SalesOrderService : ISalesOrderService
             }
 
             var previousStatus = salesOrder.Status;
+            var salesOrderReferenceNumber = salesOrder.ReferenceNumber; // Capture for use after transaction
 
             // If status is not changing, just update the metadata and return
             if (salesOrder.Status == newStatus)
@@ -457,7 +459,7 @@ public class SalesOrderService : ISalesOrderService
             switch (newStatus)
             {
                 case SalesOrderStatus.Processing:
-                    // When moving to processing, validate stock and create invoice
+                    // When moving to processing, validate stock but don't create invoice yet
                     if (previousStatus == SalesOrderStatus.New)
                     {
                         var stockItems = salesOrder.SalesOrderItems.Select(soi => (soi.ProductId, soi.Quantity)).ToList();
@@ -466,13 +468,6 @@ public class SalesOrderService : ISalesOrderService
                         {
                             await transaction.RollbackAsync();
                             return Result<SalesOrderDto>.Failure($"Cannot process order: {stockValidation.Error}");
-                        }
-
-                        // Create invoice for processing orders
-                        var invoiceResult = await _invoiceService.CreateInvoiceFromSalesOrderAsync(id, updatedByUserId);
-                        if (!invoiceResult.IsSuccess)
-                        {
-                            _logger.LogWarning("Failed to create invoice for sales order {Id}: {Error}", id, invoiceResult.Error);
                         }
                     }
                     break;
@@ -554,6 +549,166 @@ public class SalesOrderService : ISalesOrderService
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
+
+            // Handle invoice operations after transaction commit to avoid nested transactions
+            if (newStatus == SalesOrderStatus.Shipped)
+            {
+                // Create invoice when order is shipped (only if none exists)
+                var existingInvoicesResult = await _invoiceService.GetInvoicesBySalesOrderAsync(id);
+                if (existingInvoicesResult.IsSuccess && existingInvoicesResult.Data != null && !existingInvoicesResult.Data.Any())
+                {
+                    var invoiceResult = await _invoiceService.CreateInvoiceFromSalesOrderAsync(id, updatedByUserId);
+                    if (!invoiceResult.IsSuccess)
+                    {
+                        _logger.LogWarning("Failed to create invoice for shipped sales order {Id}: {Error}", id, invoiceResult.Error);
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Invoice created for shipped sales order {Id}: {InvoiceId}", id, invoiceResult.Data?.Id);
+                    }
+                }
+            }
+            else if (newStatus == SalesOrderStatus.Cancelled)
+            {
+                // Cancel any related invoices that are not yet paid
+                var cancelInvoicesResult = await _invoiceService.GetInvoicesBySalesOrderAsync(id);
+                if (cancelInvoicesResult.IsSuccess && cancelInvoicesResult.Data != null && cancelInvoicesResult.Data.Any())
+                {
+                    foreach (var invoice in cancelInvoicesResult.Data)
+                    {
+                        // Handle different invoice statuses appropriately using new transition rules
+                        if (invoice.Status == InvoiceStatus.Draft || invoice.Status == InvoiceStatus.Sent || invoice.Status == InvoiceStatus.Overdue)
+                        {
+                            // Cancel unpaid invoices (Draft, Sent, Overdue can transition to Cancelled)
+                            var cancelInvoiceResult = await _invoiceService.UpdateInvoiceStatusFromSalesOrderAsync(
+                                invoice.Id, 
+                                InvoiceStatus.Cancelled,
+                                $"Sales order {salesOrderReferenceNumber} was cancelled",
+                                updatedByUserId
+                            );
+                            
+                            if (cancelInvoiceResult.IsSuccess)
+                            {
+                                _logger.LogInformation("Invoice {InvoiceId} cancelled due to sales order {SalesOrderId} cancellation", 
+                                    invoice.Id, id);
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Failed to cancel invoice {InvoiceId} for cancelled sales order {SalesOrderId}: {Error}", 
+                                    invoice.Id, id, cancelInvoiceResult.Error);
+                            }
+                        }
+                        else if (invoice.Status == InvoiceStatus.Paid || invoice.Status == InvoiceStatus.PartiallyPaid)
+                        {
+                            // For paid invoices when order is cancelled, mark as refunded
+                            var refundInvoiceResult = await _invoiceService.UpdateInvoiceStatusFromSalesOrderAsync(
+                                invoice.Id,
+                                InvoiceStatus.Refunded,
+                                $"Sales order {salesOrderReferenceNumber} was cancelled - refund processed",
+                                updatedByUserId
+                            );
+                            
+                            if (refundInvoiceResult.IsSuccess)
+                            {
+                                _logger.LogInformation("Invoice {InvoiceId} marked as refunded due to sales order {SalesOrderId} cancellation - refund amount: {RefundAmount}", 
+                                    invoice.Id, id, invoice.PaidAmount);
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Failed to refund invoice {InvoiceId} for cancelled sales order {SalesOrderId}: {Error}", 
+                                    invoice.Id, id, refundInvoiceResult.Error);
+                            }
+                        }
+                        // Already cancelled or refunded invoices don't require action
+                        else
+                        {
+                            _logger.LogInformation("Invoice {InvoiceId} is already in terminal status {Status} - no action needed for sales order {SalesOrderId} cancellation", 
+                                invoice.Id, invoice.Status, id);
+                        }
+                    }
+                }
+            }
+            else if (newStatus == SalesOrderStatus.Returned)
+            {
+                // Handle invoice adjustments for returned orders using new transition rules
+                var returnInvoicesResult = await _invoiceService.GetInvoicesBySalesOrderAsync(id);
+                if (returnInvoicesResult.IsSuccess && returnInvoicesResult.Data != null && returnInvoicesResult.Data.Any())
+                {
+                    foreach (var invoice in returnInvoicesResult.Data)
+                    {
+                        // Handle different invoice statuses for returns based on new business rules
+                        if (invoice.Status == InvoiceStatus.Draft || invoice.Status == InvoiceStatus.Sent)
+                        {
+                            // Cancel unpaid invoices for returned orders (Draft/Sent -> Cancelled)
+                            var cancelInvoiceResult = await _invoiceService.UpdateInvoiceStatusFromSalesOrderAsync(
+                                invoice.Id, 
+                                InvoiceStatus.Cancelled,
+                                $"Sales order {salesOrderReferenceNumber} was returned - invoice no longer valid",
+                                updatedByUserId
+                            );
+                            
+                            if (cancelInvoiceResult.IsSuccess)
+                            {
+                                _logger.LogInformation("Invoice {InvoiceId} cancelled due to sales order {SalesOrderId} return", 
+                                    invoice.Id, id);
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Failed to cancel invoice {InvoiceId} for returned sales order {SalesOrderId}: {Error}", 
+                                    invoice.Id, id, cancelInvoiceResult.Error);
+                            }
+                        }
+                        else if (invoice.Status == InvoiceStatus.Paid || invoice.Status == InvoiceStatus.PartiallyPaid)
+                        {
+                            // Mark paid invoices as refunded for returned orders (Paid/PartiallyPaid -> Refunded)
+                            var refundInvoiceResult = await _invoiceService.UpdateInvoiceStatusFromSalesOrderAsync(
+                                invoice.Id,
+                                InvoiceStatus.Refunded,
+                                $"Sales order {salesOrderReferenceNumber} was returned - refund amount: {invoice.PaidAmount:C}",
+                                updatedByUserId
+                            );
+                            
+                            if (refundInvoiceResult.IsSuccess)
+                            {
+                                _logger.LogInformation("Invoice {InvoiceId} marked as refunded due to sales order {SalesOrderId} return - refund amount: {RefundAmount:C}", 
+                                    invoice.Id, id, invoice.PaidAmount);
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Failed to refund invoice {InvoiceId} for returned sales order {SalesOrderId}: {Error}", 
+                                    invoice.Id, id, refundInvoiceResult.Error);
+                            }
+                        }
+                        else if (invoice.Status == InvoiceStatus.Overdue)
+                        {
+                            // Cancel overdue invoices for returned orders (Overdue -> Cancelled)
+                            var cancelOverdueResult = await _invoiceService.UpdateInvoiceStatusFromSalesOrderAsync(
+                                invoice.Id, 
+                                InvoiceStatus.Cancelled,
+                                $"Sales order {salesOrderReferenceNumber} was returned - overdue invoice cancelled",
+                                updatedByUserId
+                            );
+                            
+                            if (cancelOverdueResult.IsSuccess)
+                            {
+                                _logger.LogInformation("Overdue invoice {InvoiceId} cancelled due to sales order {SalesOrderId} return", 
+                                    invoice.Id, id);
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Failed to cancel overdue invoice {InvoiceId} for returned sales order {SalesOrderId}: {Error}", 
+                                    invoice.Id, id, cancelOverdueResult.Error);
+                            }
+                        }
+                        // Already cancelled or refunded invoices don't need further action
+                        else
+                        {
+                            _logger.LogInformation("Invoice {InvoiceId} is already in terminal status {Status} - no action needed for sales order {SalesOrderId} return", 
+                                invoice.Id, invoice.Status, id);
+                        }
+                    }
+                }
+            }
 
             var result = await GetSalesOrderByIdAsync(id);
             if (result.IsSuccess)

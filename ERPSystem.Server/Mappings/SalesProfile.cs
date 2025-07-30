@@ -27,7 +27,8 @@ public class SalesProfile : Profile
         // Sales Order mappings
         CreateMap<SalesOrder, SalesOrderDto>()
             .ForMember(dest => dest.CustomerName, opt => opt.MapFrom(src => src.Customer.Name))
-            .ForMember(dest => dest.OrderItems, opt => opt.MapFrom(src => src.SalesOrderItems.Where(soi => !soi.IsDeleted)));
+            .ForMember(dest => dest.OrderItems, opt => opt.MapFrom(src => src.SalesOrderItems.Where(soi => !soi.IsDeleted)))
+            .ForMember(dest => dest.Invoice, opt => opt.MapFrom(src => src.Invoice));
 
         CreateMap<SalesOrderCreateDto, SalesOrder>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
@@ -66,6 +67,12 @@ public class SalesProfile : Profile
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.SalesOrder, opt => opt.Ignore())
             .ForMember(dest => dest.Product, opt => opt.Ignore());
+
+        // Sales Order Invoice mapping (simplified invoice info for sales order view)
+        CreateMap<Invoice, SalesOrderInvoiceDto>()
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => (int)src.Status))
+            .ForMember(dest => dest.StatusLabel, opt => opt.MapFrom(src => src.Status.ToString()))
+            .ForMember(dest => dest.IsOverdue, opt => opt.MapFrom(src => src.Status == InvoiceStatus.Overdue || (src.DueDate < DateTime.UtcNow && src.Status == InvoiceStatus.Sent)));
 
         // Invoice mappings
         CreateMap<Invoice, InvoiceDto>()

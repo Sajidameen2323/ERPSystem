@@ -23,7 +23,8 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  XCircle
+  XCircle,
+  RefreshCw
 } from 'lucide-angular';
 
 // Services and Models
@@ -77,6 +78,7 @@ export class InvoiceListComponent implements OnInit {
   readonly CheckCircleIcon = CheckCircle;
   readonly ClockIcon = Clock;
   readonly XCircleIcon = XCircle;
+  readonly RefreshCwIcon = RefreshCw;
 
   // Expose enums for template
   readonly InvoiceStatus = InvoiceStatus;
@@ -332,19 +334,73 @@ export class InvoiceListComponent implements OnInit {
 
   // Action validation methods (synced with backend business rules)
   canEditInvoice(invoice: InvoiceListItem): boolean {
+    // Only Draft invoices can be edited (backend: CanEditInvoiceAsync)
     return invoice.status === InvoiceStatus.Draft;
   }
 
   canDeleteInvoice(invoice: InvoiceListItem): boolean {
+    // Only Draft invoices can be deleted (backend: DeleteInvoiceAsync uses CanEditInvoiceAsync)
     return invoice.status === InvoiceStatus.Draft;
   }
 
   canSendInvoice(invoice: InvoiceListItem): boolean {
+    // Only Draft invoices can be sent (backend: MarkInvoiceAsSentAsync -> UpdateInvoiceStatusAsync)
+    // Valid transition: Draft -> Sent
     return invoice.status === InvoiceStatus.Draft;
   }
 
   canCancelInvoice(invoice: InvoiceListItem): boolean {
+    // Draft and Sent invoices can be cancelled (backend: CanCancelInvoiceAsync)
+    // Valid transitions: Draft -> Cancelled, Sent -> Cancelled
     return invoice.status === InvoiceStatus.Draft || invoice.status === InvoiceStatus.Sent;
+  }
+
+  canRecordPayment(invoice: InvoiceListItem): boolean {
+    // Only allow payment recording for invoices that can still receive payments
+    // Backend: RecordPaymentAsync excludes Paid, Cancelled, Refunded and requires balance > 0
+    return invoice.status !== InvoiceStatus.Paid && 
+           invoice.status !== InvoiceStatus.Cancelled && 
+           invoice.status !== InvoiceStatus.Refunded &&
+           invoice.balanceAmount > 0;
+  }
+
+  canMarkAsPaid(invoice: InvoiceListItem): boolean {
+    // Backend: UpdateInvoiceStatusAsync with valid transitions to Paid
+    // Valid transitions: Sent -> Paid, PartiallyPaid -> Paid, Overdue -> Paid
+    return invoice.status === InvoiceStatus.Sent || 
+           invoice.status === InvoiceStatus.PartiallyPaid || 
+           invoice.status === InvoiceStatus.Overdue;
+  }
+
+  canDownloadPdf(invoice: InvoiceListItem): boolean {
+    // PDF can be downloaded for any non-deleted invoice
+    return true;
+  }
+
+  canDuplicate(invoice: InvoiceListItem): boolean {
+    // Any invoice can be duplicated (creates new draft)
+    return true;
+  }
+
+  canRefund(invoice: InvoiceListItem): boolean {
+    // Only Paid invoices can be refunded (backend: IsValidStatusTransition)
+    // Valid transition: Paid -> Refunded
+    return invoice.status === InvoiceStatus.Paid;
+  }
+
+  canTransitionFromSent(invoice: InvoiceListItem): boolean {
+    // New transition rule: Sent can go to Paid, PartiallyPaid, Overdue, Cancelled, or Refunded
+    return invoice.status === InvoiceStatus.Sent;
+  }
+
+  canTransitionFromPartiallyPaid(invoice: InvoiceListItem): boolean {
+    // New transition rule: PartiallyPaid can go to Paid, Overdue, or Refunded
+    return invoice.status === InvoiceStatus.PartiallyPaid;
+  }
+
+  canTransitionFromOverdue(invoice: InvoiceListItem): boolean {
+    // New transition rule: Overdue can go to Paid, PartiallyPaid, or Cancelled
+    return invoice.status === InvoiceStatus.Overdue;
   }
 
   // Utility methods
@@ -384,7 +440,7 @@ export class InvoiceListComponent implements OnInit {
       case InvoiceStatus.Cancelled:
         return this.XCircleIcon;
       case InvoiceStatus.Refunded:
-        return this.XCircleIcon; // Using same icon as cancelled for now
+        return this.RefreshCwIcon; // Better icon for refunds
       default:
         return this.FileTextIcon;
     }
@@ -404,6 +460,7 @@ export class InvoiceListComponent implements OnInit {
   isOverdue(invoice: InvoiceListItem): boolean {
     return invoice.status !== InvoiceStatus.Paid && 
            invoice.status !== InvoiceStatus.Cancelled &&
+           invoice.status !== InvoiceStatus.Refunded &&
            new Date(invoice.dueDate) < new Date();
   }
 

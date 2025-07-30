@@ -52,4 +52,5 @@ public class SalesOrder
     public virtual Customer Customer { get; set; } = null!;
     public virtual ICollection<SalesOrderItem> SalesOrderItems { get; set; } = new List<SalesOrderItem>();
     public virtual ICollection<StockReservation> StockReservations { get; set; } = new List<StockReservation>();
+    public virtual Invoice? Invoice { get; set; }
 }

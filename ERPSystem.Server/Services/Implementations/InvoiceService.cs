@@ -474,6 +474,76 @@ public class InvoiceService : IInvoiceService
         }
     }
 
+    /// <summary>
+    /// Updates invoice status based on sales order status changes (for internal service calls)
+    /// This method bypasses some validations for automated system updates
+    /// </summary>
+    public async Task<Result<InvoiceDto>> UpdateInvoiceStatusFromSalesOrderAsync(Guid invoiceId, InvoiceStatus newStatus, string reason, string updatedByUserId)
+    {
+        try
+        {
+            var invoice = await _context.Invoices
+                .FirstOrDefaultAsync(i => i.Id == invoiceId && !i.IsDeleted);
+
+            if (invoice == null)
+            {
+                return Result<InvoiceDto>.Failure("Invoice not found");
+            }
+
+            // Validate status transition using the updated rules
+            if (!IsValidStatusTransition(invoice.Status, newStatus))
+            {
+                return Result<InvoiceDto>.Failure($"Cannot change invoice status from {invoice.Status} to {newStatus}. Reason: {reason}");
+            }
+
+            var originalStatus = invoice.Status;
+            invoice.Status = newStatus;
+            invoice.UpdatedAt = DateTime.UtcNow;
+
+            // Add reason to notes
+            if (!string.IsNullOrWhiteSpace(reason))
+            {
+                invoice.Notes = string.IsNullOrWhiteSpace(invoice.Notes) 
+                    ? $"Status changed to {newStatus}: {reason}" 
+                    : $"{invoice.Notes}\nStatus changed to {newStatus}: {reason}";
+            }
+
+            // Handle specific status changes
+            switch (newStatus)
+            {
+                case InvoiceStatus.Cancelled:
+                    // When cancelled due to return, clear payment info if not paid
+                    if (originalStatus != InvoiceStatus.Paid && originalStatus != InvoiceStatus.PartiallyPaid)
+                    {
+                        invoice.PaidAmount = 0;
+                        invoice.BalanceAmount = invoice.TotalAmount;
+                        invoice.PaidDate = null;
+                    }
+                    break;
+                    
+                case InvoiceStatus.Refunded:
+                    // When refunded due to return, reset payment amounts
+                    invoice.PaidAmount = 0;
+                    invoice.BalanceAmount = invoice.TotalAmount;
+                    // Keep PaidDate for audit trail but mark as refunded
+                    break;
+            }
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Invoice status updated from sales order. Invoice ID: {InvoiceId}, Status: {OldStatus} -> {NewStatus}, Reason: {Reason}", 
+                invoiceId, originalStatus, newStatus, reason);
+
+            var result = await GetInvoiceByIdAsync(invoiceId);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating invoice status from sales order for ID: {InvoiceId}", invoiceId);
+            return Result<InvoiceDto>.Failure("An error occurred while updating the invoice status");
+        }
+    }
+
     public async Task<Result<InvoiceDto>> RecordPaymentAsync(Guid id, InvoicePaymentDto paymentDto, string processedByUserId)
     {
         try
@@ -891,11 +961,25 @@ public class InvoiceService : IInvoiceService
     {
         return currentStatus switch
         {
+            // Draft invoices can be sent, cancelled (if order returned before payment), or auto-cancelled
             InvoiceStatus.Draft => newStatus is InvoiceStatus.Sent or InvoiceStatus.Cancelled,
-            InvoiceStatus.Sent => newStatus is InvoiceStatus.Paid or InvoiceStatus.PartiallyPaid or InvoiceStatus.Overdue or InvoiceStatus.Cancelled,
-            InvoiceStatus.PartiallyPaid => newStatus is InvoiceStatus.Paid or InvoiceStatus.Overdue,
-            InvoiceStatus.Overdue => newStatus is InvoiceStatus.Paid or InvoiceStatus.PartiallyPaid,
+            
+            // Sent invoices can progress to payment states, become overdue, be cancelled (if order returned), or refunded (if paid then returned)
+            InvoiceStatus.Sent => newStatus is InvoiceStatus.Paid or InvoiceStatus.PartiallyPaid or InvoiceStatus.Overdue or InvoiceStatus.Cancelled or InvoiceStatus.Refunded,
+            
+            // Partially paid invoices can be fully paid, become overdue, or refunded (if order returned)
+            InvoiceStatus.PartiallyPaid => newStatus is InvoiceStatus.Paid or InvoiceStatus.Overdue or InvoiceStatus.Refunded,
+            
+            // Overdue invoices can be paid (partial or full) or cancelled (if order returned before payment)
+            InvoiceStatus.Overdue => newStatus is InvoiceStatus.Paid or InvoiceStatus.PartiallyPaid or InvoiceStatus.Cancelled,
+            
+            // Paid invoices can only be refunded (if order returned after payment)
             InvoiceStatus.Paid => newStatus is InvoiceStatus.Refunded,
+            
+            // Terminal states - no further transitions allowed
+            InvoiceStatus.Cancelled => false,
+            InvoiceStatus.Refunded => false,
+            
             _ => false
         };
     }

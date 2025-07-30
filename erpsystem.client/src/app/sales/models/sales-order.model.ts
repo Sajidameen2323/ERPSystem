@@ -14,6 +14,22 @@ export interface SalesOrder {
   updatedAt: Date;
   isDeleted: boolean;
   orderItems: SalesOrderItem[];
+  invoice?: SalesOrderInvoice;
+}
+
+export interface SalesOrderInvoice {
+  id: string;
+  invoiceNumber: string;
+  status: number;
+  statusLabel: string;
+  invoiceDate: Date;
+  dueDate: Date;
+  totalAmount: number;
+  paidAmount: number;
+  balanceAmount: number;
+  paidDate?: Date;
+  isOverdue: boolean;
+  createdAt: Date;
 }
 
 export interface SalesOrderItem {

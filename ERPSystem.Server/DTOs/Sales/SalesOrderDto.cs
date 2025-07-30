@@ -24,6 +24,7 @@ public class SalesOrderDto
     public DateTime UpdatedAt { get; set; }
     public bool IsDeleted { get; set; }
     public List<SalesOrderItemDto> OrderItems { get; set; } = new();
+    public SalesOrderInvoiceDto? Invoice { get; set; }
 }
 
 /// <summary>
@@ -201,4 +202,23 @@ public class SalesOrderQueryParameters
     public DateTime? OrderDateTo { get; set; }
     public bool IncludeDeleted { get; set; } = false;
     public bool OnlyInactive { get; set; } = false;
+}
+
+/// <summary>
+/// DTO for invoice information associated with a sales order
+/// </summary>
+public class SalesOrderInvoiceDto
+{
+    public Guid Id { get; set; }
+    public string InvoiceNumber { get; set; } = string.Empty;
+    public int Status { get; set; }
+    public string StatusLabel { get; set; } = string.Empty;
+    public DateTime InvoiceDate { get; set; }
+    public DateTime DueDate { get; set; }
+    public decimal TotalAmount { get; set; }
+    public decimal PaidAmount { get; set; }
+    public decimal BalanceAmount { get; set; }
+    public DateTime? PaidDate { get; set; }
+    public bool IsOverdue { get; set; }
+    public DateTime CreatedAt { get; set; }
 }

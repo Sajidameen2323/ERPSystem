@@ -195,6 +195,110 @@
       </div>
     </div>
 
+    <!-- Invoice Information -->
+    <div *ngIf="salesOrder()!.invoice" 
+         class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white flex items-center">
+          <lucide-angular [img]="ReceiptIcon" class="w-5 h-5 mr-2"></lucide-angular>
+          Invoice Information
+        </h3>
+      </div>
+      <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Invoice Number -->
+          <div>
+            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Invoice Number</dt>
+            <dd class="mt-1 text-sm font-mono text-gray-900 dark:text-white">{{ salesOrder()!.invoice!.invoiceNumber }}</dd>
+          </div>
+          
+          <!-- Invoice Status -->
+          <div>
+            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
+            <dd class="mt-1">
+              <span class="inline-flex px-3 py-1 text-sm font-medium rounded-full" 
+                    [class]="getInvoiceStatusColor(salesOrder()!.invoice!.status)">
+                {{ salesOrder()!.invoice!.statusLabel }}
+              </span>
+              <span *ngIf="isInvoiceOverdue(salesOrder()!.invoice!)" 
+                    class="ml-2 inline-flex px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300">
+                Overdue
+              </span>
+            </dd>
+          </div>
+          
+          <!-- Invoice Date -->
+          <div>
+            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Invoice Date</dt>
+            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ formatDate(salesOrder()!.invoice!.invoiceDate) }}</dd>
+          </div>
+          
+          <!-- Due Date -->
+          <div>
+            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Due Date</dt>
+            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ formatDate(salesOrder()!.invoice!.dueDate) }}</dd>
+          </div>
+          
+          <!-- Total Amount -->
+          <div>
+            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Amount</dt>
+            <dd class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ formatCurrency(salesOrder()!.invoice!.totalAmount) }}</dd>
+          </div>
+          
+          <!-- Paid Amount -->
+          <div>
+            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Paid Amount</dt>
+            <dd class="mt-1 text-lg font-semibold text-green-600 dark:text-green-400">{{ formatCurrency(salesOrder()!.invoice!.paidAmount) }}</dd>
+          </div>
+          
+          <!-- Balance Amount -->
+          <div *ngIf="salesOrder()!.invoice!.balanceAmount > 0">
+            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Balance Due</dt>
+            <dd class="mt-1 text-lg font-semibold" 
+                [class]="isInvoiceOverdue(salesOrder()!.invoice!) ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-400'">
+              {{ formatCurrency(salesOrder()!.invoice!.balanceAmount) }}
+            </dd>
+          </div>
+          
+          <!-- Paid Date -->
+          <div *ngIf="salesOrder()!.invoice!.paidDate">
+            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Paid Date</dt>
+            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ formatDate(salesOrder()!.invoice!.paidDate!) }}</dd>
+          </div>
+          
+          <!-- Payment Progress Bar -->
+          <div class="col-span-full" *ngIf="salesOrder()!.invoice!.totalAmount > 0">
+            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Payment Progress</dt>
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+              <div class="bg-green-600 h-3 rounded-full transition-all duration-300" 
+                   [style.width.%]="(salesOrder()!.invoice!.paidAmount / salesOrder()!.invoice!.totalAmount) * 100">
+              </div>
+            </div>
+            <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <span>{{ formatCurrency(salesOrder()!.invoice!.paidAmount) }} paid</span>
+              <span>{{ ((salesOrder()!.invoice!.paidAmount / salesOrder()!.invoice!.totalAmount) * 100).toFixed(1) }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- No Invoice Notice -->
+    <div *ngIf="!salesOrder()!.invoice && (salesOrder()!.status === SalesOrderStatus.Shipped || salesOrder()!.status === SalesOrderStatus.Completed)" 
+         class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+      <div class="flex items-center">
+        <div class="text-yellow-600 dark:text-yellow-400">
+          <lucide-angular [img]="ReceiptIcon" class="w-5 h-5"></lucide-angular>
+        </div>
+        <div class="ml-3">
+          <p class="text-sm font-medium text-yellow-800 dark:text-yellow-200">Invoice Not Generated</p>
+          <p class="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+            An invoice will be automatically generated when this order is shipped.
+          </p>
+        </div>
+      </div>
+    </div>
+
     <!-- Order Items -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
       <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">

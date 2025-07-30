@@ -322,7 +322,7 @@
 
                 <!-- Record Payment -->
                 <button
-                  *ngIf="invoice.status !== InvoiceStatus.Paid && invoice.status !== InvoiceStatus.Cancelled"
+                  *ngIf="canRecordPayment(invoice)"
                   [routerLink]="['/dashboard/sales/invoices', invoice.id, 'payment']"
                   class="text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400"
                   title="Record Payment">

@@ -4,7 +4,7 @@ import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 
 // Lucide Icons
-import { LucideAngularModule, ArrowLeft, Edit, Trash2, Package, Calendar, DollarSign, User, FileText, Truck, RefreshCw } from 'lucide-angular';
+import { LucideAngularModule, ArrowLeft, Edit, Trash2, Package, Calendar, DollarSign, User, FileText, Truck, RefreshCw, Receipt } from 'lucide-angular';
 
 // Services and Models
 import { SalesOrderService } from '../services/sales-order.service';
@@ -48,6 +48,7 @@ export class SalesOrderDetailComponent implements OnInit {
   readonly FileTextIcon = FileText;
   readonly TruckIcon = Truck;
   readonly RefreshCwIcon = RefreshCw;
+  readonly ReceiptIcon = Receipt;
 
   // Signals
   salesOrder = signal<SalesOrder | null>(null);
@@ -209,5 +210,36 @@ export class SalesOrderDetailComponent implements OnInit {
    */
   formatDateTime(date: Date | string): string {
     return new Date(date).toLocaleString();
+  }
+
+  /**
+   * Get invoice status color class
+   */
+  getInvoiceStatusColor(status: number): string {
+    switch (status) {
+      case 1: // Draft
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+      case 2: // Sent
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300';
+      case 3: // Paid
+        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300';
+      case 4: // PartiallyPaid
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300';
+      case 5: // Overdue
+        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300';
+      case 6: // Cancelled
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+      case 7: // Refunded
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+    }
+  }
+
+  /**
+   * Check if invoice has overdue payment
+   */
+  isInvoiceOverdue(invoice: any): boolean {
+    return invoice.isOverdue || invoice.status === 5; // Overdue status
   }
 }
