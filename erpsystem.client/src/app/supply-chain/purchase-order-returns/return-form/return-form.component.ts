@@ -116,26 +116,29 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
     };
   }
 
-  static stockAvailabilityValidator(currentStock: number): ValidatorFn {
+  // Custom validator for selected items only
+  static conditionalRequiredValidator(dependentField: string): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
-      const value = control.value;
-      if (value === null || value === undefined || value === '') {
+      if (!control.parent) {
         return null;
       }
       
-      if (isNaN(value) || value > currentStock) {
-        return { 
-          insufficientStock: { 
-            value, 
-            currentStock, 
-            message: `Insufficient stock. Current stock: ${currentStock}` 
-          } 
-        };
+      const selected = control.parent.get(dependentField)?.value;
+      const returnQuantity = control.parent.get('returnQuantity')?.value;
+      
+      // Only require validation if item is selected and has a return quantity > 0
+      if (selected && returnQuantity > 0) {
+        const value = control.value;
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          return { conditionalRequired: true };
+        }
       }
       
       return null;
     };
   }
+
+  // Removed stockAvailabilityValidator as we only need to validate against purchase order quantities, not overall stock
 
   ngOnInit(): void {
     this.initializeForm();
@@ -265,8 +268,7 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
     items.forEach(item => {
       const validators = [
         ReturnFormComponent.positiveQuantityValidator(),
-        ReturnFormComponent.maxReturnQuantityValidator(item.availableForReturn),
-        ReturnFormComponent.stockAvailabilityValidator(item.currentStock)
+        ReturnFormComponent.maxReturnQuantityValidator(item.availableForReturn)
       ];
 
       const itemGroup = this.fb.group({
@@ -278,7 +280,7 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
         currentStock: [{ value: item.currentStock, disabled: true }],
         unitPrice: [{ value: item.unitPrice, disabled: true }],
         returnQuantity: [0, validators],
-        reason: ['', Validators.required],
+        reason: ['', ReturnFormComponent.conditionalRequiredValidator('selected')],
         reasonDescription: [''],
         refundRequested: [false],
         selected: [false],
@@ -289,6 +291,10 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
       itemGroup.get('returnQuantity')?.valueChanges.pipe(
         takeUntil(this.destroy$)
       ).subscribe((quantity) => {
+        // Trigger validation on reason field when quantity changes
+        const reasonControl = itemGroup.get('reason');
+        reasonControl?.updateValueAndValidity();
+        
         this.updateItemValidation(itemGroup, item);
         this.updateItemTotal(itemGroup);
       });
@@ -304,6 +310,10 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
       itemGroup.get('selected')?.valueChanges.pipe(
         takeUntil(this.destroy$)
       ).subscribe((selected) => {
+        // Trigger validation on reason field when selection changes
+        const reasonControl = itemGroup.get('reason');
+        reasonControl?.updateValueAndValidity();
+        
         if (selected) {
           this.updateItemValidation(itemGroup, item);
         }
@@ -337,15 +347,12 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
         errors.push('Return reason is required');
       }
 
-      // Check stock availability
-      if (quantity > item.currentStock) {
-        errors.push(`Insufficient stock. Available: ${item.currentStock}`);
-      }
-
-      // Check available return quantity
+      // Check available return quantity (this is the key validation - based on PO received quantity)
       if (quantity > item.availableForReturn) {
         errors.push(`Exceeds available return quantity: ${item.availableForReturn}`);
       }
+
+      // Note: We removed stock validation as returns should be based on PO quantities, not overall stock
     }
 
     // Update validation errors for display
@@ -371,21 +378,20 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
   }
 
   onSubmit(): void {
-    if (this.returnForm.invalid) {
-      this.markFormGroupTouched(this.returnForm);
-      this.error.set('Please fill in all required fields correctly.');
-      return;
-    }
-
-    // Get validation summary
+    // Get validation summary first
     const validationErrors = this.getFormValidationSummary();
     if (validationErrors.length > 0) {
-      this.error.set(`Validation errors: ${validationErrors.join('; ')}`);
+      this.error.set(`Please fix the following issues: ${validationErrors.join('; ')}`);
       return;
     }
 
+    // Check for selected items with proper validation
     const selectedItems = this.itemsFormArray.controls
-      .filter(control => control.get('selected')?.value && control.get('returnQuantity')?.value > 0)
+      .filter(control => {
+        const selected = control.get('selected')?.value;
+        const quantity = control.get('returnQuantity')?.value;
+        return selected && quantity > 0;
+      })
       .map(control => ({
         purchaseOrderItemId: control.get('purchaseOrderItemId')?.value,
         productId: control.get('productId')?.value,
@@ -398,6 +404,16 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
 
     if (selectedItems.length === 0) {
       this.error.set('Please select at least one item to return with a quantity greater than 0.');
+      return;
+    }
+
+    // Additional validation: ensure all selected items have valid quantities and reasons
+    const invalidItems = selectedItems.filter(item => {
+      return item.returnQuantity <= 0 || !item.reason;
+    });
+
+    if (invalidItems.length > 0) {
+      this.error.set('All selected items must have a valid return quantity and reason.');
       return;
     }
 
@@ -535,6 +551,30 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
     this.itemsFormArray.clear();
   }
 
+  isFormValidForSubmission(): boolean {
+    // Check if purchase order is selected
+    if (!this.returnForm.get('purchaseOrderId')?.value) {
+      return false;
+    }
+
+    // Check if at least one item is selected with valid data
+    const selectedItems = this.itemsFormArray.controls.filter(control => {
+      const selected = control.get('selected')?.value;
+      const quantity = control.get('returnQuantity')?.value;
+      return selected && quantity > 0;
+    });
+
+    if (selectedItems.length === 0) {
+      return false;
+    }
+
+    // Check if all selected items are valid
+    return selectedItems.every((control, index) => {
+      const formIndex = this.itemsFormArray.controls.indexOf(control);
+      return this.isItemValid(formIndex);
+    });
+  }
+
   // Validation helper methods
   getItemValidationErrors(index: number): string[] {
     const item = this.itemsFormArray.at(index);
@@ -551,10 +591,14 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
     const quantity = item.get('returnQuantity')?.value;
     const reason = item.get('reason')?.value;
     
+    // If not selected, it's always valid (no validation needed)
     if (!selected) return true;
+    
+    // If selected, check if quantity > 0 and reason is provided
     if (quantity <= 0) return false;
     if (!reason) return false;
     
+    // Check for validation errors
     return !this.hasValidationErrors(index);
   }
 
@@ -570,9 +614,12 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
       errors.push('Please select at least one item to return with a quantity greater than 0');
     }
     
-    // Check individual item validation
+    // Check individual item validation for selected items only
     this.itemsFormArray.controls.forEach((control, index) => {
-      if (control.get('selected')?.value) {
+      const selected = control.get('selected')?.value;
+      const quantity = control.get('returnQuantity')?.value;
+      
+      if (selected && quantity > 0) {
         const itemErrors = this.getItemValidationErrors(index);
         if (itemErrors.length > 0) {
           const productName = control.get('productName')?.value;

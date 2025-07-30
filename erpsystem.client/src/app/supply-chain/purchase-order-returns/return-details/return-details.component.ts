@@ -215,7 +215,7 @@ export class ReturnDetailsComponent implements OnInit, OnDestroy {
   }
 
   goBack(): void {
-    this.router.navigate(['/supply-chain/purchase-order-returns']);
+    this.router.navigate(['/dashboard/supply-chain/purchase-order-returns']);
   }
 
   canApprove(): boolean {

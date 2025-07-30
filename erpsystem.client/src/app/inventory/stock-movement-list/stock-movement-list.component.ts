@@ -5,7 +5,6 @@ import { FormsModule } from '@angular/forms';
 import { 
   LucideAngularModule, 
   FileText, 
-  Search, 
   ArrowDownUp, 
   ArrowDown, 
   ArrowUp, 
@@ -18,7 +17,7 @@ import {
   RotateCcw,
   Eye
 } from 'lucide-angular';
-import { Subject, takeUntil, debounceTime, distinctUntilChanged, of, catchError, switchMap } from 'rxjs';
+import { Subject, takeUntil, of, catchError } from 'rxjs';
 
 import { StockMovement, StockMovementType } from '../../shared/models/purchase-order.interface';
 import { PurchaseOrderService } from '../../shared/services/purchase-order.service';
@@ -48,7 +47,6 @@ export class StockMovementListComponent implements OnInit, OnDestroy {
   currentPage = signal(1);
   pageSize = signal(10);
   totalCount = signal(0);
-  searchTerm = signal('');
   selectedType = signal<StockMovementType | ''>('');
   sortBy = signal('movementDate');
   sortDirection = signal<'asc' | 'desc'>('desc');
@@ -68,7 +66,6 @@ export class StockMovementListComponent implements OnInit, OnDestroy {
   
   // Check if any filters are active
   hasActiveFilters = computed(() => 
-    this.searchTerm() || 
     this.selectedType() || 
     this.dateFrom() || 
     this.dateTo()
@@ -76,7 +73,6 @@ export class StockMovementListComponent implements OnInit, OnDestroy {
 
   // Icons
   readonly FileTextIcon = FileText;
-  readonly SearchIcon = Search;
   readonly ArrowDownUpIcon = ArrowDownUp;
   readonly ArrowDownIcon = ArrowDown;
   readonly ArrowUpIcon = ArrowUp;
@@ -92,35 +88,16 @@ export class StockMovementListComponent implements OnInit, OnDestroy {
   // Expose Math for template
   readonly Math = Math;
 
-  // Search debouncing
-  private searchSubject = new Subject<string>();
+  // Reactive streams
   private destroy$ = new Subject<void>();
 
   ngOnInit(): void {
-    this.setupSearchDebounce();
     this.loadStockMovements();
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-  }
-
-  /**
-   * Setup search debouncing to avoid excessive API calls
-   */
-  private setupSearchDebounce(): void {
-    this.searchSubject
-      .pipe(
-        debounceTime(300),
-        distinctUntilChanged(),
-        takeUntil(this.destroy$)
-      )
-      .subscribe(searchTerm => {
-        this.searchTerm.set(searchTerm);
-        this.currentPage.set(1);
-        this.loadStockMovements();
-      });
   }
 
   /**
@@ -133,12 +110,11 @@ export class StockMovementListComponent implements OnInit, OnDestroy {
     const params = {
       page: this.currentPage(),
       pageSize: this.pageSize(),
-      searchTerm: this.searchTerm() || undefined,
       movementType: this.selectedType() || undefined,
       sortBy: this.sortBy(),
       sortDirection: this.sortDirection(),
-      dateFrom: this.dateFrom() || undefined,
-      dateTo: this.dateTo() || undefined
+      startDate: this.dateFrom() ? new Date(this.dateFrom()!) : undefined,
+      endDate: this.dateTo() ? new Date(this.dateTo()!) : undefined
     };
 
     this.purchaseOrderService.getStockMovements(params)
@@ -158,14 +134,6 @@ export class StockMovementListComponent implements OnInit, OnDestroy {
           this.loading.set(false);
         }
       });
-  }
-
-  /**
-   * Handle search input with debouncing
-   */
-  onSearch(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    this.searchSubject.next(target.value);
   }
 
   /**
@@ -230,7 +198,6 @@ export class StockMovementListComponent implements OnInit, OnDestroy {
    * Clear all filters
    */
   clearFilters(): void {
-    this.searchTerm.set('');
     this.selectedType.set('');
     this.dateFrom.set('');
     this.dateTo.set('');
@@ -251,12 +218,14 @@ export class StockMovementListComponent implements OnInit, OnDestroy {
   getMovementTypeOptions(): { value: string; label: string }[] {
     return [
       { value: '', label: 'All Types' },
-      { value: 'Purchase', label: 'Purchase' },
-      { value: 'Sale', label: 'Sale' },
-      { value: 'Adjustment', label: 'Adjustment' },
-      { value: 'Transfer', label: 'Transfer' },
-      { value: 'Return', label: 'Return' },
-      { value: 'Damage', label: 'Damage' }
+      { value: StockMovementType.StockIn, label: 'Stock In' },
+      { value: StockMovementType.StockOut, label: 'Stock Out' },
+      { value: StockMovementType.Adjustment, label: 'Adjustment' },
+      { value: StockMovementType.Transfer, label: 'Transfer' },
+      { value: StockMovementType.Damaged, label: 'Damaged' },
+      { value: StockMovementType.Expired, label: 'Expired' },
+      { value: StockMovementType.Return, label: 'Return' },
+      { value: StockMovementType.ReturnToSupplier, label: 'Return to Supplier' }
     ];
   }
 
