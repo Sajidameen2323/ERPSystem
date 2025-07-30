@@ -116,6 +116,21 @@ export class InvoiceService {
     return this.http.patch<UpdateInvoiceResponse>(`${this.baseUrl}/${id}/cancel`, { reason });
   }
 
+  // Refund methods
+  requestRefund(id: string, refundAmount?: number, reason?: string): Observable<UpdateInvoiceResponse> {
+    return this.http.post<UpdateInvoiceResponse>(`${this.baseUrl}/${id}/request-refund`, { 
+      refundAmount, 
+      reason 
+    });
+  }
+
+  processRefund(id: string, actualRefundAmount?: number, processingNotes?: string): Observable<UpdateInvoiceResponse> {
+    return this.http.post<UpdateInvoiceResponse>(`${this.baseUrl}/${id}/process-refund`, { 
+      actualRefundAmount, 
+      processingNotes 
+    });
+  }
+
   // Business methods
   createInvoiceFromSalesOrder(salesOrderId: string, dueDate?: string): Observable<CreateInvoiceResponse> {
     return this.http.post<CreateInvoiceResponse>(`${this.baseUrl}/from-sales-order/${salesOrderId}`, { dueDate });

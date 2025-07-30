@@ -246,6 +246,28 @@ public class InvoicesController : ControllerBase
     }
 
     /// <summary>
+    /// Requests a refund for an invoice
+    /// </summary>
+    [HttpPost("{id}/request-refund")]
+    public async Task<ActionResult<Result<InvoiceDto>>> RequestRefund(Guid id, [FromBody] RefundRequestDto refundDto)
+    {
+        var userId = GetUserIdFromClaims();
+        var result = await _invoiceService.RequestRefundAsync(id, refundDto.RefundAmount, refundDto.Reason, userId);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Processes a refund request
+    /// </summary>
+    [HttpPost("{id}/process-refund")]
+    public async Task<ActionResult<Result<InvoiceDto>>> ProcessRefund(Guid id, [FromBody] ProcessRefundDto processDto)
+    {
+        var userId = GetUserIdFromClaims();
+        var result = await _invoiceService.ProcessRefundAsync(id, processDto.ActualRefundAmount, userId, processDto.ProcessingNotes);
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Generates a new invoice number
     /// </summary>
     [HttpGet("generate-number")]

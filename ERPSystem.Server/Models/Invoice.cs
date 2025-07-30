@@ -10,7 +10,8 @@ public enum InvoiceStatus
     PartiallyPaid = 4,
     Overdue = 5,
     Cancelled = 6,
-    Refunded = 7
+    RefundRequested = 7,
+    Refunded = 8
 }
 
 public class Invoice
@@ -57,6 +58,13 @@ public class Invoice
     public string? Terms { get; set; }
     
     public DateTime? PaidDate { get; set; }
+    
+    // Refund tracking fields
+    public decimal RefundRequestedAmount { get; set; } = 0;
+    public decimal RefundedAmount { get; set; } = 0;
+    public DateTime? RefundRequestedDate { get; set; }
+    public DateTime? RefundedDate { get; set; }
+    public string? RefundReason { get; set; }
     
     [Required]
     public string GeneratedByUserId { get; set; } = string.Empty;

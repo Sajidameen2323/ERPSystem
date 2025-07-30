@@ -99,6 +99,7 @@ export class InvoiceDetailComponent implements OnInit {
   invoice = signal<Invoice | null>(null);
   loading = signal(false);
   error = signal<string | null>(null);
+  successMessage = signal<string | null>(null);
   
   // UI State
   showDeleteDialog = signal(false);
@@ -194,9 +195,15 @@ export class InvoiceDetailComponent implements OnInit {
 
   canRefund = computed(() => {
     const inv = this.invoice();
-    // Only Paid invoices can be refunded (backend: IsValidStatusTransition)
-    // Valid transition: Paid -> Refunded
-    return inv && inv.status === InvoiceStatus.Paid;
+    // Updated to support new refund workflow: Paid or PartiallyPaid can request refunds
+    // Valid transitions: Paid -> RefundRequested, PartiallyPaid -> RefundRequested
+    return inv && (inv.status === InvoiceStatus.Paid || inv.status === InvoiceStatus.PartiallyPaid) && inv.paidAmount > 0;
+  });
+
+  canProcessRefund = computed(() => {
+    const inv = this.invoice();
+    // Only RefundRequested invoices can be processed
+    return inv && inv.status === InvoiceStatus.RefundRequested;
   });
 
   canPrint = computed(() => {
@@ -423,25 +430,50 @@ export class InvoiceDetailComponent implements OnInit {
   refundInvoice(): void {
     const inv = this.invoice();
     if (inv && this.canRefund()) {
-      const statusUpdate = {
-        status: InvoiceStatus.Refunded,
-        paidAmount: 0, // Reset paid amount on refund
-        paidDate: undefined // Use undefined instead of null
-      };
-
-      this.invoiceService.updateInvoiceStatus(inv.id, statusUpdate).subscribe({
-        next: (result: Result<Invoice>) => {
-          if (result.isSuccess) {
-            this.loadInvoice(inv.id); // Refresh the invoice
-          } else {
-            this.error.set(result.error || 'Failed to refund invoice');
+      this.loading.set(true);
+      this.invoiceService.requestRefund(inv.id, inv.paidAmount, 'Manual refund request')
+        .pipe(
+          finalize(() => this.loading.set(false))
+        )
+        .subscribe({
+          next: (result) => {
+            if (result.isSuccess && result.data) {
+              this.invoice.set(result.data);
+              this.successMessage.set('Refund request submitted successfully');
+            } else {
+              this.error.set(result.error || 'Failed to request refund');
+            }
+          },
+          error: (error) => {
+            console.error('Error requesting refund:', error);
+            this.error.set('An unexpected error occurred while requesting the refund');
           }
-        },
-        error: (error: any) => {
-          console.error('Error refunding invoice:', error);
-          this.error.set('An unexpected error occurred while refunding the invoice');
-        }
-      });
+        });
+    }
+  }
+
+  processRefund(): void {
+    const inv = this.invoice();
+    if (inv && this.canProcessRefund()) {
+      this.loading.set(true);
+      this.invoiceService.processRefund(inv.id, inv.refundRequestedAmount, 'Refund processed')
+        .pipe(
+          finalize(() => this.loading.set(false))
+        )
+        .subscribe({
+          next: (result) => {
+            if (result.isSuccess && result.data) {
+              this.invoice.set(result.data);
+              this.successMessage.set('Refund processed successfully');
+            } else {
+              this.error.set(result.error || 'Failed to process refund');
+            }
+          },
+          error: (error) => {
+            console.error('Error processing refund:', error);
+            this.error.set('An unexpected error occurred while processing the refund');
+          }
+        });
     }
   }
 
@@ -517,6 +549,8 @@ export class InvoiceDetailComponent implements OnInit {
         return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
       case InvoiceStatus.Refunded:
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
+      case InvoiceStatus.RefundRequested:
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     }
@@ -537,7 +571,9 @@ export class InvoiceDetailComponent implements OnInit {
       case InvoiceStatus.Cancelled:
         return this.XCircleIcon;
       case InvoiceStatus.Refunded:
-        return this.RefreshCwIcon; // Better icon for refunds
+        return this.RefreshCwIcon;
+      case InvoiceStatus.RefundRequested:
+        return this.ClockIcon; // Clock icon for pending refund
       default:
         return this.FileTextIcon;
     }
@@ -636,6 +672,8 @@ export class InvoiceDetailComponent implements OnInit {
         return 'Cancelled';
       case InvoiceStatus.Refunded:
         return 'Refunded';
+      case InvoiceStatus.RefundRequested:
+        return 'Refund Requested';
       default:
         return 'Unknown';
     }

@@ -21,6 +21,11 @@ export interface Invoice {
   notes?: string;
   terms?: string; // Missing in original model
   paidDate?: string; // ISO date string, nullable
+  refundRequestedAmount: number; // New refund tracking fields
+  refundedAmount: number;
+  refundRequestedDate?: string; // ISO date string, nullable
+  refundedDate?: string; // ISO date string, nullable
+  refundReason?: string;
   generatedByUserId: string;
   createdAt: string; // ISO date string from backend
   updatedAt: string; // ISO date string from backend
@@ -62,7 +67,8 @@ export enum InvoiceStatus {
   PartiallyPaid = 4,
   Overdue = 5,
   Cancelled = 6,
-  Refunded = 7
+  RefundRequested = 7,
+  Refunded = 8
 }
 
 export enum PaymentMethod {
@@ -119,6 +125,16 @@ export interface InvoicePaymentRequest {
   paymentAmount: number;
   paymentDate: string; // ISO date string
   paymentNotes?: string;
+}
+
+export interface InvoiceRefundRequest {
+  refundAmount?: number;
+  reason?: string;
+}
+
+export interface InvoiceRefundProcessRequest {
+  actualRefundAmount?: number;
+  processingNotes?: string;
 }
 
 export interface InvoiceQueryParameters {

@@ -660,23 +660,23 @@ public class SalesOrderService : ISalesOrderService
                         }
                         else if (invoice.Status == InvoiceStatus.Paid || invoice.Status == InvoiceStatus.PartiallyPaid)
                         {
-                            // Mark paid invoices as refunded for returned orders (Paid/PartiallyPaid -> Refunded)
-                            var refundInvoiceResult = await _invoiceService.UpdateInvoiceStatusFromSalesOrderAsync(
+                            // Request refund for paid invoices when order is returned
+                            var refundRequestResult = await _invoiceService.RequestRefundAsync(
                                 invoice.Id,
-                                InvoiceStatus.Refunded,
-                                $"Sales order {salesOrderReferenceNumber} was returned - refund amount: {invoice.PaidAmount:C}",
+                                invoice.PaidAmount, // Request refund for the full paid amount
+                                $"Sales order {salesOrderReferenceNumber} was returned",
                                 updatedByUserId
                             );
                             
-                            if (refundInvoiceResult.IsSuccess)
+                            if (refundRequestResult.IsSuccess)
                             {
-                                _logger.LogInformation("Invoice {InvoiceId} marked as refunded due to sales order {SalesOrderId} return - refund amount: {RefundAmount:C}", 
+                                _logger.LogInformation("Refund requested for invoice {InvoiceId} due to sales order {SalesOrderId} return - requested amount: {RefundAmount:C}", 
                                     invoice.Id, id, invoice.PaidAmount);
                             }
                             else
                             {
-                                _logger.LogWarning("Failed to refund invoice {InvoiceId} for returned sales order {SalesOrderId}: {Error}", 
-                                    invoice.Id, id, refundInvoiceResult.Error);
+                                _logger.LogWarning("Failed to request refund for invoice {InvoiceId} for returned sales order {SalesOrderId}: {Error}", 
+                                    invoice.Id, id, refundRequestResult.Error);
                             }
                         }
                         else if (invoice.Status == InvoiceStatus.Overdue)

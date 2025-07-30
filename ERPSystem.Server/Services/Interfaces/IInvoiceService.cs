@@ -108,6 +108,16 @@ public interface IInvoiceService
     /// Calculates invoice totals from update DTO
     /// </summary>
     Task<Result<InvoiceTotalsDto>> CalculateInvoiceTotalsFromUpdateDtoAsync(List<InvoiceItemUpdateDto> items, decimal taxAmount = 0, decimal discountAmount = 0);
+
+    /// <summary>
+    /// Requests a refund for an invoice (typically called when sales order is returned)
+    /// </summary>
+    Task<Result<InvoiceDto>> RequestRefundAsync(Guid id, decimal? refundAmount = null, string? reason = null, string requestedByUserId = "");
+
+    /// <summary>
+    /// Processes a refund request and marks invoice as refunded
+    /// </summary>
+    Task<Result<InvoiceDto>> ProcessRefundAsync(Guid id, decimal? actualRefundAmount = null, string processedByUserId = "", string? processingNotes = null);
 }
 
 /// <summary>

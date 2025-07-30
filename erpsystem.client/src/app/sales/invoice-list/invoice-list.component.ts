@@ -129,6 +129,7 @@ export class InvoiceListComponent implements OnInit {
     { value: InvoiceStatus.PartiallyPaid, label: 'Partially Paid' },
     { value: InvoiceStatus.Overdue, label: 'Overdue' },
     { value: InvoiceStatus.Cancelled, label: 'Cancelled' },
+    { value: InvoiceStatus.RefundRequested, label: 'Refund Requested' },
     { value: InvoiceStatus.Refunded, label: 'Refunded' }
   ];
 
@@ -418,6 +419,8 @@ export class InvoiceListComponent implements OnInit {
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
       case InvoiceStatus.Cancelled:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+      case InvoiceStatus.RefundRequested:
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
       case InvoiceStatus.Refunded:
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
       default:
@@ -439,6 +442,8 @@ export class InvoiceListComponent implements OnInit {
         return this.AlertTriangleIcon;
       case InvoiceStatus.Cancelled:
         return this.XCircleIcon;
+      case InvoiceStatus.RefundRequested:
+        return this.ClockIcon; // Clock icon for pending refund
       case InvoiceStatus.Refunded:
         return this.RefreshCwIcon; // Better icon for refunds
       default:
@@ -460,6 +465,7 @@ export class InvoiceListComponent implements OnInit {
   isOverdue(invoice: InvoiceListItem): boolean {
     return invoice.status !== InvoiceStatus.Paid && 
            invoice.status !== InvoiceStatus.Cancelled &&
+           invoice.status !== InvoiceStatus.RefundRequested &&
            invoice.status !== InvoiceStatus.Refunded &&
            new Date(invoice.dueDate) < new Date();
   }
@@ -486,6 +492,8 @@ export class InvoiceListComponent implements OnInit {
         return 'Overdue';
       case InvoiceStatus.Cancelled:
         return 'Cancelled';
+      case InvoiceStatus.RefundRequested:
+        return 'Refund Requested';
       case InvoiceStatus.Refunded:
         return 'Refunded';
       default:

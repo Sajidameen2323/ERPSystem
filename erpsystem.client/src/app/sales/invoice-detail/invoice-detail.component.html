@@ -118,6 +118,20 @@
                   Cancel Invoice
                 </button>
                 <button
+                  *ngIf="canRefund()"
+                  (click)="refundInvoice(); toggleActionsMenu()"
+                  class="flex items-center w-full px-4 py-2 text-sm text-purple-600 dark:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <lucide-angular [img]="RefreshCwIcon" class="w-4 h-4 mr-2"></lucide-angular>
+                  Request Refund
+                </button>
+                <button
+                  *ngIf="canProcessRefund()"
+                  (click)="processRefund(); toggleActionsMenu()"
+                  class="flex items-center w-full px-4 py-2 text-sm text-purple-600 dark:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <lucide-angular [img]="CheckCircleIcon" class="w-4 h-4 mr-2"></lucide-angular>
+                  Process Refund
+                </button>
+                <button
                   *ngIf="canDelete()"
                   (click)="confirmDelete(); toggleActionsMenu()"
                   class="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700">
@@ -139,6 +153,19 @@
           <p class="ml-3 text-red-800 dark:text-red-200">{{ error() }}</p>
         </div>
         <button (click)="clearError()" class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200">
+          <lucide-angular [img]="XCircleIcon" class="w-5 h-5"></lucide-angular>
+        </button>
+      </div>
+    </div>
+
+    <!-- Success Alert -->
+    <div *ngIf="successMessage()" class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <lucide-angular [img]="CheckCircleIcon" class="w-5 h-5 text-green-600 dark:text-green-400"></lucide-angular>
+          <p class="ml-3 text-green-800 dark:text-green-200">{{ successMessage() }}</p>
+        </div>
+        <button (click)="successMessage.set(null)" class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200">
           <lucide-angular [img]="XCircleIcon" class="w-5 h-5"></lucide-angular>
         </button>
       </div>
@@ -340,6 +367,31 @@
             <div *ngIf="invoice()!.balanceAmount > 0" class="flex justify-between text-lg font-semibold text-orange-600 dark:text-orange-400">
               <span>Balance Due</span>
               <span>{{ formatCurrency(invoice()!.balanceAmount) }}</span>
+            </div>
+            
+            <!-- Refund Information -->
+            <div *ngIf="invoice()!.refundRequestedAmount > 0 || invoice()!.refundedAmount > 0" 
+                 class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
+              <div *ngIf="invoice()!.refundRequestedAmount > 0" class="flex justify-between text-orange-600 dark:text-orange-400">
+                <span>Refund Requested</span>
+                <span>{{ formatCurrency(invoice()!.refundRequestedAmount) }}</span>
+              </div>
+              <div *ngIf="invoice()!.refundedAmount > 0" class="flex justify-between text-purple-600 dark:text-purple-400">
+                <span>Amount Refunded</span>
+                <span>{{ formatCurrency(invoice()!.refundedAmount) }}</span>
+              </div>
+              <div *ngIf="invoice()!.refundRequestedDate" class="flex justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
+                <span>Refund Requested Date</span>
+                <span>{{ formatDate(invoice()!.refundRequestedDate!) }}</span>
+              </div>
+              <div *ngIf="invoice()!.refundedDate" class="flex justify-between text-sm text-gray-500 dark:text-gray-400">
+                <span>Refunded Date</span>
+                <span>{{ formatDate(invoice()!.refundedDate!) }}</span>
+              </div>
+              <div *ngIf="invoice()!.refundReason" class="mt-2">
+                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Refund Reason:</span>
+                <p class="text-sm text-gray-700 dark:text-gray-300 mt-1 bg-gray-50 dark:bg-gray-700 p-2 rounded">{{ invoice()!.refundReason }}</p>
+              </div>
             </div>
           </div>
         </div>

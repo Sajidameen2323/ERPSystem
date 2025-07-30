@@ -521,11 +521,30 @@ public class InvoiceService : IInvoiceService
                     }
                     break;
                     
+                case InvoiceStatus.RefundRequested:
+                    // When refund is requested, keep all payment info intact and set refund request details
+                    invoice.RefundRequestedAmount = invoice.PaidAmount; // Request refund for the amount paid
+                    invoice.RefundRequestedDate = DateTime.UtcNow;
+                    invoice.RefundReason = reason;
+                    break;
+                    
                 case InvoiceStatus.Refunded:
-                    // When refunded due to return, reset payment amounts
-                    invoice.PaidAmount = 0;
-                    invoice.BalanceAmount = invoice.TotalAmount;
-                    // Keep PaidDate for audit trail but mark as refunded
+                    // When refund is processed, keep payment history but update refund details
+                    // Don't modify PaidAmount - it shows what customer originally paid
+                    // RefundedAmount shows what was actually refunded
+                    if (originalStatus == InvoiceStatus.RefundRequested)
+                    {
+                        invoice.RefundedAmount = invoice.RefundRequestedAmount;
+                    }
+                    else
+                    {
+                        // Direct refund without request (manual process)
+                        invoice.RefundedAmount = invoice.PaidAmount;
+                        invoice.RefundRequestedAmount = invoice.PaidAmount;
+                        invoice.RefundRequestedDate = DateTime.UtcNow;
+                    }
+                    invoice.RefundedDate = DateTime.UtcNow;
+                    invoice.BalanceAmount = 0; // No balance due after refund
                     break;
             }
 
@@ -910,6 +929,139 @@ public class InvoiceService : IInvoiceService
         }
     }
 
+    /// <summary>
+    /// Request a refund for an invoice (typically called when sales order is returned)
+    /// </summary>
+    public async Task<Result<InvoiceDto>> RequestRefundAsync(Guid id, decimal? refundAmount = null, string? reason = null, string requestedByUserId = "")
+    {
+        try
+        {
+            var invoice = await _context.Invoices
+                .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
+
+            if (invoice == null)
+            {
+                return Result<InvoiceDto>.Failure("Invoice not found");
+            }
+
+            // Validate that refund can be requested
+            if (invoice.Status == InvoiceStatus.Draft || invoice.Status == InvoiceStatus.Sent)
+            {
+                return Result<InvoiceDto>.Failure("Cannot request refund for unpaid invoice");
+            }
+
+            if (invoice.Status == InvoiceStatus.Cancelled || invoice.Status == InvoiceStatus.Refunded || invoice.Status == InvoiceStatus.RefundRequested)
+            {
+                return Result<InvoiceDto>.Failure($"Cannot request refund for invoice with status {invoice.Status}");
+            }
+
+            if (invoice.PaidAmount <= 0)
+            {
+                return Result<InvoiceDto>.Failure("Cannot request refund for invoice with no payments");
+            }
+
+            // Use provided refund amount or default to paid amount
+            var requestedRefundAmount = refundAmount ?? invoice.PaidAmount;
+            
+            if (requestedRefundAmount > invoice.PaidAmount)
+            {
+                return Result<InvoiceDto>.Failure("Refund amount cannot exceed paid amount");
+            }
+
+            // Update invoice status and refund details
+            invoice.Status = InvoiceStatus.RefundRequested;
+            invoice.RefundRequestedAmount = requestedRefundAmount;
+            invoice.RefundRequestedDate = DateTime.UtcNow;
+            invoice.RefundReason = reason ?? "Sales order returned";
+            invoice.UpdatedAt = DateTime.UtcNow;
+
+            // Add to notes for audit trail
+            var refundNote = $"Refund requested: {FormatCurrency(requestedRefundAmount)} on {DateTime.UtcNow:yyyy-MM-dd HH:mm}";
+            if (!string.IsNullOrWhiteSpace(reason))
+            {
+                refundNote += $" - Reason: {reason}";
+            }
+            
+            invoice.Notes = string.IsNullOrWhiteSpace(invoice.Notes) 
+                ? refundNote 
+                : $"{invoice.Notes}\n{refundNote}";
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Refund requested for invoice. Invoice ID: {InvoiceId}, Amount: {RefundAmount}, Reason: {Reason}", 
+                id, requestedRefundAmount, reason);
+
+            var result = await GetInvoiceByIdAsync(id);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error requesting refund for invoice ID: {InvoiceId}", id);
+            return Result<InvoiceDto>.Failure("An error occurred while requesting the refund");
+        }
+    }
+
+    /// <summary>
+    /// Process a refund request and mark invoice as refunded
+    /// </summary>
+    public async Task<Result<InvoiceDto>> ProcessRefundAsync(Guid id, decimal? actualRefundAmount = null, string processedByUserId = "", string? processingNotes = null)
+    {
+        try
+        {
+            var invoice = await _context.Invoices
+                .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
+
+            if (invoice == null)
+            {
+                return Result<InvoiceDto>.Failure("Invoice not found");
+            }
+
+            if (invoice.Status != InvoiceStatus.RefundRequested)
+            {
+                return Result<InvoiceDto>.Failure("Invoice does not have a pending refund request");
+            }
+
+            // Use requested amount if actual amount not specified
+            var refundAmount = actualRefundAmount ?? invoice.RefundRequestedAmount;
+            
+            if (refundAmount > invoice.RefundRequestedAmount)
+            {
+                return Result<InvoiceDto>.Failure("Actual refund amount cannot exceed requested amount");
+            }
+
+            // Update invoice to refunded status
+            invoice.Status = InvoiceStatus.Refunded;
+            invoice.RefundedAmount = refundAmount;
+            invoice.RefundedDate = DateTime.UtcNow;
+            invoice.BalanceAmount = 0; // No balance due after refund
+            invoice.UpdatedAt = DateTime.UtcNow;
+
+            // Add processing notes to audit trail
+            var processNote = $"Refund processed: {FormatCurrency(refundAmount)} on {DateTime.UtcNow:yyyy-MM-dd HH:mm}";
+            if (!string.IsNullOrWhiteSpace(processingNotes))
+            {
+                processNote += $" - Notes: {processingNotes}";
+            }
+            
+            invoice.Notes = string.IsNullOrWhiteSpace(invoice.Notes) 
+                ? processNote 
+                : $"{invoice.Notes}\n{processNote}";
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Refund processed for invoice. Invoice ID: {InvoiceId}, Amount: {RefundAmount}", 
+                id, refundAmount);
+
+            var result = await GetInvoiceByIdAsync(id);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing refund for invoice ID: {InvoiceId}", id);
+            return Result<InvoiceDto>.Failure("An error occurred while processing the refund");
+        }
+    }
+
     #region Private Helper Methods
 
     private InvoiceDto MapToInvoiceDto(Invoice invoice)
@@ -935,6 +1087,11 @@ public class InvoiceService : IInvoiceService
             Notes = invoice.Notes,
             Terms = invoice.Terms,
             PaidDate = invoice.PaidDate,
+            RefundRequestedAmount = invoice.RefundRequestedAmount,
+            RefundedAmount = invoice.RefundedAmount,
+            RefundRequestedDate = invoice.RefundRequestedDate,
+            RefundedDate = invoice.RefundedDate,
+            RefundReason = invoice.RefundReason,
             GeneratedByUserId = invoice.GeneratedByUserId,
             CreatedAt = invoice.CreatedAt,
             UpdatedAt = invoice.UpdatedAt,
@@ -965,16 +1122,19 @@ public class InvoiceService : IInvoiceService
             InvoiceStatus.Draft => newStatus is InvoiceStatus.Sent or InvoiceStatus.Cancelled,
             
             // Sent invoices can progress to payment states, become overdue, be cancelled (if order returned), or refunded (if paid then returned)
-            InvoiceStatus.Sent => newStatus is InvoiceStatus.Paid or InvoiceStatus.PartiallyPaid or InvoiceStatus.Overdue or InvoiceStatus.Cancelled or InvoiceStatus.Refunded,
+            InvoiceStatus.Sent => newStatus is InvoiceStatus.Paid or InvoiceStatus.PartiallyPaid or InvoiceStatus.Overdue or InvoiceStatus.Cancelled or InvoiceStatus.RefundRequested,
             
-            // Partially paid invoices can be fully paid, become overdue, or refunded (if order returned)
-            InvoiceStatus.PartiallyPaid => newStatus is InvoiceStatus.Paid or InvoiceStatus.Overdue or InvoiceStatus.Refunded,
+            // Partially paid invoices can be fully paid, become overdue, or have refund requested (if order returned)
+            InvoiceStatus.PartiallyPaid => newStatus is InvoiceStatus.Paid or InvoiceStatus.Overdue or InvoiceStatus.RefundRequested,
             
             // Overdue invoices can be paid (partial or full) or cancelled (if order returned before payment)
             InvoiceStatus.Overdue => newStatus is InvoiceStatus.Paid or InvoiceStatus.PartiallyPaid or InvoiceStatus.Cancelled,
             
-            // Paid invoices can only be refunded (if order returned after payment)
-            InvoiceStatus.Paid => newStatus is InvoiceStatus.Refunded,
+            // Paid invoices can have refund requested (if order returned after payment)
+            InvoiceStatus.Paid => newStatus is InvoiceStatus.RefundRequested,
+            
+            // Refund requested can be processed to refunded or cancelled if request is denied
+            InvoiceStatus.RefundRequested => newStatus is InvoiceStatus.Refunded or InvoiceStatus.Cancelled,
             
             // Terminal states - no further transitions allowed
             InvoiceStatus.Cancelled => false,
@@ -993,6 +1153,11 @@ public class InvoiceService : IInvoiceService
 
         var totalDays = paidInvoices.Sum(i => (i.PaidDate!.Value - i.InvoiceDate).Days);
         return totalDays / paidInvoices.Count;
+    }
+
+    private static string FormatCurrency(decimal amount)
+    {
+        return amount.ToString("C");
     }
 
     #endregion

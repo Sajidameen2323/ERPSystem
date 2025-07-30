@@ -27,6 +27,14 @@ public class InvoiceDto
     public string? Notes { get; set; }
     public string? Terms { get; set; }
     public DateTime? PaidDate { get; set; }
+    
+    // Refund tracking fields
+    public decimal RefundRequestedAmount { get; set; } = 0;
+    public decimal RefundedAmount { get; set; } = 0;
+    public DateTime? RefundRequestedDate { get; set; }
+    public DateTime? RefundedDate { get; set; }
+    public string? RefundReason { get; set; }
+    
     public string GeneratedByUserId { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

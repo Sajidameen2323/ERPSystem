@@ -218,7 +218,7 @@
             <dd class="mt-1">
               <span class="inline-flex px-3 py-1 text-sm font-medium rounded-full" 
                     [class]="getInvoiceStatusColor(salesOrder()!.invoice!.status)">
-                {{ salesOrder()!.invoice!.statusLabel }}
+                {{ getInvoiceStatusLabel(salesOrder()!.invoice!.status) }}
               </span>
               <span *ngIf="isInvoiceOverdue(salesOrder()!.invoice!)" 
                     class="ml-2 inline-flex px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300">
@@ -277,6 +277,58 @@
             <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
               <span>{{ formatCurrency(salesOrder()!.invoice!.paidAmount) }} paid</span>
               <span>{{ ((salesOrder()!.invoice!.paidAmount / salesOrder()!.invoice!.totalAmount) * 100).toFixed(1) }}%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Refund Information Section -->
+        <div *ngIf="hasRefundInfo(salesOrder()!.invoice!)" class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <h4 class="text-md font-medium text-gray-900 dark:text-white mb-4 flex items-center">
+            <svg class="w-5 h-5 mr-2 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+            </svg>
+            Refund Information
+          </h4>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Refund Requested Amount -->
+            <div *ngIf="salesOrder()!.invoice!.refundRequestedAmount > 0">
+              <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Refund Requested</dt>
+              <dd class="mt-1 text-lg font-semibold text-orange-600 dark:text-orange-400">
+                {{ formatCurrency(salesOrder()!.invoice!.refundRequestedAmount) }}
+              </dd>
+            </div>
+            
+            <!-- Refund Requested Date -->
+            <div *ngIf="salesOrder()!.invoice!.refundRequestedDate">
+              <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Refund Requested Date</dt>
+              <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                {{ formatDate(salesOrder()!.invoice!.refundRequestedDate!) }}
+              </dd>
+            </div>
+            
+            <!-- Refunded Amount -->
+            <div *ngIf="salesOrder()!.invoice!.refundedAmount > 0">
+              <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Refunded Amount</dt>
+              <dd class="mt-1 text-lg font-semibold text-purple-600 dark:text-purple-400">
+                {{ formatCurrency(salesOrder()!.invoice!.refundedAmount) }}
+              </dd>
+            </div>
+            
+            <!-- Refunded Date -->
+            <div *ngIf="salesOrder()!.invoice!.refundedDate">
+              <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Refunded Date</dt>
+              <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                {{ formatDate(salesOrder()!.invoice!.refundedDate!) }}
+              </dd>
+            </div>
+            
+            <!-- Refund Reason -->
+            <div *ngIf="salesOrder()!.invoice!.refundReason" class="col-span-full">
+              <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Refund Reason</dt>
+              <dd class="mt-1 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                {{ salesOrder()!.invoice!.refundReason }}
+              </dd>
             </div>
           </div>
         </div>

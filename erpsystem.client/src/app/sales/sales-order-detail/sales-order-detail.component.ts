@@ -9,6 +9,7 @@ import { LucideAngularModule, ArrowLeft, Edit, Trash2, Package, Calendar, Dollar
 // Services and Models
 import { SalesOrderService } from '../services/sales-order.service';
 import { SalesOrder, getStatusLabel, getStatusColor, SalesOrderStatus } from '../models/sales-order.model';
+import { InvoiceStatus } from '../models/invoice.model';
 
 // Components
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
@@ -217,23 +218,49 @@ export class SalesOrderDetailComponent implements OnInit {
    */
   getInvoiceStatusColor(status: number): string {
     switch (status) {
-      case 1: // Draft
+      case InvoiceStatus.Draft:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
-      case 2: // Sent
+      case InvoiceStatus.Sent:
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300';
-      case 3: // Paid
+      case InvoiceStatus.Paid:
         return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300';
-      case 4: // PartiallyPaid
+      case InvoiceStatus.PartiallyPaid:
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300';
-      case 5: // Overdue
+      case InvoiceStatus.Overdue:
         return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300';
-      case 6: // Cancelled
+      case InvoiceStatus.Cancelled:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
-      case 7: // Refunded
+      case InvoiceStatus.RefundRequested:
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300';
+      case InvoiceStatus.Refunded:
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
     }
+  }
+
+  /**
+   * Get invoice status label
+   */
+  getInvoiceStatusLabel(status: number): string {
+    switch (status) {
+      case InvoiceStatus.Draft: return 'Draft';
+      case InvoiceStatus.Sent: return 'Sent';
+      case InvoiceStatus.Paid: return 'Paid';
+      case InvoiceStatus.PartiallyPaid: return 'Partially Paid';
+      case InvoiceStatus.Overdue: return 'Overdue';
+      case InvoiceStatus.Cancelled: return 'Cancelled';
+      case InvoiceStatus.RefundRequested: return 'Refund Requested';
+      case InvoiceStatus.Refunded: return 'Refunded';
+      default: return 'Unknown';
+    }
+  }
+
+  /**
+   * Check if invoice has refund information
+   */
+  hasRefundInfo(invoice: any): boolean {
+    return invoice.refundRequestedAmount > 0 || invoice.refundedAmount > 0 || invoice.refundReason;
   }
 
   /**

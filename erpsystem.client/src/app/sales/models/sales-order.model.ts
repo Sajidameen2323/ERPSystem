@@ -28,6 +28,11 @@ export interface SalesOrderInvoice {
   paidAmount: number;
   balanceAmount: number;
   paidDate?: Date;
+  refundRequestedAmount: number;
+  refundedAmount: number;
+  refundRequestedDate?: Date;
+  refundedDate?: Date;
+  refundReason?: string;
   isOverdue: boolean;
   createdAt: Date;
 }
