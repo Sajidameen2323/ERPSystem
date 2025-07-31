@@ -10,6 +10,8 @@
     <UserSecretsId>c8d9a826-112f-4d62-819d-c76acbd92516</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="iTextSharp.LGPLv2.Core" Version="3.7.4" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.SpaProxy">
       <Version>8.*-*</Version>

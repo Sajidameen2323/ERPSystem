@@ -18,11 +18,13 @@ namespace ERPSystem.Server.Controllers;
 public class InvoicesController : ControllerBase
 {
     private readonly IInvoiceService _invoiceService;
+    private readonly IInvoiceExportService _invoiceExportService;
     private readonly ILogger<InvoicesController> _logger;
 
-    public InvoicesController(IInvoiceService invoiceService, ILogger<InvoicesController> logger)
+    public InvoicesController(IInvoiceService invoiceService, IInvoiceExportService invoiceExportService, ILogger<InvoicesController> logger)
     {
         _invoiceService = invoiceService;
+        _invoiceExportService = invoiceExportService;
         _logger = logger;
     }
 
@@ -262,6 +264,52 @@ public class InvoicesController : ControllerBase
     public async Task<ActionResult<Result<bool>>> CanEditInvoice(Guid id)
     {
         var result = await _invoiceService.CanEditInvoiceAsync(id);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Downloads an invoice as PDF
+    /// </summary>
+    [HttpGet("{id}/pdf")]
+    public async Task<ActionResult> DownloadInvoicePdf(Guid id)
+    {
+        var result = await _invoiceExportService.GenerateInvoicePdfAsync(id);
+        if (!result.IsSuccess)
+        {
+            return BadRequest(result);
+        }
+
+        var invoiceResult = await _invoiceService.GetInvoiceByIdAsync(id);
+        var fileName = invoiceResult.IsSuccess 
+            ? $"invoice-{invoiceResult.Data?.InvoiceNumber}.pdf"
+            : $"invoice-{id}.pdf";
+
+        return File(result.Data!, "application/pdf", fileName);
+    }
+
+    /// <summary>
+    /// Exports invoices to Excel
+    /// </summary>
+    [HttpGet("export-excel")]
+    public async Task<ActionResult> ExportInvoicesToExcel([FromQuery] InvoiceQueryParameters parameters)
+    {
+        var result = await _invoiceExportService.ExportInvoicesToExcelAsync(parameters);
+        if (!result.IsSuccess)
+        {
+            return BadRequest(result);
+        }
+
+        var fileName = $"invoices-export-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx";
+        return File(result.Data!, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+    }
+
+    /// <summary>
+    /// Gets invoice HTML for printing
+    /// </summary>
+    [HttpGet("{id}/html")]
+    public async Task<ActionResult<Result<string>>> GetInvoiceHtml(Guid id)
+    {
+        var result = await _invoiceExportService.GenerateInvoiceHtmlAsync(id);
         return Ok(result);
     }
 }

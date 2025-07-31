@@ -30,6 +30,7 @@ import {
 
 // Services and Models
 import { InvoiceService } from '../services/invoice.service';
+import { InvoiceExportService } from '../services/invoice-export.service';
 import { PagedResult, Result } from '../../shared/models/common.model';
 import { 
   InvoiceListItem, 
@@ -57,6 +58,7 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/c
 })
 export class InvoiceListComponent implements OnInit {
   private readonly invoiceService = inject(InvoiceService);
+  private readonly invoiceExportService = inject(InvoiceExportService);
 
   // Expose Math for template
   readonly Math = Math;
@@ -281,8 +283,17 @@ export class InvoiceListComponent implements OnInit {
   }
 
   downloadPdf(id: string): void {
-    console.log('Download PDF:', id);
-    // TODO: Implement when service method is available
+    this.invoiceExportService.downloadInvoicePdf(id).subscribe({
+      next: (success: boolean) => {
+        if (!success) {
+          this.error.set('Failed to download PDF');
+        }
+      },
+      error: (error: any) => {
+        console.error('Error downloading PDF:', error);
+        this.error.set('An unexpected error occurred while downloading the PDF');
+      }
+    });
   }
 
   confirmDelete(id: string): void {
@@ -348,8 +359,23 @@ export class InvoiceListComponent implements OnInit {
   }
 
   exportInvoices(): void {
-    console.log('Export invoices - TODO: Implement when service method is available');
-    // TODO: Implement when service method is available
+    this.loading.set(true);
+    this.invoiceExportService.exportInvoicesToExcel()
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: (success: boolean) => {
+          if (success) {
+            // Show success message briefly
+            console.log('Invoices exported successfully');
+          } else {
+            this.error.set('Failed to export invoices to Excel');
+          }
+        },
+        error: (error: any) => {
+          console.error('Error exporting invoices:', error);
+          this.error.set('An unexpected error occurred while exporting invoices');
+        }
+      });
   }
 
   // TrackBy function for ngFor

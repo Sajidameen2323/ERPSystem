@@ -35,6 +35,7 @@ import {
 
 // Services and Models
 import { InvoiceService } from '../services/invoice.service';
+import { InvoiceExportService } from '../services/invoice-export.service';
 import { Result } from '../../shared/models/common.model';
 import { 
   Invoice, 
@@ -47,6 +48,7 @@ import {
 // Shared Components
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { InvoiceTemplateComponent } from '../components/invoice-template/invoice-template.component';
 
 @Component({
   selector: 'app-invoice-detail',
@@ -57,13 +59,15 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/c
     FormsModule, 
     LucideAngularModule,
     LoadingSpinnerComponent,
-    ConfirmDialogComponent
+    ConfirmDialogComponent,
+    InvoiceTemplateComponent
   ],
   templateUrl: './invoice-detail.component.html',
   styleUrls: ['./invoice-detail.component.css']
 })
 export class InvoiceDetailComponent implements OnInit {
   private readonly invoiceService = inject(InvoiceService);
+  private readonly invoiceExportService = inject(InvoiceExportService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -323,26 +327,77 @@ export class InvoiceDetailComponent implements OnInit {
   downloadPdf(): void {
     const inv = this.invoice();
     if (inv && this.canDownloadPdf()) {
-      this.invoiceService.downloadInvoicePdf(inv.id).subscribe({
-        next: (blob: Blob) => {
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `invoice-${inv.invoiceNumber}.pdf`;
-          link.click();
-          window.URL.revokeObjectURL(url);
-        },
-        error: (error: any) => {
-          console.error('Error downloading PDF:', error);
-          this.error.set('An unexpected error occurred while downloading the PDF');
-        }
-      });
+      this.loading.set(true);
+      this.invoiceExportService.downloadInvoicePdf(inv.id)
+        .pipe(finalize(() => this.loading.set(false)))
+        .subscribe({
+          next: (success: boolean) => {
+            if (success) {
+              this.successMessage.set('PDF downloaded successfully');
+              setTimeout(() => this.successMessage.set(null), 3000);
+            } else {
+              this.error.set('Failed to download PDF');
+            }
+          },
+          error: (error: any) => {
+            console.error('Error downloading PDF:', error);
+            this.error.set('An unexpected error occurred while downloading the PDF');
+          }
+        });
     }
   }
 
   printInvoice(): void {
-    if (this.canPrint()) {
-      window.print();
+    const inv = this.invoice();
+    if (inv && this.canPrint()) {
+      // Add a small delay to ensure DOM is fully rendered
+      setTimeout(() => {
+        const success = this.invoiceExportService.printInvoice(inv);
+        if (success) {
+          this.successMessage.set('Invoice sent to printer');
+          setTimeout(() => this.successMessage.set(null), 3000);
+        } else {
+          this.error.set('Failed to print invoice');
+        }
+      }, 100);
+    }
+  }
+
+  exportToExcel(): void {
+    const inv = this.invoice();
+    if (inv) {
+      const success = this.invoiceExportService.exportInvoiceToExcel(inv);
+      if (success) {
+        this.successMessage.set('Invoice exported to Excel successfully');
+        setTimeout(() => this.successMessage.set(null), 3000);
+      } else {
+        this.error.set('Failed to export to Excel');
+      }
+    }
+  }
+
+  generateClientPdf(): void {
+    const inv = this.invoice();
+    if (inv) {
+      const printArea = document.getElementById('invoice-print-area');
+      if (printArea) {
+        this.loading.set(true);
+        this.invoiceExportService.generatePdfFromElement(printArea, `invoice-${inv.invoiceNumber}.pdf`)
+          .then((success: boolean) => {
+            this.loading.set(false);
+            if (success) {
+              this.successMessage.set('PDF generated successfully');
+              setTimeout(() => this.successMessage.set(null), 3000);
+            } else {
+              this.error.set('Failed to generate PDF');
+            }
+          })
+          .catch((error) => {
+            this.loading.set(false);
+            console.error('Error generating PDF:', error);
+            this.error.set('An unexpected error occurred while generating the PDF');
+          });
+      }
     }
   }
 

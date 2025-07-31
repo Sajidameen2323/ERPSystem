@@ -104,13 +104,25 @@
                   (click)="downloadPdf(); toggleActionsMenu()"
                   class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                   <lucide-angular [img]="DownloadIcon" class="w-4 h-4 mr-2"></lucide-angular>
-                  Download PDF
+                  Download PDF (Server)
+                </button>
+                <button
+                  (click)="generateClientPdf(); toggleActionsMenu()"
+                  class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <lucide-angular [img]="FileTextIcon" class="w-4 h-4 mr-2"></lucide-angular>
+                  Generate PDF (Client)
+                </button>
+                <button
+                  (click)="exportToExcel(); toggleActionsMenu()"
+                  class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <lucide-angular [img]="DownloadIcon" class="w-4 h-4 mr-2"></lucide-angular>
+                  Export to Excel
                 </button>
                 <button
                   (click)="printInvoice(); toggleActionsMenu()"
                   class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                   <lucide-angular [img]="PrinterIcon" class="w-4 h-4 mr-2"></lucide-angular>
-                  Print
+                  Print Invoice
                 </button>
                 <button
                   (click)="duplicateInvoice(); toggleActionsMenu()"
@@ -487,6 +499,37 @@
           Cancel
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- Professional Invoice Template for Printing/PDF -->
+  <div class="mt-12 border-t border-gray-200 dark:border-gray-700 pt-8">
+    <div class="mb-4 flex items-center justify-between">
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white">Professional Invoice View</h2>
+      <div class="flex space-x-2">
+        <button
+          (click)="downloadPdf()"
+          class="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors">
+          <lucide-angular [img]="DownloadIcon" class="w-4 h-4 mr-1"></lucide-angular>
+          PDF
+        </button>
+        <button
+          (click)="printInvoice()"
+          class="inline-flex items-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors">
+          <lucide-angular [img]="PrinterIcon" class="w-4 h-4 mr-1"></lucide-angular>
+          Print
+        </button>
+        <button
+          (click)="exportToExcel()"
+          class="inline-flex items-center px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm rounded-md transition-colors">
+          <lucide-angular [img]="FileTextIcon" class="w-4 h-4 mr-1"></lucide-angular>
+          Excel
+        </button>
+      </div>
+    </div>
+    
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+      <app-invoice-template [invoiceData]="invoice()"></app-invoice-template>
     </div>
   </div>
 </div>

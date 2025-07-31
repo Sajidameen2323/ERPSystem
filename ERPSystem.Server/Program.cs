@@ -2,6 +2,7 @@ using ERPSystem.Server.Configuration;
 using ERPSystem.Server.Data;
 using ERPSystem.Server.Services.Interfaces;
 using ERPSystem.Server.Services.Implementations;
+using ERPSystem.Server.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -28,6 +29,7 @@ builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IPurchaseOrderReturnService, PurchaseOrderReturnService>();
 builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+builder.Services.AddScoped<IInvoiceExportService, InvoiceExportService>();
 builder.Services.AddScoped<IStockMovementService, StockMovementService>();
 
 // Add Okta authentication for API protection
