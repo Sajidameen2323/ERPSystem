@@ -422,7 +422,10 @@ export class PurchaseOrderDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (result) => {
           if (result.isSuccess && result.data) {
-            this.purchaseOrderReturns = result.data;
+            // Filter for processed returns only and sort by return date (latest first)
+            this.purchaseOrderReturns = result.data
+              .filter(returnOrder => returnOrder.status === ReturnStatus.Processed)
+              .sort((a, b) => new Date(b.returnDate).getTime() - new Date(a.returnDate).getTime());
           } else {
             this.purchaseOrderReturns = [];
           }
@@ -529,7 +532,12 @@ export class PurchaseOrderDetailComponent implements OnInit, OnDestroy {
   }
 
   hasReturns(): boolean {
+    // Only count processed returns
     return this.purchaseOrderReturns.length > 0;
+  }
+
+  hasProcessedReturns(): boolean {
+    return this.purchaseOrderReturns.some(returnOrder => returnOrder.status === ReturnStatus.Processed);
   }
 
   getStatusText(status: PurchaseOrderStatus): string {

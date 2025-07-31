@@ -279,11 +279,14 @@
       <p class="text-sm text-gray-600 dark:text-gray-400">{{ purchaseOrder.notes }}</p>
     </div>
 
-    <!-- Purchase Order Returns -->
+    <!-- Purchase Order Returns (Processed Only) -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6" *ngIf="hasReturns() || loadingReturns">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Purchase Order Returns</h2>
-        <span class="text-sm text-gray-500 dark:text-gray-400">{{ purchaseOrderReturns.length }} return(s)</span>
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Latest Processed Returns</h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Showing only returns that have been fully processed</p>
+        </div>
+        <span class="text-sm text-gray-500 dark:text-gray-400">{{ purchaseOrderReturns.length }} processed return(s)</span>
       </div>
 
       <!-- Loading Returns -->
@@ -404,7 +407,7 @@
         <div class="text-gray-400 dark:text-gray-500 mb-2">
           <lucide-angular [img]="RotateCcwIcon" class="w-8 h-8 mx-auto"></lucide-angular>
         </div>
-        <p class="text-sm text-gray-500 dark:text-gray-400">No returns have been created for this purchase order</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">No processed returns found for this purchase order</p>
       </div>
     </div>
 

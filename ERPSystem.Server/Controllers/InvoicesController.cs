@@ -206,17 +206,6 @@ public class InvoicesController : ControllerBase
     }
 
     /// <summary>
-    /// Cancels an invoice
-    /// </summary>
-    [HttpPatch("{id}/cancel")]
-    public async Task<ActionResult<Result<InvoiceDto>>> CancelInvoice(Guid id, [FromBody] CancelInvoiceDto? cancelDto = null)
-    {
-        var userId = GetUserIdFromClaims();
-        var result = await _invoiceService.CancelInvoiceAsync(id, userId, cancelDto?.Reason);
-        return Ok(result);
-    }
-
-    /// <summary>
     /// Deletes an invoice (soft delete)
     /// </summary>
     [HttpDelete("{id}")]
@@ -242,17 +231,6 @@ public class InvoicesController : ControllerBase
             calculateDto.TaxAmount, 
             calculateDto.DiscountAmount);
         
-        return Ok(result);
-    }
-
-    /// <summary>
-    /// Requests a refund for an invoice
-    /// </summary>
-    [HttpPost("{id}/request-refund")]
-    public async Task<ActionResult<Result<InvoiceDto>>> RequestRefund(Guid id, [FromBody] RefundRequestDto refundDto)
-    {
-        var userId = GetUserIdFromClaims();
-        var result = await _invoiceService.RequestRefundAsync(id, refundDto.RefundAmount, refundDto.Reason, userId);
         return Ok(result);
     }
 
@@ -286,16 +264,6 @@ public class InvoicesController : ControllerBase
         var result = await _invoiceService.CanEditInvoiceAsync(id);
         return Ok(result);
     }
-
-    /// <summary>
-    /// Checks if an invoice can be cancelled
-    /// </summary>
-    [HttpGet("{id}/can-cancel")]
-    public async Task<ActionResult<Result<bool>>> CanCancelInvoice(Guid id)
-    {
-        var result = await _invoiceService.CanCancelInvoiceAsync(id);
-        return Ok(result);
-    }
 }
 
 /// <summary>
@@ -304,15 +272,6 @@ public class InvoicesController : ControllerBase
 public class CreateInvoiceFromSalesOrderDto
 {
     public DateTime? DueDate { get; set; }
-}
-
-/// <summary>
-/// DTO for cancelling invoice
-/// </summary>
-public class CancelInvoiceDto
-{
-    [MaxLength(500)]
-    public string? Reason { get; set; }
 }
 
 /// <summary>

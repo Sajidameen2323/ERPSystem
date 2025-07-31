@@ -111,27 +111,6 @@
                 </button>
                 <div class="border-t border-gray-200 dark:border-gray-600"></div>
                 <button
-                  *ngIf="canCancel()"
-                  (click)="cancelInvoice(); toggleActionsMenu()"
-                  class="flex items-center w-full px-4 py-2 text-sm text-orange-600 dark:text-orange-400 hover:bg-gray-100 dark:hover:bg-gray-700">
-                  <lucide-angular [img]="XCircleIcon" class="w-4 h-4 mr-2"></lucide-angular>
-                  Cancel Invoice
-                </button>
-                <button
-                  *ngIf="canRefund()"
-                  (click)="refundInvoice(); toggleActionsMenu()"
-                  class="flex items-center w-full px-4 py-2 text-sm text-purple-600 dark:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-700">
-                  <lucide-angular [img]="RefreshCwIcon" class="w-4 h-4 mr-2"></lucide-angular>
-                  Request Refund
-                </button>
-                <button
-                  *ngIf="canProcessRefund()"
-                  (click)="processRefund(); toggleActionsMenu()"
-                  class="flex items-center w-full px-4 py-2 text-sm text-purple-600 dark:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-700">
-                  <lucide-angular [img]="CheckCircleIcon" class="w-4 h-4 mr-2"></lucide-angular>
-                  Process Refund
-                </button>
-                <button
                   *ngIf="canDelete()"
                   (click)="confirmDelete(); toggleActionsMenu()"
                   class="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700">

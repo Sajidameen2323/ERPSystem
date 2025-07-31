@@ -350,12 +350,6 @@ export class InvoiceListComponent implements OnInit {
     return invoice.status === InvoiceStatus.Draft;
   }
 
-  canCancelInvoice(invoice: InvoiceListItem): boolean {
-    // Draft and Sent invoices can be cancelled (backend: CanCancelInvoiceAsync)
-    // Valid transitions: Draft -> Cancelled, Sent -> Cancelled
-    return invoice.status === InvoiceStatus.Draft || invoice.status === InvoiceStatus.Sent;
-  }
-
   canRecordPayment(invoice: InvoiceListItem): boolean {
     // Only allow payment recording for invoices that can still receive payments
     // Backend: RecordPaymentAsync excludes Paid, Cancelled, Refunded and requires balance > 0
@@ -381,12 +375,6 @@ export class InvoiceListComponent implements OnInit {
   canDuplicate(invoice: InvoiceListItem): boolean {
     // Any invoice can be duplicated (creates new draft)
     return true;
-  }
-
-  canRefund(invoice: InvoiceListItem): boolean {
-    // Only Paid invoices can be refunded (backend: IsValidStatusTransition)
-    // Valid transition: Paid -> Refunded
-    return invoice.status === InvoiceStatus.Paid;
   }
 
   canTransitionFromSent(invoice: InvoiceListItem): boolean {
