@@ -42,7 +42,13 @@ public class ProductService : IProductService
                         query = _context.Products.IgnoreQueryFilters().Where(p => p.IsDeleted);
                         break;
                     case "lowstock":
-                        query = query.Where(p => p.MinimumStock.HasValue && p.CurrentStock <= p.MinimumStock.Value);
+                        // Include both out of stock and low stock items
+                        query = query.Where(p => 
+                            // Out of stock items (currentStock = 0)
+                            p.CurrentStock == 0 ||
+                            // Low stock items (currentStock > 0 but <= minimumStock)
+                            (p.MinimumStock.HasValue && p.CurrentStock > 0 && p.CurrentStock <= p.MinimumStock.Value)
+                        );
                         break;
                     case "outofstock":
                         query = query.Where(p => p.CurrentStock == 0);
@@ -57,10 +63,15 @@ public class ProductService : IProductService
                     query = _context.Products.IgnoreQueryFilters();
                 }
 
-                // Apply legacy low stock filter
+                // Apply legacy low stock filter - include both low stock AND out of stock items
                 if (parameters.LowStockOnly == true)
                 {
-                    query = query.Where(p => p.MinimumStock.HasValue && p.CurrentStock <= p.MinimumStock.Value);
+                    query = query.Where(p => 
+                        // Out of stock items (currentStock = 0)
+                        p.CurrentStock == 0 ||
+                        // Low stock items (currentStock > 0 but <= minimumStock)
+                        (p.MinimumStock.HasValue && p.CurrentStock > 0 && p.CurrentStock <= p.MinimumStock.Value)
+                    );
                 }
             }
 

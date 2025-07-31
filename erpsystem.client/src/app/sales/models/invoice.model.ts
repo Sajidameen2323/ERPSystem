@@ -165,6 +165,7 @@ export interface InvoiceListItem {
   totalAmount: number;
   paidAmount: number;
   balanceAmount: number;
+  refundRequestedAmount?: number; // Amount requested for refund
   status: InvoiceStatus;
   daysPastDue?: number;
 }

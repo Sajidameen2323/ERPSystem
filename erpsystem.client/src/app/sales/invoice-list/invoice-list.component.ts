@@ -24,7 +24,8 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  RefreshCw
+  RefreshCw,
+  RotateCcw
 } from 'lucide-angular';
 
 // Services and Models
@@ -79,6 +80,7 @@ export class InvoiceListComponent implements OnInit {
   readonly ClockIcon = Clock;
   readonly XCircleIcon = XCircle;
   readonly RefreshCwIcon = RefreshCw;
+  readonly RotateCcwIcon = RotateCcw;
 
   // Expose enums for template
   readonly InvoiceStatus = InvoiceStatus;
@@ -256,6 +258,28 @@ export class InvoiceListComponent implements OnInit {
     // TODO: Implement when service method is available
   }
 
+  processRefund(id: string): void {
+    const invoice = this.invoices().find(inv => inv.id === id);
+    if (invoice && invoice.status === InvoiceStatus.RefundRequested) {
+      // Use refundRequestedAmount if available, otherwise fall back to totalAmount
+      const refundAmount = invoice.refundRequestedAmount ?? invoice.totalAmount;
+      
+      this.invoiceService.processRefund(id, refundAmount).subscribe({
+        next: (result) => {
+          if (result.isSuccess) {
+            this.loadInvoices(); // Refresh the list
+          } else {
+            this.error.set(result.error || 'Failed to process refund');
+          }
+        },
+        error: (error) => {
+          console.error('Error processing refund:', error);
+          this.error.set('An unexpected error occurred while processing the refund');
+        }
+      });
+    }
+  }
+
   downloadPdf(id: string): void {
     console.log('Download PDF:', id);
     // TODO: Implement when service method is available
@@ -352,9 +376,10 @@ export class InvoiceListComponent implements OnInit {
 
   canRecordPayment(invoice: InvoiceListItem): boolean {
     // Only allow payment recording for invoices that can still receive payments
-    // Backend: RecordPaymentAsync excludes Paid, Cancelled, Refunded and requires balance > 0
+    // Backend: RecordPaymentAsync excludes Paid, Cancelled, RefundRequested, Refunded and requires balance > 0
     return invoice.status !== InvoiceStatus.Paid && 
            invoice.status !== InvoiceStatus.Cancelled && 
+           invoice.status !== InvoiceStatus.RefundRequested &&
            invoice.status !== InvoiceStatus.Refunded &&
            invoice.balanceAmount > 0;
   }
@@ -375,6 +400,11 @@ export class InvoiceListComponent implements OnInit {
   canDuplicate(invoice: InvoiceListItem): boolean {
     // Any invoice can be duplicated (creates new draft)
     return true;
+  }
+
+  canProcessRefund(invoice: InvoiceListItem): boolean {
+    // Only invoices with RefundRequested status can be processed for refund
+    return invoice.status === InvoiceStatus.RefundRequested;
   }
 
   canTransitionFromSent(invoice: InvoiceListItem): boolean {

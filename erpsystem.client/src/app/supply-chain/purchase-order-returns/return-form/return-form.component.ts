@@ -129,7 +129,8 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
       // Only require validation if item is selected and has a return quantity > 0
       if (selected && returnQuantity > 0) {
         const value = control.value;
-        if (!value || (typeof value === 'string' && value.trim() === '')) {
+        // Check for null, undefined, or empty string - but allow 0 (which is a valid reason value for "Damaged")
+        if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
           return { conditionalRequired: true };
         }
       }
@@ -225,6 +226,20 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
 
   get itemsFormArray(): FormArray {
     return this.returnForm.get('items') as FormArray;
+  }
+
+  // Safe tracking function for form controls
+  trackByItemId = (index: number, itemControl: AbstractControl): string => {
+    const purchaseOrderItemId = itemControl.get('purchaseOrderItemId')?.value;
+    const productId = itemControl.get('productId')?.value;
+    
+    // Create a safe unique identifier
+    if (purchaseOrderItemId && productId) {
+      return `${purchaseOrderItemId}_${productId}`;
+    }
+    
+    // Fallback to index if IDs are not available
+    return `item_${index}`;
   }
 
   private loadPurchaseOrderForReturn(purchaseOrderId: string): void {
@@ -378,6 +393,7 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
   }
 
   onSubmit(): void {
+    console.log('Submitting return form:', this.returnForm.value);
     // Get validation summary first
     const validationErrors = this.getFormValidationSummary();
     if (validationErrors.length > 0) {
@@ -409,7 +425,7 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
 
     // Additional validation: ensure all selected items have valid quantities and reasons
     const invalidItems = selectedItems.filter(item => {
-      return item.returnQuantity <= 0 || !item.reason;
+      return item.returnQuantity <= 0 || item.reason === null || item.reason === undefined;
     });
 
     if (invalidItems.length > 0) {
@@ -596,7 +612,7 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
     
     // If selected, check if quantity > 0 and reason is provided
     if (quantity <= 0) return false;
-    if (!reason) return false;
+    if (reason === null || reason === undefined || reason === '') return false;
     
     // Check for validation errors
     return !this.hasValidationErrors(index);

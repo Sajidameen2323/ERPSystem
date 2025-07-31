@@ -329,6 +329,15 @@
                   <lucide-angular [img]="CreditCardIcon" class="w-4 h-4"></lucide-angular>
                 </button>
 
+                <!-- Process Refund -->
+                <button
+                  *ngIf="canProcessRefund(invoice)"
+                  (click)="processRefund(invoice.id)"
+                  class="text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-400"
+                  title="Process Refund">
+                  <lucide-angular [img]="RotateCcwIcon" class="w-4 h-4"></lucide-angular>
+                </button>
+
                 <!-- Download PDF -->
                 <button
                   (click)="downloadPdf(invoice.id)"

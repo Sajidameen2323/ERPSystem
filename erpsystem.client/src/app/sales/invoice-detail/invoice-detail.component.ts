@@ -29,7 +29,8 @@ import {
   Clock,
   XCircle,
   Eye,
-  RefreshCw
+  RefreshCw,
+  RotateCcw
 } from 'lucide-angular';
 
 // Services and Models
@@ -90,6 +91,7 @@ export class InvoiceDetailComponent implements OnInit {
   readonly XCircleIcon = XCircle;
   readonly EyeIcon = Eye;
   readonly RefreshCwIcon = RefreshCw;
+  readonly RotateCcwIcon = RotateCcw;
 
   // Expose enums for template
   readonly InvoiceStatus = InvoiceStatus;
@@ -158,9 +160,10 @@ export class InvoiceDetailComponent implements OnInit {
 
   canRecordPayment = computed(() => {
     const inv = this.invoice();
-    // Backend: RecordPaymentAsync excludes Paid, Cancelled, Refunded and requires balance > 0
+    // Backend: RecordPaymentAsync excludes Paid, Cancelled, RefundRequested, Refunded and requires balance > 0
     return inv && inv.status !== InvoiceStatus.Paid && 
            inv.status !== InvoiceStatus.Cancelled && 
+           inv.status !== InvoiceStatus.RefundRequested &&
            inv.status !== InvoiceStatus.Refunded && 
            inv.balanceAmount > 0;
   });
@@ -172,6 +175,12 @@ export class InvoiceDetailComponent implements OnInit {
     return inv && (inv.status === InvoiceStatus.Sent || 
                    inv.status === InvoiceStatus.PartiallyPaid || 
                    inv.status === InvoiceStatus.Overdue);
+  });
+
+  canProcessRefund = computed(() => {
+    const inv = this.invoice();
+    // Only invoices with RefundRequested status can be processed for refund
+    return inv && inv.status === InvoiceStatus.RefundRequested;
   });
 
   canDownloadPdf = computed(() => {
@@ -402,6 +411,27 @@ export class InvoiceDetailComponent implements OnInit {
         error: (error: any) => {
           console.error('Error marking invoice as paid:', error);
           this.error.set('An unexpected error occurred while marking the invoice as paid');
+        }
+      });
+    }
+  }
+
+  processRefund(): void {
+    const inv = this.invoice();
+    if (inv && this.canProcessRefund()) {
+      // For now, process the full refund amount. In a full implementation, 
+      // you might want to show a dialog to allow partial refunds or add processing notes
+      this.invoiceService.processRefund(inv.id, inv.refundRequestedAmount).subscribe({
+        next: (result) => {
+          if (result.isSuccess) {
+            this.loadInvoice(inv.id); // Refresh the invoice
+          } else {
+            this.error.set(result.error || 'Failed to process refund');
+          }
+        },
+        error: (error) => {
+          console.error('Error processing refund:', error);
+          this.error.set('An unexpected error occurred while processing the refund');
         }
       });
     }

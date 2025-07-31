@@ -152,13 +152,15 @@ public class PurchaseOrderService : IPurchaseOrderService
 
             // Validate all products exist
             var productIds = dto.Items.Select(i => i.ProductId).ToList();
+            var uniqueProductIds = productIds.Distinct().ToList();
             var products = await _context.Products
-                .Where(p => productIds.Contains(p.Id))
+                .Where(p => uniqueProductIds.Contains(p.Id))
                 .ToListAsync();
 
-            if (products.Count != productIds.Count)
+            if (products.Count != uniqueProductIds.Count)
             {
-                return Result<PurchaseOrderDto>.Failure("One or more products not found");
+                var missingProductIds = uniqueProductIds.Except(products.Select(p => p.Id)).ToList();
+                return Result<PurchaseOrderDto>.Failure($"Products not found: {string.Join(", ", missingProductIds)}");
             }
 
             // Generate PO Number
@@ -279,13 +281,15 @@ public class PurchaseOrderService : IPurchaseOrderService
             {
                 // Validate all products exist
                 var productIds = dto.Items.Select(i => i.ProductId).ToList();
+                var uniqueProductIds = productIds.Distinct().ToList();
                 var products = await _context.Products
-                    .Where(p => productIds.Contains(p.Id))
+                    .Where(p => uniqueProductIds.Contains(p.Id))
                     .ToListAsync();
 
-                if (products.Count != productIds.Count)
+                if (products.Count != uniqueProductIds.Count)
                 {
-                    return Result<PurchaseOrderDto>.Failure("One or more products not found");
+                    var missingProductIds = uniqueProductIds.Except(products.Select(p => p.Id)).ToList();
+                    return Result<PurchaseOrderDto>.Failure($"Products not found: {string.Join(", ", missingProductIds)}");
                 }
 
                 // Remove existing items in a separate operation

@@ -580,7 +580,7 @@ public class InvoiceService : IInvoiceService
                 return Result<InvoiceDto>.Failure("Invoice is already fully paid");
             }
 
-            if (invoice.Status == InvoiceStatus.Cancelled || invoice.Status == InvoiceStatus.Refunded)
+            if (invoice.Status == InvoiceStatus.Cancelled || invoice.Status == InvoiceStatus.Refunded || invoice.Status == InvoiceStatus.RefundRequested)
             {
                 return Result<InvoiceDto>.Failure("Cannot record payment for cancelled or refunded invoice");
             }

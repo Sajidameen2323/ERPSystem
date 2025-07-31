@@ -217,7 +217,7 @@
                 </tr>
               </thead>
               <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700" formArrayName="items">
-                @for (itemControl of itemsFormArray.controls; track $index; let i = $index) {
+                @for (itemControl of itemsFormArray.controls; track trackByItemId($index, itemControl); let i = $index) {
                   <tr [formGroupName]="i" class="transition-colors" 
                       [ngClass]="{
                         'bg-blue-50 dark:bg-blue-900/10': itemControl.get('selected')?.value,
@@ -277,7 +277,7 @@
                         <!-- Validation Messages -->
                         @if (itemControl.get('selected')?.value && hasValidationErrors(i)) {
                           <div class="mt-1">
-                            @for (error of getItemValidationErrors(i); track error) {
+                            @for (error of getItemValidationErrors(i); track $index) {
                               <div class="text-xs text-red-600 dark:text-red-400">{{ error }}</div>
                             }
                           </div>
@@ -358,7 +358,7 @@
               <div class="flex-1">
                 <h3 class="text-sm font-medium text-red-800 dark:text-red-200 mb-2">Please fix the following issues:</h3>
                 <ul class="text-sm text-red-700 dark:text-red-300 space-y-1">
-                  @for (error of validationErrors; track error) {
+                  @for (error of validationErrors; track $index) {
                     <li class="flex items-start">
                       <span class="w-1 h-1 bg-red-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
                       {{ error }}

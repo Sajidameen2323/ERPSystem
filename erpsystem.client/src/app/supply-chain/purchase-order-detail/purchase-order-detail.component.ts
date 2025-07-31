@@ -39,6 +39,7 @@ export class PurchaseOrderDetailComponent implements OnInit, OnDestroy {
     message: ''
   };
   pendingAction: (() => void) | null = null;
+  currentCancellingPurchaseOrder: PurchaseOrder | null = null;
 
   // Receive item modal
   showReceiveItemModal = false;
@@ -147,18 +148,25 @@ export class PurchaseOrderDetailComponent implements OnInit, OnDestroy {
       details: [
         'This action cannot be undone',
         'The order will be marked as cancelled',
-        'You will need to provide a cancellation reason'
+        'Please provide a reason for cancellation'
+      ],
+      inputFields: [
+        {
+          key: 'reason',
+          label: 'Cancellation Reason',
+          type: 'textarea',
+          placeholder: 'Please provide a detailed reason for cancelling this purchase order...',
+          required: true,
+          minLength: 10,
+          maxLength: 500,
+          rows: 4
+        }
       ]
     };
     
-    this.pendingAction = () => this.promptForCancellationReason(po);
+    this.pendingAction = () => {}; // Clear pending action since we handle it in the confirmation
+    this.currentCancellingPurchaseOrder = po; // Store the purchase order for cancellation
     this.showConfirmationModal = true;
-  }
-
-  private promptForCancellationReason(po: PurchaseOrder): void {
-    const reason = prompt('Please provide a reason for cancellation:');
-    if (!reason) return;
-    this.executeCancelPurchaseOrder(po, reason);
   }
 
   private executeCancelPurchaseOrder(po: PurchaseOrder, reason: string): void {
@@ -283,7 +291,15 @@ export class PurchaseOrderDetailComponent implements OnInit, OnDestroy {
   }
 
   // Confirmation modal handlers
-  onConfirmationConfirmed(): void {
+  onConfirmationConfirmed(data: {[key: string]: any}): void {
+    // Handle cancellation with input data
+    if (this.currentCancellingPurchaseOrder && data && data['reason']) {
+      this.executeCancelPurchaseOrder(this.currentCancellingPurchaseOrder, data['reason']);
+      this.currentCancellingPurchaseOrder = null;
+      return;
+    }
+    
+    // Handle other confirmations with pending actions
     if (this.pendingAction) {
       this.pendingAction();
       this.pendingAction = null;
@@ -292,6 +308,7 @@ export class PurchaseOrderDetailComponent implements OnInit, OnDestroy {
 
   onConfirmationCancelled(): void {
     this.pendingAction = null;
+    this.currentCancellingPurchaseOrder = null;
   }
 
   // Receive item modal handlers

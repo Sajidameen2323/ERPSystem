@@ -225,15 +225,18 @@ export class ProductService {
   }
 
   /**
-   * Get combined low stock and out of stock count with minimal API calls
+   * Get count of products that need attention (low stock + out of stock)
+   * This includes:
+   * - Products with currentStock = 0 (out of stock)
+   * - Products with currentStock > 0 but <= minimumStock (low stock)
    */
   getStockAlertsCount(): Observable<number> {
-    // Single API call to get all products that need attention (low stock + out of stock)
-    // Use lowStockOnly=true which includes both low stock and out of stock items
+    // Single API call to get all products that need attention
+    // lowStockOnly=true includes both low stock and out of stock items
     const params = new HttpParams()
       .set('page', '1')
       .set('pageSize', '1') // We only need the totalCount, not the actual items
-      .set('lowStockOnly', 'true'); // This backend filter should include both low stock and out of stock
+      .set('lowStockOnly', 'true'); // Backend now includes both low stock and out of stock
 
     return this.http.get<ProductPagedResult>(this.apiUrl, { params }).pipe(
       map(response => response.totalCount || 0)

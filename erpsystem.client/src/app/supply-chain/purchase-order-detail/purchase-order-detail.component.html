@@ -478,7 +478,7 @@
 <app-confirmation-modal
   [isVisible]="showConfirmationModal"
   [config]="confirmationConfig"
-  (confirmed)="onConfirmationConfirmed()"
+  (confirmed)="onConfirmationConfirmed($event)"
   (cancelled)="onConfirmationCancelled()"
   (visibilityChanged)="showConfirmationModal = $event">
 </app-confirmation-modal>

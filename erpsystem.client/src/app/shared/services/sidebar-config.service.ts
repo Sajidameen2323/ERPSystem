@@ -263,6 +263,7 @@ export class SidebarConfigService {
 
   /**
    * Manually refresh the low stock count
+   * Gets count of products that need attention (both low stock and out of stock)
    */
   refreshLowStockCount(): void {
     this.productService.getStockAlertsCount()

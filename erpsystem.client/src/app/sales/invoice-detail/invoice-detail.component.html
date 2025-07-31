@@ -79,6 +79,15 @@
             Mark Paid
           </button>
 
+          <!-- Process Refund -->
+          <button
+            *ngIf="canProcessRefund()"
+            (click)="processRefund()"
+            class="inline-flex items-center px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm rounded-md transition-colors">
+            <lucide-angular [img]="RotateCcwIcon" class="w-4 h-4 mr-1"></lucide-angular>
+            Process Refund
+          </button>
+
           <!-- More Actions Menu -->
           <div class="relative">
             <button
