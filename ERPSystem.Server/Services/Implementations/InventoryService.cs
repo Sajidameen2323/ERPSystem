@@ -332,16 +332,22 @@ public class StockMovementService : IStockMovementService
 
     private async Task<Result<bool>> ReleaseStockReservationInternalAsync(List<(Guid ProductId, int Quantity)> items, string reference)
     {
-        foreach (var item in items)
+        // Group items by ProductId to handle multiple items with same product in the order
+        var groupedItems = items.GroupBy(i => i.ProductId)
+            .Select(g => new { ProductId = g.Key, TotalQuantity = g.Sum(i => i.Quantity) })
+            .ToList();
+
+        foreach (var groupedItem in groupedItems)
         {
             var reservations = await _context.StockReservations
-                .Where(sr => sr.ProductId == item.ProductId && 
+                .Where(sr => sr.ProductId == groupedItem.ProductId && 
                            sr.Reference == reference && 
                            !sr.IsReleased && 
                            !sr.IsDeleted)
+                .OrderBy(sr => sr.ReservedAt) // Release oldest reservations first
                 .ToListAsync();
 
-            var totalToRelease = item.Quantity;
+            var totalToRelease = groupedItem.TotalQuantity;
             foreach (var reservation in reservations)
             {
                 if (totalToRelease <= 0) break;
@@ -363,6 +369,13 @@ public class StockMovementService : IStockMovementService
                 }
 
                 totalToRelease -= releaseQty;
+            }
+
+            // Log if we couldn't release all requested quantity
+            if (totalToRelease > 0)
+            {
+                _logger.LogWarning("Could not release all requested stock for ProductId {ProductId}. Requested: {RequestedQuantity}, Remaining: {RemainingQuantity}, Reference: {Reference}", 
+                    groupedItem.ProductId, groupedItem.TotalQuantity, totalToRelease, reference);
             }
         }
 
