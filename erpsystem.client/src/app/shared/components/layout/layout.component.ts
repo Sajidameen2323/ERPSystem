@@ -78,19 +78,21 @@ export class LayoutComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
+    // Get user roles from auth service
+    const authRoles = this.authService.getUserRoles();
+    this.userRoles.set(authRoles);
+    
     // Load current user profile and roles from route data
     const user = this.route.snapshot.data['currentUser'];
     if (user) {
       this.currentUser.set(user);
-      this.userRoles.set(user.roles || []);
       this.headerUserProfile = {
         name: `${user.firstName} ${user.lastName}`,
         email: user.email,
-        role: this.getUserRoleDisplay(user.roles || []),
+        role: this.getUserRoleDisplay(authRoles),
         avatar: undefined
       };
     } else {
-      this.userRoles.set([]);
       this.setFallbackUserProfile();
     }
   }
@@ -103,10 +105,11 @@ export class LayoutComponent implements OnInit, OnDestroy {
    * Set fallback user profile when auth service fails
    */
   private setFallbackUserProfile(): void {
+    const currentRoles = this.userRoles();
     this.headerUserProfile = {
       name: 'Guest User',
       email: 'guest@microbiz.com',
-      role: 'Guest',
+      role: this.getUserRoleDisplay(currentRoles),
       avatar: undefined
     };
   }

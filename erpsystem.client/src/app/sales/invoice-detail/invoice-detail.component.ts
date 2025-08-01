@@ -378,8 +378,10 @@ export class InvoiceDetailComponent implements OnInit {
 
   generateClientPdf(): void {
     const inv = this.invoice();
+    console.log('Generating PDF for invoice:', inv);
     if (inv) {
       const printArea = document.getElementById('invoice-print-area');
+      console.log('Print area element:', printArea);
       if (printArea) {
         this.loading.set(true);
         this.invoiceExportService.generatePdfFromElement(printArea, `invoice-${inv.invoiceNumber}.pdf`)

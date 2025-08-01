@@ -648,6 +648,7 @@ public class PurchaseOrderService : IPurchaseOrderService
         {
             var query = _context.StockMovements
                 .Include(sm => sm.Product)
+                .IgnoreQueryFilters() // Ignore soft deletes if applicable
                 .AsQueryable();
 
             // Apply filters

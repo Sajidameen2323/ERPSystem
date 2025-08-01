@@ -84,4 +84,27 @@ export class AuthService {
       })
     );
   }
+
+  /**
+   * Get user roles from access token claims
+   * Uses the same approach as role.guard.ts and sidebar-config.service.ts
+   */
+  getUserRoles(): string[] {
+    try {
+      // Get roles from access token (recommended for authorization)
+      const accessToken = this.oktaAuth.getAccessToken();
+      if (accessToken) {
+        const accessTokenClaims = (this.oktaAuth as any).token.decode(accessToken);
+        if (accessTokenClaims?.payload?.roles) {
+          return Array.isArray(accessTokenClaims.payload.roles) 
+            ? accessTokenClaims.payload.roles 
+            : [accessTokenClaims.payload.roles];
+        }
+      }
+      return [];
+    } catch (error) {
+      console.error('Error extracting roles from token:', error);
+      return [];
+    }
+  }
 }

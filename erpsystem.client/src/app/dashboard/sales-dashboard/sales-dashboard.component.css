@@ -1,0 +1,72 @@
+/* Sales Dashboard Component Styles */
+
+/* Currency display styles */
+.currency-display {
+  font-variant-numeric: tabular-nums;
+}
+
+.currency-large {
+  font-weight: 700;
+  font-size: 1.5rem;
+  line-height: 2rem;
+}
+
+.currency-compact {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .currency-large {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+}
+
+/* Loading animation for refresh button */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Quick action hover effects */
+.quick-action-card {
+  transition: all 0.2s ease-in-out;
+}
+
+.quick-action-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Metric card animations */
+.metric-card {
+  transition: transform 0.2s ease-in-out;
+}
+
+.metric-card:hover {
+  transform: translateY(-1px);
+}
+
+/* Status badges */
+.status-badge {
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+/* Dark mode specific adjustments */
+@media (prefers-color-scheme: dark) {
+  .quick-action-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+}

@@ -1,113 +1,231 @@
-<!-- Dashboard Home Content -->
+<!-- Comprehensive Dashboard Home Content -->
 <div class="space-y-6">
   
-  <!-- Welcome Section -->
+  <!-- Dashboard Header -->
   <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-lg overflow-hidden">
     <div class="px-6 py-8 text-white">
-      <h1 class="text-3xl font-bold">Welcome to MicroBiz Hub</h1>
-      <p class="mt-2 text-blue-100">Manage your business operations efficiently with our comprehensive ERP system.</p>
+      <div class="flex justify-between items-start">
+        <div>
+          <h1 class="text-3xl font-bold">Welcome to MicroBiz Hub</h1>
+          <p class="mt-2 text-blue-100">Comprehensive ERP system for modern business operations</p>
+          <div class="mt-4 flex items-center space-x-4">
+            <div class="flex items-center text-sm">
+              <lucide-angular [img]="icons.Clock" class="w-4 h-4 mr-1"></lucide-angular>
+              Last updated: {{ formatRelativeTime(lastRefresh) }}
+            </div>
+            <div class="flex items-center text-sm">
+              <lucide-angular [img]="icons.Eye" class="w-4 h-4 mr-1"></lucide-angular>
+              Real-time data
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center space-x-3">
+          <!-- Date Range Filter -->
+          <select [formControl]="dateRangeControl" 
+                  class="bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-white/50">
+            <option *ngFor="let option of dateRangeOptions" [value]="option.value" class="text-gray-900">
+              {{ option.label }}
+            </option>
+          </select>
+          
+          <!-- Refresh Button -->
+          <button (click)="refreshDashboard()" 
+                  [disabled]="isLoading"
+                  class="bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-md p-2 hover:bg-white/20 transition-colors disabled:opacity-50">
+            <lucide-angular [img]="icons.RefreshCw" 
+                            [class.animate-spin]="isLoading"
+                            class="w-4 h-4"></lucide-angular>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Quick Stats -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+  <!-- Error Message -->
+  <div *ngIf="error" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+    <div class="flex items-center">
+      <lucide-angular [img]="icons.AlertTriangle" class="w-5 h-5 text-red-600 dark:text-red-400 mr-3"></lucide-angular>
+      <p class="text-red-800 dark:text-red-200">{{ error }}</p>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading && !dashboardStats" class="space-y-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div *ngFor="let i of [1,2,3,4,5,6]" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 animate-pulse">
+        <div class="flex items-center">
+          <div class="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded"></div>
+          <div class="ml-4 flex-1">
+            <div class="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4 mb-2"></div>
+            <div class="h-6 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Performance Indicators -->
+  <div *ngIf="dashboardStats" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
     
     <!-- Total Products -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-300">
-      <div class="flex items-center">
-        <div class="flex-shrink-0">
-          <lucide-angular [img]="getStatIcon('products')" 
-                          [ngClass]="getStatColor('products')"
-                          class="w-8 h-8"></lucide-angular>
-        </div>
-        <div class="ml-4">
-          <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Products</p>
-          <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ dashboardStats.totalProducts }}</p>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all duration-300 hover:shadow-md">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <lucide-angular [img]="getStatIcon('products')" 
+                            [ngClass]="getStatColor('products')"
+                            class="w-8 h-8"></lucide-angular>
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Products</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatNumber(dashboardStats.totalProducts) }}</p>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Active Orders -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-300">
-      <div class="flex items-center">
-        <div class="flex-shrink-0">
-          <lucide-angular [img]="getStatIcon('orders')" 
-                          [ngClass]="getStatColor('orders')"
-                          class="w-8 h-8"></lucide-angular>
-        </div>
-        <div class="ml-4">
-          <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Active Orders</p>
-          <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ dashboardStats.activeOrders }}</p>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all duration-300 hover:shadow-md">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <lucide-angular [img]="getStatIcon('orders')" 
+                            [ngClass]="getStatColor('orders')"
+                            class="w-8 h-8"></lucide-angular>
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Active Orders</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatNumber(dashboardStats.activeOrders) }}</p>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Low Stock Items -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-300">
-      <div class="flex items-center">
-        <div class="flex-shrink-0">
-          <lucide-angular [img]="icons.AlertTriangle" 
-                          [ngClass]="getStatColor('lowstock')"
-                          class="w-8 h-8"></lucide-angular>
-        </div>
-        <div class="ml-4">
-          <p class="text-sm font-medium text-gray-600">Low Stock</p>
-          <p class="text-2xl font-bold text-gray-900">{{ dashboardStats.lowStockItems }}</p>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all duration-300 hover:shadow-md">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <lucide-angular [img]="icons.AlertTriangle" 
+                            [ngClass]="getStatColor('lowstock')"
+                            class="w-8 h-8"></lucide-angular>
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Low Stock</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatNumber(dashboardStats.lowStockItems) }}</p>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Total Customers -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-300">
-      <div class="flex items-center">
-        <div class="flex-shrink-0">
-          <lucide-angular [img]="getStatIcon('customers')" 
-                          [ngClass]="getStatColor('customers')"
-                          class="w-8 h-8"></lucide-angular>
-        </div>
-        <div class="ml-4">
-          <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Customers</p>
-          <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ dashboardStats.totalCustomers }}</p>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all duration-300 hover:shadow-md">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <lucide-angular [img]="getStatIcon('customers')" 
+                            [ngClass]="getStatColor('customers')"
+                            class="w-8 h-8"></lucide-angular>
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Customers</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatNumber(dashboardStats.totalCustomers) }}</p>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Monthly Revenue -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-300">
-      <div class="flex items-center">
-        <div class="flex-shrink-0">
-          <lucide-angular [img]="getStatIcon('revenue')" 
-                          [ngClass]="getStatColor('revenue')"
-                          class="w-8 h-8"></lucide-angular>
-        </div>
-        <div class="ml-4">
-          <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Monthly Revenue</p>
-          <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatCurrency(dashboardStats.monthlyRevenue) }}</p>
+    <!-- Total Revenue -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all duration-300 hover:shadow-md">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <lucide-angular [img]="getStatIcon('revenue')" 
+                            [ngClass]="getStatColor('revenue')"
+                            class="w-8 h-8"></lucide-angular>
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Revenue</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white currency-display currency-large"
+               [title]="formatFullCurrency(dashboardStats.totalRevenue)">
+              {{ formatCurrency(dashboardStats.totalRevenue) }}
+            </p>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Pending Invoices -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-300">
-      <div class="flex items-center">
-        <div class="flex-shrink-0">
-          <lucide-angular [img]="getStatIcon('invoices')" 
-                          [ngClass]="getStatColor('invoices')"
-                          class="w-8 h-8"></lucide-angular>
-        </div>
-        <div class="ml-4">
-          <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Invoices</p>
-          <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ dashboardStats.pendingInvoices }}</p>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-all duration-300 hover:shadow-md">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <lucide-angular [img]="getStatIcon('invoices')" 
+                            [ngClass]="getStatColor('invoices')"
+                            class="w-8 h-8"></lucide-angular>
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Invoices</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatNumber(dashboardStats.pendingInvoices) }}</p>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Main Content Grid -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Detailed Metrics Grid -->
+  <div *ngIf="dashboardOverview" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
     
+    <!-- Sales Overview -->
+    <div class="lg:col-span-8">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Sales Overview</h3>
+            <div class="flex items-center space-x-2">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                <lucide-angular [img]="icons.TrendingUp" class="w-3 h-3 mr-1"></lucide-angular>
+                +12.5%
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="text-center">
+              <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatNumber(dashboardStats?.totalOrders || 0) }}</div>
+              <div class="text-sm text-gray-500 dark:text-gray-400">Total Orders</div>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ formatNumber(dashboardStats?.completedOrders || 0) }}</div>
+              <div class="text-sm text-gray-500 dark:text-gray-400">Completed</div>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ formatNumber(dashboardStats?.shippedOrders || 0) }}</div>
+              <div class="text-sm text-gray-500 dark:text-gray-400">Shipped</div>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-bold text-orange-600 dark:text-orange-400 currency-display currency-large"
+                   [title]="formatFullCurrency(dashboardStats?.averageOrderValue || 0)">
+                {{ formatCurrency(dashboardStats?.averageOrderValue || 0) }}
+              </div>
+              <div class="text-sm text-gray-500 dark:text-gray-400">Avg. Order Value</div>
+            </div>
+          </div>
+          
+          <!-- Chart placeholder -->
+          <div class="h-64 bg-gray-50 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+            <div class="text-center">
+              <lucide-angular [img]="icons.BarChart3" class="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-2"></lucide-angular>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Sales Chart Coming Soon</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Quick Actions -->
-    <div class="lg:col-span-1">
+    <div class="lg:col-span-4">
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h3 class="text-lg font-medium text-gray-900 dark:text-white">Quick Actions</h3>
@@ -118,43 +236,52 @@
               <button *ngIf="hasAnyRole(action.roles)"
                       [routerLink]="action.route"
                       [ngClass]="action.color"
-                      class="w-full flex items-center p-4 text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                      class="w-full flex items-center p-4 text-white rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 hover:scale-[1.02]">
                 <lucide-angular [img]="action.icon" class="w-5 h-5 mr-3"></lucide-angular>
                 <div class="text-left">
                   <div class="font-medium">{{ action.title }}</div>
                   <div class="text-sm opacity-90">{{ action.description }}</div>
                 </div>
+                <lucide-angular [img]="icons.ChevronRight" class="w-4 h-4 ml-auto"></lucide-angular>
               </button>
             </ng-container>
           </div>
         </div>
       </div>
     </div>
+  </div>
 
+  <!-- Bottom Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+    
     <!-- Recent Activities -->
-    <div class="lg:col-span-2">
+    <div class="lg:col-span-2 xl:col-span-2">
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h3 class="text-lg font-medium text-gray-900 dark:text-white">Recent Activities</h3>
         </div>
         <div class="p-6">
-          <div class="flow-root">
+          <div *ngIf="dashboardOverview?.recentActivities?.length; else noActivities" class="flow-root">
             <ul class="-mb-8">
-              <li *ngFor="let activity of recentActivities; let last = last">
+              <li *ngFor="let activity of dashboardOverview?.recentActivities || []; let last = last; trackBy: trackByFn">
                 <div class="relative pb-8" [class.pb-0]="last">
                   <span *ngIf="!last" class="absolute top-5 left-5 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-600"></span>
                   <div class="relative flex items-start space-x-3">
                     <div class="relative">
                       <div class="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                        <lucide-angular [img]="activity.icon" 
-                                        [ngClass]="activity.iconColor"
+                        <lucide-angular [img]="getActivityIcon(activity)" 
+                                        [ngClass]="getActivityIconColor(activity)"
                                         class="w-5 h-5"></lucide-angular>
                       </div>
                     </div>
                     <div class="min-w-0 flex-1">
                       <div>
-                        <div class="text-sm">
+                        <div class="flex items-center justify-between">
                           <span class="font-medium text-gray-900 dark:text-white">{{ activity.title }}</span>
+                          <span [ngClass]="getSeverityBadgeClass(activity.severity)"
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                            {{ activity.severity }}
+                          </span>
                         </div>
                         <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{{ activity.description }}</p>
                         <div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
@@ -168,15 +295,72 @@
             </ul>
           </div>
           
+          <ng-template #noActivities>
+            <div class="text-center py-8">
+              <lucide-angular [img]="icons.Clock" class="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4"></lucide-angular>
+              <p class="text-sm text-gray-500 dark:text-gray-400">No recent activities</p>
+            </div>
+          </ng-template>
+          
           <!-- View All Activities Link -->
           <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <a href="#" class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors">
-              View all activities →
+            <a href="#" class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors flex items-center">
+              View all activities
+              <lucide-angular [img]="icons.ChevronRight" class="w-4 h-4 ml-1"></lucide-angular>
             </a>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Financial Summary -->
+    <div class="xl:col-span-1">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white">Financial Summary</h3>
+        </div>
+        <div class="p-6">
+          <div *ngIf="dashboardOverview?.financialMetrics" class="space-y-4">
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-gray-600 dark:text-gray-400">Total Revenue</span>
+              <span class="font-semibold text-gray-900 dark:text-white currency-compact" 
+                    [title]="formatFullCurrency(dashboardOverview?.financialMetrics?.totalRevenue || 0)">
+                {{ formatCurrency(dashboardOverview?.financialMetrics?.totalRevenue || 0) }}
+              </span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-gray-600 dark:text-gray-400">Total Paid</span>
+              <span class="font-semibold text-green-600 dark:text-green-400 currency-compact"
+                    [title]="formatFullCurrency(dashboardOverview?.financialMetrics?.totalPaid || 0)">
+                {{ formatCurrency(dashboardOverview?.financialMetrics?.totalPaid || 0) }}
+              </span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-gray-600 dark:text-gray-400">Outstanding</span>
+              <span class="font-semibold text-yellow-600 dark:text-yellow-400 currency-compact"
+                    [title]="formatFullCurrency(dashboardOverview?.financialMetrics?.totalOutstanding || 0)">
+                {{ formatCurrency(dashboardOverview?.financialMetrics?.totalOutstanding || 0) }}
+              </span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-gray-600 dark:text-gray-400">Overdue</span>
+              <span class="font-semibold text-red-600 dark:text-red-400 currency-compact"
+                    [title]="formatFullCurrency(dashboardOverview?.financialMetrics?.totalOverdue || 0)">
+                {{ formatCurrency(dashboardOverview?.financialMetrics?.totalOverdue || 0) }}
+              </span>
+            </div>
+            <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-gray-600 dark:text-gray-400">Avg. Payment Days</span>
+                <span class="font-semibold text-gray-900 dark:text-white">{{ dashboardOverview?.financialMetrics?.averagePaymentDays || 0 }} days</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   </div>
 
   <!-- Role-based Sections -->
@@ -197,11 +381,13 @@
              class="flex items-center p-2 text-sm text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
             <lucide-angular [img]="icons.Users" class="w-4 h-4 mr-2 text-gray-400 dark:text-gray-500"></lucide-angular>
             User Management
+            <lucide-angular [img]="icons.ChevronRight" class="w-4 h-4 ml-auto"></lucide-angular>
           </a>
           <a routerLink="/dashboard/admin/register" 
              class="flex items-center p-2 text-sm text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
             <lucide-angular [img]="icons.User" class="w-4 h-4 mr-2 text-gray-400 dark:text-gray-500"></lucide-angular>
             Register New User
+            <lucide-angular [img]="icons.ChevronRight" class="w-4 h-4 ml-auto"></lucide-angular>
           </a>
         </div>
       </div>
@@ -222,11 +408,19 @@
              class="flex items-center p-2 text-sm text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
             <lucide-angular [img]="icons.Users" class="w-4 h-4 mr-2 text-gray-400 dark:text-gray-500"></lucide-angular>
             Customer Management
+            <lucide-angular [img]="icons.ChevronRight" class="w-4 h-4 ml-auto"></lucide-angular>
           </a>
           <a routerLink="/dashboard/sales/orders" 
              class="flex items-center p-2 text-sm text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
             <lucide-angular [img]="icons.ShoppingCart" class="w-4 h-4 mr-2 text-gray-400 dark:text-gray-500"></lucide-angular>
             Sales Orders
+            <lucide-angular [img]="icons.ChevronRight" class="w-4 h-4 ml-auto"></lucide-angular>
+          </a>
+          <a routerLink="/dashboard/sales/invoices" 
+             class="flex items-center p-2 text-sm text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+            <lucide-angular [img]="icons.FileText" class="w-4 h-4 mr-2 text-gray-400 dark:text-gray-500"></lucide-angular>
+            Invoice Management
+            <lucide-angular [img]="icons.ChevronRight" class="w-4 h-4 ml-auto"></lucide-angular>
           </a>
         </div>
       </div>
@@ -247,14 +441,118 @@
              class="flex items-center p-2 text-sm text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
             <lucide-angular [img]="icons.Package" class="w-4 h-4 mr-2 text-gray-400 dark:text-gray-500"></lucide-angular>
             Product Management
+            <lucide-angular [img]="icons.ChevronRight" class="w-4 h-4 ml-auto"></lucide-angular>
           </a>
           <a routerLink="/dashboard/inventory/adjustments" 
              class="flex items-center p-2 text-sm text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
             <lucide-angular [img]="icons.Settings" class="w-4 h-4 mr-2 text-gray-400 dark:text-gray-500"></lucide-angular>
             Stock Adjustments
+            <lucide-angular [img]="icons.ChevronRight" class="w-4 h-4 ml-auto"></lucide-angular>
+          </a>
+          <div class="mt-4 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+            <div class="flex items-center">
+              <lucide-angular [img]="icons.AlertTriangle" class="w-4 h-4 text-orange-600 dark:text-orange-400 mr-2"></lucide-angular>
+              <span class="text-sm font-medium text-orange-800 dark:text-orange-200">Low Stock Alerts</span>
+            </div>
+            <p class="text-xs text-orange-600 dark:text-orange-400 mt-1">
+              {{ dashboardStats?.lowStockItems || 0 }} items need attention
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Orders (Additional Panel) -->
+    <div *ngIf="dashboardOverview?.salesMetrics?.recentOrders" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Recent Orders</h3>
+      </div>
+      <div class="p-6">
+        <div class="space-y-3">
+          <div *ngFor="let order of dashboardOverview?.salesMetrics?.recentOrders || []; trackBy: trackByFn" 
+               class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div>
+              <div class="font-medium text-sm text-gray-900 dark:text-white">{{ order.referenceNumber }}</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">{{ order.customerName }}</div>
+            </div>
+            <div class="text-right">
+              <div class="font-semibold text-sm text-gray-900 dark:text-white currency-compact"
+                   [title]="formatFullCurrency(order.amount)">
+                {{ formatCurrency(order.amount) }}
+              </div>
+              <span [ngClass]="getOrderStatusClass(order.status)" 
+                    class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
+                {{ getOrderStatusText(order.status) }}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="mt-4">
+          <a routerLink="/dashboard/sales/orders" 
+             class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors flex items-center">
+            View all orders
+            <lucide-angular [img]="icons.ChevronRight" class="w-4 h-4 ml-1"></lucide-angular>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- System Health -->
+    <div *ngIf="hasRole('admin')" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">System Health</h3>
+      </div>
+      <div class="p-6">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600 dark:text-gray-400">System Status</span>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+              Healthy
+            </span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600 dark:text-gray-400">Active Users</span>
+            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ dashboardOverview?.systemMetrics?.activeUsers || 0 }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600 dark:text-gray-400">Last Backup</span>
+            <span class="text-sm font-medium text-gray-900 dark:text-white">
+              {{ dashboardOverview?.systemMetrics?.lastBackup ? formatRelativeTime(dashboardOverview?.systemMetrics?.lastBackup!) : 'Unknown' }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Low Stock Alerts -->
+    <div *ngIf="dashboardOverview?.inventoryMetrics?.lowStockAlerts?.length" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-orange-50 dark:bg-orange-900/20">
+        <div class="flex items-center">
+          <lucide-angular [img]="icons.AlertTriangle" class="w-5 h-5 text-orange-600 dark:text-orange-400 mr-2"></lucide-angular>
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white">Low Stock Alerts</h3>
+        </div>
+      </div>
+      <div class="p-6">
+        <div class="space-y-3">
+          <div *ngFor="let alert of dashboardOverview?.inventoryMetrics?.lowStockAlerts?.slice(0, 5) || []; trackBy: trackByFn" 
+               class="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+            <div>
+              <div class="font-medium text-sm text-gray-900 dark:text-white">{{ alert.name }}</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">SKU: {{ alert.sku }}</div>
+            </div>
+            <div class="text-right">
+              <div class="text-sm font-semibold text-orange-600 dark:text-orange-400">{{ alert.currentStock }}</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">Min: {{ alert.minimumStock }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-4">
+          <a routerLink="/dashboard/inventory/products" 
+             class="text-sm text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-300 transition-colors flex items-center">
+            Manage inventory
+            <lucide-angular [img]="icons.ChevronRight" class="w-4 h-4 ml-1"></lucide-angular>
           </a>
         </div>
       </div>
     </div>
   </div>
-</div>

@@ -4,6 +4,7 @@ import { OktaAuthStateService, OKTA_AUTH } from '@okta/okta-angular';
 import { AuthState } from '@okta/okta-auth-js';
 import { inject } from '@angular/core';
 import { LucideAngularModule, User, Mail, Calendar, Shield } from 'lucide-angular';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-profile',
@@ -14,6 +15,7 @@ import { LucideAngularModule, User, Mail, Calendar, Shield } from 'lucide-angula
 })
 export class ProfileComponent implements OnInit {
   private oktaAuthStateService = inject(OktaAuthStateService);
+  private authService = inject(AuthService);
   
   readonly icons = {
     User,
@@ -29,28 +31,11 @@ export class ProfileComponent implements OnInit {
     this.oktaAuthStateService.authState$.subscribe((authState) => {
       this.authState = authState;
       if (authState?.isAuthenticated && authState.accessToken) {
-        this.extractUserRoles(authState.accessToken.claims);
+        console.log('User authenticated:', authState.accessToken.claims);
+        // Use AuthService to get user roles
+        this.userRoles = this.authService.getUserRoles();
       }
     });
-  }
-
-  private extractUserRoles(claims: any) {
-    this.userRoles = [];
-    
-    // Try different role claim types
-    const roleClaims = ['roles', 'role', 'groups'];
-    for (const claimType of roleClaims) {
-      if (claims[claimType]) {
-        if (Array.isArray(claims[claimType])) {
-          this.userRoles = [...this.userRoles, ...claims[claimType]];
-        } else {
-          this.userRoles.push(claims[claimType]);
-        }
-      }
-    }
-    
-    // Remove duplicates
-    this.userRoles = [...new Set(this.userRoles)];
   }
 
   getUserInfo() {

@@ -447,6 +447,7 @@ public class ProductService : IProductService
         {
             var query = _context.StockAdjustments
                 .Include(sa => sa.Product)
+                .IgnoreQueryFilters()
                 .AsQueryable();
 
             if (productId.HasValue)

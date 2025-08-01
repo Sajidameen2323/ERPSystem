@@ -34,10 +34,28 @@ export const routes: Routes = [
     data: { requiredRoles: ['admin', 'salesuser', 'inventoryuser'], requireAll: false },
     resolve: { currentUser: CurrentUserResolver },
     children: [
-      // Default dashboard route
+      // Default dashboard route - role-based redirection (no guard, allows all authenticated users)
       {
         path: '',
-        loadComponent: () => import('./dashboard/dashboard-home/dashboard-home.component').then(m => m.DashboardHomeComponent)
+        loadComponent: () => import('./dashboard/dashboard-router/dashboard-router.component').then(m => m.DashboardRouterComponent)
+      },
+      // Admin Dashboard - comprehensive dashboard for admin role
+      {
+        path: 'admin',
+        loadComponent: () => import('./dashboard/dashboard-home/dashboard-home.component').then(m => m.DashboardHomeComponent),
+        canActivate: [adminGuard]
+      },
+      // Sales Dashboard - for salesuser role
+      {
+        path: 'sales',
+        loadComponent: () => import('./dashboard/sales-dashboard/sales-dashboard.component').then(m => m.SalesDashboardComponent),
+        canActivate: [salesUserGuard]
+      },
+      // Inventory Dashboard - for inventoryuser role
+      {
+        path: 'inventory',
+        loadComponent: () => import('./dashboard/inventory-dashboard/inventory-dashboard.component').then(m => m.InventoryDashboardComponent),
+        canActivate: [inventoryUserGuard]
       },
       // Admin routes
       {

@@ -236,7 +236,8 @@ export class ProductService {
     const params = new HttpParams()
       .set('page', '1')
       .set('pageSize', '1') // We only need the totalCount, not the actual items
-      .set('lowStockOnly', 'true'); // Backend now includes both low stock and out of stock
+      .set('lowStockOnly', 'true') // Backend now includes both low stock and out of stock
+      .set('statusFilter', 'lowStock'); // Exclude status filter products
 
     return this.http.get<ProductPagedResult>(this.apiUrl, { params }).pipe(
       map(response => response.totalCount || 0)
