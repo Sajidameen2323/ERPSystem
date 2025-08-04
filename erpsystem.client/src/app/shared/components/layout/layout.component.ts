@@ -120,16 +120,26 @@ export class LayoutComponent implements OnInit, OnDestroy {
   private getUserRoleDisplay(roles: string[]): string {
     if (!roles || roles.length === 0) return 'User';
     
-    // Priority order for role display
+    // Admin has highest priority
+    if (roles.includes('admin')) {
+      return 'Administrator';
+    }
+    
+    // Check for multiple business roles (Manager level)
+    const hasMultipleBusinessRoles = roles.includes('salesuser') && roles.includes('inventoryuser');
+    if (hasMultipleBusinessRoles) {
+      return 'Manager';
+    }
+    
+    // Single role display
     const roleDisplayMap: { [key: string]: string } = {
-      'admin': 'Administrator',
       'salesuser': 'Sales User',
       'inventoryuser': 'Inventory User',
       'user': 'User'
     };
 
-    // Find the highest priority role
-    for (const role of ['admin', 'salesuser', 'inventoryuser', 'user']) {
+    // Find the first matching role
+    for (const role of ['salesuser', 'inventoryuser', 'user']) {
       if (roles.includes(role)) {
         return roleDisplayMap[role];
       }

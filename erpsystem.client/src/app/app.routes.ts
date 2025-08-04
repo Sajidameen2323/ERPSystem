@@ -57,6 +57,13 @@ export const routes: Routes = [
         loadComponent: () => import('./dashboard/inventory-dashboard/inventory-dashboard.component').then(m => m.InventoryDashboardComponent),
         canActivate: [inventoryUserGuard]
       },
+      // Combined Dashboard - for users with multiple business roles
+      {
+        path: 'combined',
+        loadComponent: () => import('./dashboard/combined-dashboard/combined-dashboard.component').then(m => m.CombinedDashboardComponent),
+        canActivate: [roleGuard],
+        data: { requiredRoles: ['salesuser', 'inventoryuser'], requireAll: false }
+      },
       // Admin routes
       {
         path: 'admin/users',

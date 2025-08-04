@@ -109,24 +109,103 @@ public class DashboardController : ControllerBase
     /// Get top customers by revenue
     /// </summary>
     [HttpGet("top-customers")]
-    public Task<ActionResult<Result<List<TopCustomerDto>>>> GetTopCustomers(
+    public async Task<ActionResult<Result<List<TopCustomerDto>>>> GetTopCustomers(
         [FromQuery] int limit = 5,
         [FromQuery] DateTime? fromDate = null,
         [FromQuery] DateTime? toDate = null)
     {
         try
         {
-            // TODO: Implement top customers logic
+            // Set default date range if not provided
+            fromDate ??= DateTime.UtcNow.AddDays(-90);
+            toDate ??= DateTime.UtcNow;
+
+            // Get all customers with sales data
+            var customerQueryParams = new ERPSystem.Server.DTOs.Sales.CustomerQueryParameters
+            {
+                Page = 1,
+                PageSize = 1000,
+                SortBy = "Name",
+                SortDescending = false
+            };
+            
+            var customersResult = await _customerService.GetCustomersAsync(customerQueryParams);
+            if (!customersResult.IsSuccess || customersResult.Data?.Items == null)
+            {
+                return Ok(Result<List<TopCustomerDto>>.Success(new List<TopCustomerDto>()));
+            }
+
             var topCustomers = new List<TopCustomerDto>();
 
-            return Task.FromResult<ActionResult<Result<List<TopCustomerDto>>>>(
-                Ok(Result<List<TopCustomerDto>>.Success(topCustomers)));
+            // For each customer, calculate their total orders and revenue
+            foreach (var customer in customersResult.Data.Items)
+            {
+                try
+                {
+                    var queryParams = new ERPSystem.Server.DTOs.Sales.SalesOrderQueryParameters
+                    {
+                        Page = 1,
+                        PageSize = 1000,
+                        CustomerId = customer.Id,
+                        OrderDateFrom = fromDate,
+                        OrderDateTo = toDate,
+                        SortBy = "OrderDate",
+                        SortDescending = true
+                    };
+
+                    var ordersResult = await _salesOrderService.GetSalesOrdersAsync(queryParams);
+
+                    if (ordersResult.IsSuccess && ordersResult.Data?.Items?.Any() == true)
+                    {
+                        var orders = ordersResult.Data.Items;
+                        var totalSpent = orders.Sum(o => o.TotalAmount);
+                        var totalOrders = orders.Count;
+                        var lastOrderDate = orders.Max(o => o.OrderDate);
+
+                        topCustomers.Add(new TopCustomerDto
+                        {
+                            Id = customer.Id.ToString(),
+                            Name = customer.Name,
+                            Email = customer.Email ?? string.Empty,
+                            TotalOrders = totalOrders,
+                            TotalSpent = totalSpent,
+                            LastOrderDate = lastOrderDate
+                        });
+                    }
+                    else
+                    {
+                        // Include customers with no orders but show zero values
+                        topCustomers.Add(new TopCustomerDto
+                        {
+                            Id = customer.Id.ToString(),
+                            Name = customer.Name,
+                            Email = customer.Email ?? string.Empty,
+                            TotalOrders = 0,
+                            TotalSpent = 0,
+                            LastOrderDate = DateTime.MinValue
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error processing customer {CustomerId} for top customers", customer.Id);
+                    // Continue with other customers
+                }
+            }
+
+            // Sort by total spent and take top customers
+            var result = topCustomers
+                .OrderByDescending(c => c.TotalSpent)
+                .ThenByDescending(c => c.TotalOrders)
+                .Take(limit)
+                .ToList();
+
+            return Ok(Result<List<TopCustomerDto>>.Success(result));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving top customers");
-            return Task.FromResult<ActionResult<Result<List<TopCustomerDto>>>>(
-                BadRequest(Result<List<TopCustomerDto>>.Failure("Failed to retrieve top customers")));
+            return BadRequest(Result<List<TopCustomerDto>>.Failure("Failed to retrieve top customers"));
         }
     }
 

@@ -1,0 +1,59 @@
+/* Combined Dashboard Specific Styles */
+.currency-display {
+  font-feature-settings: 'tnum' 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.currency-large {
+  letter-spacing: -0.025em;
+}
+
+/* Enhanced hover effects for quick actions */
+.quick-action-card {
+  transition: all 0.3s ease;
+}
+
+.quick-action-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Metric cards animation */
+.metric-card {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Progress indicators */
+.progress-ring {
+  transition: stroke-dasharray 0.3s ease;
+}
+
+/* Alert styling */
+.alert-item {
+  border-left: 4px solid currentColor;
+}
+
+/* Responsive grid adjustments */
+@media (max-width: 640px) {
+  .mobile-stack {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Dark mode enhancements */
+@media (prefers-color-scheme: dark) {
+  .quick-action-card:hover {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  }
+}

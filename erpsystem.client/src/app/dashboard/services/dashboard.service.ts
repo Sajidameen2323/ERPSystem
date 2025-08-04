@@ -6,6 +6,7 @@ import { SalesOrderService } from '../../sales/services/sales-order.service';
 import { InvoiceService } from '../../sales/services/invoice.service';
 import { CustomerService } from '../../sales/services/customer.service';
 import { ProductService } from '../../shared/services/product.service';
+import { AuthService } from '../../core/services/auth.service';
 import { 
   DashboardOverview, 
   DashboardStats, 
@@ -33,33 +34,66 @@ export class DashboardService {
   private readonly invoiceService = inject(InvoiceService);
   private readonly customerService = inject(CustomerService);
   private readonly productService = inject(ProductService);
+  private readonly authService = inject(AuthService);
   
   private readonly baseUrl = '/api';
 
   /**
-   * Get comprehensive dashboard overview
+   * Get role-aware dashboard overview
    */
   getDashboardOverview(dateRange?: { from: Date; to: Date }): Observable<DashboardOverview> {
     const fromDate = dateRange?.from;
     const toDate = dateRange?.to;
+    const userRoles = this.authService.getUserRoles();
 
-    return combineLatest([
-      this.getDashboardStats(fromDate, toDate),
-      this.getRecentActivities(),
-      this.getSalesMetrics(fromDate, toDate),
-      this.getInventoryMetrics(),
-      this.getFinancialMetrics(fromDate, toDate),
-      this.getSystemMetrics()
-    ]).pipe(
-      map(([stats, activities, salesMetrics, inventoryMetrics, financialMetrics, systemMetrics]) => ({
-        stats,
-        recentActivities: activities,
-        salesMetrics,
-        inventoryMetrics,
-        financialMetrics,
-        systemMetrics,
-        lastUpdated: new Date()
-      })),
+    const observables: Observable<any>[] = [
+      this.getRoleAwareDashboardStats(fromDate, toDate, userRoles),
+      this.getRecentActivities()
+    ];
+
+    // Add role-specific metrics
+    if (this.hasAnyRole(userRoles, ['admin', 'salesuser'])) {
+      observables.push(this.getSalesMetrics(fromDate, toDate));
+      observables.push(this.getFinancialMetrics(fromDate, toDate));
+    }
+
+    if (this.hasAnyRole(userRoles, ['admin', 'inventoryuser'])) {
+      observables.push(this.getInventoryMetrics());
+    }
+
+    if (this.hasRole(userRoles, 'admin')) {
+      observables.push(this.getSystemMetrics());
+    }
+
+    return combineLatest(observables).pipe(
+      map(results => {
+        const [stats, activities] = results;
+        let salesMetrics, inventoryMetrics, financialMetrics, systemMetrics;
+        
+        let index = 2;
+        if (this.hasAnyRole(userRoles, ['admin', 'salesuser'])) {
+          salesMetrics = results[index++];
+          financialMetrics = results[index++];
+        }
+        
+        if (this.hasAnyRole(userRoles, ['admin', 'inventoryuser'])) {
+          inventoryMetrics = results[index++];
+        }
+        
+        if (this.hasRole(userRoles, 'admin')) {
+          systemMetrics = results[index++];
+        }
+
+        return {
+          stats,
+          recentActivities: activities,
+          salesMetrics: salesMetrics || this.getEmptySalesMetrics(),
+          inventoryMetrics: inventoryMetrics || this.getEmptyInventoryMetrics(),
+          financialMetrics: financialMetrics || this.getEmptyFinancialMetrics(),
+          systemMetrics: systemMetrics || this.getEmptySystemMetrics(),
+          lastUpdated: new Date()
+        };
+      }),
       catchError(error => {
         console.error('Error loading dashboard overview:', error);
         return of(this.getEmptyDashboardOverview());
@@ -68,30 +102,61 @@ export class DashboardService {
   }
 
   /**
-   * Get dashboard statistics
+   * Get role-aware dashboard statistics
    */
-  getDashboardStats(fromDate?: Date, toDate?: Date): Observable<DashboardStats> {
-    return combineLatest([
-      this.salesOrderService.getSalesOrderStats(fromDate, toDate).pipe(
-        catchError(() => of(this.getEmptySalesOrderStats()))
-      ),
-      this.invoiceService.getInvoiceStatistics(
-        fromDate?.toISOString(), 
-        toDate?.toISOString()
-      ).pipe(
-        map(response => response.isSuccess ? response.data! : this.getEmptyInvoiceStats()),
-        catchError(() => of(this.getEmptyInvoiceStats()))
-      ),
-      this.getCustomerCount().pipe(
-        catchError(() => of(0))
-      ),
-      this.getProductCount().pipe(
-        catchError(() => of(0))
-      ),
-      this.getLowStockCount().pipe(
-        catchError(() => of(0))
-      )
-    ]).pipe(
+  getRoleAwareDashboardStats(fromDate?: Date, toDate?: Date, userRoles?: string[]): Observable<DashboardStats> {
+    const roles = userRoles || this.authService.getUserRoles();
+    const observables: Observable<any>[] = [];
+    
+    // Always get basic stats that don't require special permissions
+    const hasBasicAccess = this.hasAnyRole(roles, ['admin', 'salesuser', 'inventoryuser']);
+    
+    if (!hasBasicAccess) {
+      return of(this.getEmptyDashboardStats());
+    }
+
+    // Sales data - requires sales or admin role
+    if (this.hasAnyRole(roles, ['admin', 'salesuser'])) {
+      observables.push(
+        this.salesOrderService.getSalesOrderStats(fromDate, toDate).pipe(
+          catchError(() => of(this.getEmptySalesOrderStats()))
+        ),
+        this.invoiceService.getInvoiceStatistics(
+          fromDate?.toISOString(), 
+          toDate?.toISOString()
+        ).pipe(
+          map(response => response.isSuccess ? response.data! : this.getEmptyInvoiceStats()),
+          catchError(() => of(this.getEmptyInvoiceStats()))
+        ),
+        this.getCustomerCount().pipe(
+          catchError(() => of(0))
+        )
+      );
+    } else {
+      // Add empty observables for sales data
+      observables.push(
+        of(this.getEmptySalesOrderStats()),
+        of(this.getEmptyInvoiceStats()),
+        of(0)
+      );
+    }
+
+    // Inventory data - requires inventory or admin role
+    if (this.hasAnyRole(roles, ['admin', 'inventoryuser'])) {
+      observables.push(
+        this.getProductCount().pipe(
+          catchError(() => of(0))
+        ),
+        this.getLowStockCount().pipe(
+          catchError(() => of(0))
+        )
+      );
+    } else {
+      // Add empty observables for inventory data
+      observables.push(of(0), of(0));
+    }
+
+    return combineLatest(observables).pipe(
       map(([salesStats, invoiceStats, customerCount, productCount, lowStockCount]) => ({
         totalProducts: productCount,
         totalCustomers: customerCount,
@@ -117,6 +182,13 @@ export class DashboardService {
   }
 
   /**
+   * Get dashboard statistics (backward compatibility)
+   */
+  getDashboardStats(fromDate?: Date, toDate?: Date): Observable<DashboardStats> {
+    return this.getRoleAwareDashboardStats(fromDate, toDate);
+  }
+
+  /**
    * Get recent activities
    */
   getRecentActivities(limit: number = 10): Observable<RecentActivity[]> {
@@ -128,9 +200,16 @@ export class DashboardService {
   }
 
   /**
-   * Get sales metrics
+   * Get sales metrics (role-aware)
    */
   getSalesMetrics(fromDate?: Date, toDate?: Date): Observable<SalesMetrics> {
+    const userRoles = this.authService.getUserRoles();
+    
+    // Check if user has sales permissions
+    if (!this.hasAnyRole(userRoles, ['admin', 'salesuser'])) {
+      return of(this.getEmptySalesMetrics());
+    }
+
     return combineLatest([
       this.salesOrderService.getSalesOrderStats(fromDate, toDate),
       this.getTopCustomers(),
@@ -146,22 +225,21 @@ export class DashboardService {
         recentOrders,
         chartData
       })),
-      catchError(() => of({
-        totalSales: 0,
-        totalOrders: 0,
-        averageOrderValue: 0,
-        salesGrowth: 0,
-        topCustomers: [],
-        recentOrders: [],
-        chartData: { labels: [], datasets: [] }
-      }))
+      catchError(() => of(this.getEmptySalesMetrics()))
     );
   }
 
   /**
-   * Get inventory metrics
+   * Get inventory metrics (role-aware)
    */
   getInventoryMetrics(): Observable<InventoryMetrics> {
+    const userRoles = this.authService.getUserRoles();
+    
+    // Check if user has inventory permissions
+    if (!this.hasAnyRole(userRoles, ['admin', 'inventoryuser'])) {
+      return of(this.getEmptyInventoryMetrics());
+    }
+
     return combineLatest([
       this.getProductCount(),
       this.getLowStockAlerts(),
@@ -176,21 +254,21 @@ export class DashboardService {
         lowStockAlerts,
         topProducts
       })),
-      catchError(() => of({
-        totalProducts: 0,
-        lowStockItems: 0,
-        outOfStockItems: 0,
-        totalInventoryValue: 0,
-        lowStockAlerts: [],
-        topProducts: []
-      }))
+      catchError(() => of(this.getEmptyInventoryMetrics()))
     );
   }
 
   /**
-   * Get financial metrics
+   * Get financial metrics (role-aware)
    */
   getFinancialMetrics(fromDate?: Date, toDate?: Date): Observable<FinancialMetrics> {
+    const userRoles = this.authService.getUserRoles();
+    
+    // Check if user has financial permissions (sales or admin)
+    if (!this.hasAnyRole(userRoles, ['admin', 'salesuser'])) {
+      return of(this.getEmptyFinancialMetrics());
+    }
+
     return this.invoiceService.getInvoiceStatistics(
       fromDate?.toISOString(), 
       toDate?.toISOString()
@@ -207,30 +285,23 @@ export class DashboardService {
           cashFlow: { income: stats.totalPaid, expenses: 0, net: stats.totalPaid }
         };
       }),
-      catchError(() => of({
-        totalRevenue: 0,
-        totalPaid: 0,
-        totalOutstanding: 0,
-        totalOverdue: 0,
-        averagePaymentDays: 0,
-        paymentTrends: [],
-        cashFlow: { income: 0, expenses: 0, net: 0 }
-      }))
+      catchError(() => of(this.getEmptyFinancialMetrics()))
     );
   }
 
   /**
-   * Get system metrics
+   * Get system metrics (admin only)
    */
   getSystemMetrics(): Observable<SystemMetrics> {
+    const userRoles = this.authService.getUserRoles();
+    
+    // Only admin can access system metrics
+    if (!this.hasRole(userRoles, 'admin')) {
+      return of(this.getEmptySystemMetrics());
+    }
+
     return this.http.get<SystemMetrics>(`${this.baseUrl}/dashboard/system-metrics`).pipe(
-      catchError(() => of({
-        activeUsers: 1,
-        systemHealth: 'unknown' as const,
-        lastBackup: new Date(),
-        pendingTasks: [],
-        systemAlerts: []
-      }))
+      catchError(() => of(this.getEmptySystemMetrics()))
     );
   }
 
@@ -254,10 +325,14 @@ export class DashboardService {
    * Get top customers
    */
   private getTopCustomers(limit: number = 5): Observable<TopCustomer[]> {
-    return this.http.get<TopCustomer[]>(`${this.baseUrl}/dashboard/top-customers`, {
+    return this.http.get<{ isSuccess: boolean; data: TopCustomer[]; message?: string }>(`${this.baseUrl}/dashboard/top-customers`, {
       params: new HttpParams().set('limit', limit.toString())
     }).pipe(
-      catchError(() => of([]))
+      map(response => response.isSuccess ? response.data || [] : []),
+      catchError(error => {
+        console.error('Error loading top customers:', error);
+        return of([]);
+      })
     );
   }
 
@@ -282,10 +357,14 @@ export class DashboardService {
    * Get top products
    */
   private getTopProducts(limit: number = 5): Observable<TopProduct[]> {
-    return this.http.get<TopProduct[]>(`${this.baseUrl}/dashboard/top-products`, {
+    return this.http.get<{ isSuccess: boolean; data: TopProduct[]; message?: string }>(`${this.baseUrl}/dashboard/top-products`, {
       params: new HttpParams().set('limit', limit.toString())
     }).pipe(
-      catchError(() => of([]))
+      map(response => response.isSuccess ? response.data || [] : []),
+      catchError(error => {
+        console.error('Error loading top products:', error);
+        return of([]);
+      })
     );
   }
 
@@ -478,5 +557,64 @@ export class DashboardService {
         entityType: 'product'
       }
     ];
+  }
+
+  // Role checking helper methods
+  private hasRole(roles: string[], role: string): boolean {
+    return roles.includes(role);
+  }
+
+  private hasAnyRole(roles: string[], requiredRoles: string[]): boolean {
+    return requiredRoles.some(role => roles.includes(role));
+  }
+
+  private hasAllRoles(roles: string[], requiredRoles: string[]): boolean {
+    return requiredRoles.every(role => roles.includes(role));
+  }
+
+  // Additional empty metric methods
+  private getEmptySalesMetrics(): SalesMetrics {
+    return {
+      totalSales: 0,
+      totalOrders: 0,
+      averageOrderValue: 0,
+      salesGrowth: 0,
+      topCustomers: [],
+      recentOrders: [],
+      chartData: { labels: [], datasets: [] }
+    };
+  }
+
+  private getEmptyInventoryMetrics(): InventoryMetrics {
+    return {
+      totalProducts: 0,
+      lowStockItems: 0,
+      outOfStockItems: 0,
+      totalInventoryValue: 0,
+      lowStockAlerts: [],
+      topProducts: []
+    };
+  }
+
+  private getEmptyFinancialMetrics(): FinancialMetrics {
+    return {
+      totalRevenue: 0,
+      totalPaid: 0,
+      totalOutstanding: 0,
+      totalOverdue: 0,
+      averagePaymentDays: 0,
+      paymentTrends: [],
+      cashFlow: { income: 0, expenses: 0, net: 0 }
+    };
+  }
+
+  private getEmptySystemMetrics(): SystemMetrics {
+    return {
+      activeUsers: 0,
+      systemHealth: 'unknown',
+      lastBackup: new Date(),
+      pendingTasks: [],
+      systemAlerts: []
+    };
   }
 }
