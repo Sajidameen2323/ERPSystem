@@ -1,9 +1,9 @@
-using ERPSystem.Server.Services.Interfaces;
-using ERPSystem.Server.Models.Common;
+using ERPSystem.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using System.Security.Claims;
+using System.Text.Json;
 
 namespace ERPSystem.Server.Data.Interceptors;
 
@@ -12,26 +12,20 @@ namespace ERPSystem.Server.Data.Interceptors;
 /// </summary>
 public class AuditInterceptor : SaveChangesInterceptor
 {
-    private readonly IAuditService _auditService;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<AuditInterceptor> _logger;
 
     public AuditInterceptor(
-        IAuditService auditService, 
         IHttpContextAccessor httpContextAccessor,
         ILogger<AuditInterceptor> logger)
     {
-        _auditService = auditService;
         _httpContextAccessor = httpContextAccessor;
         _logger = logger;
     }
 
     public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
     {
-        if (eventData.Context != null)
-        {
-            _ = Task.Run(async () => await ProcessAuditAsync(eventData.Context));
-        }
+        ProcessAudit(eventData.Context);
         return base.SavingChanges(eventData, result);
     }
 
@@ -40,15 +34,21 @@ public class AuditInterceptor : SaveChangesInterceptor
         InterceptionResult<int> result, 
         CancellationToken cancellationToken = default)
     {
-        if (eventData.Context != null)
-        {
-            await ProcessAuditAsync(eventData.Context);
-        }
+        await ProcessAuditAsync(eventData.Context);
         return await base.SavingChangesAsync(eventData, result, cancellationToken);
     }
 
-    private async Task ProcessAuditAsync(DbContext context)
+    private void ProcessAudit(DbContext? context)
     {
+        if (context == null) return;
+        
+        _ = Task.Run(async () => await ProcessAuditAsync(context));
+    }
+
+    private async Task ProcessAuditAsync(DbContext? context)
+    {
+        if (context == null) return;
+
         try
         {
             var auditEntries = new List<AuditEntry>();
@@ -56,7 +56,7 @@ public class AuditInterceptor : SaveChangesInterceptor
             foreach (var entry in context.ChangeTracker.Entries())
             {
                 // Skip audit logs themselves to prevent infinite loops
-                if (entry.Entity.GetType().Name == "AuditLog")
+                if (entry.Entity is AuditLog)
                     continue;
 
                 // Skip entities that are not being tracked for auditing
@@ -70,19 +70,90 @@ public class AuditInterceptor : SaveChangesInterceptor
                 }
             }
 
-            // Process audit entries after save to get generated IDs
+            // Save audit entries directly to database after the main save
             if (auditEntries.Any())
             {
-                foreach (var auditEntry in auditEntries)
-                {
-                    await ProcessAuditEntryAsync(auditEntry);
-                }
+                await SaveAuditEntriesAsync(context, auditEntries);
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing audit entries");
         }
+    }
+
+    private async Task SaveAuditEntriesAsync(DbContext context, List<AuditEntry> auditEntries)
+    {
+        try
+        {
+            // Create a new context instance to avoid tracking conflicts
+            var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
+            optionsBuilder.UseSqlServer(context.Database.GetConnectionString());
+            
+            using var auditContext = new ApplicationDbContext(optionsBuilder.Options);
+            
+            foreach (var auditEntry in auditEntries)
+            {
+                // Get final entity ID after save (for new entities)
+                if (string.IsNullOrEmpty(auditEntry.EntityId))
+                {
+                    auditEntry.EntityId = GetEntityId(auditEntry.Entry);
+                }
+
+                var auditLog = CreateAuditLog(auditEntry);
+                auditContext.AuditLogs.Add(auditLog);
+            }
+
+            await auditContext.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving audit entries to database");
+        }
+    }
+
+    private AuditLog CreateAuditLog(AuditEntry auditEntry)
+    {
+        var httpContext = _httpContextAccessor.HttpContext;
+        var userId = httpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "system";
+        var userName = httpContext?.User?.FindFirst(ClaimTypes.Name)?.Value ?? 
+                      httpContext?.User?.FindFirst("name")?.Value ?? "System";
+        var ipAddress = httpContext?.Connection?.RemoteIpAddress?.ToString();
+        var userAgent = httpContext?.Request?.Headers["User-Agent"].ToString();
+        string? sessionId = null;
+        try
+        {
+            sessionId = httpContext?.Session?.Id;
+        }
+        catch (InvalidOperationException)
+        {
+            // Session not configured, use a default value
+            sessionId = "no-session";
+        }
+
+        var title = GenerateTitle(auditEntry);
+        var description = GenerateDescription(auditEntry);
+        var severity = DetermineSeverity(auditEntry.ActivityType);
+        var icon = GetActivityIcon(auditEntry.ActivityType, auditEntry.EntityName);
+
+        return new AuditLog
+        {
+            ActivityType = auditEntry.ActivityType,
+            EntityType = auditEntry.EntityName,
+            EntityId = auditEntry.EntityId,
+            UserId = userId,
+            UserName = userName,
+            Title = title,
+            Description = description,
+            OldValues = auditEntry.OldValues != null ? JsonSerializer.Serialize(auditEntry.OldValues) : null,
+            NewValues = auditEntry.NewValues != null ? JsonSerializer.Serialize(auditEntry.NewValues) : null,
+            Timestamp = DateTime.UtcNow,
+            IpAddress = ipAddress,
+            UserAgent = userAgent,
+            Severity = severity,
+            Icon = icon,
+            SessionId = sessionId
+        };
     }
 
     private AuditEntry? CreateAuditEntry(EntityEntry entry)
@@ -119,39 +190,6 @@ public class AuditInterceptor : SaveChangesInterceptor
             },
             _ => null
         };
-    }
-
-    private async Task ProcessAuditEntryAsync(AuditEntry auditEntry)
-    {
-        try
-        {
-            // Get entity ID after save (for new entities)
-            if (string.IsNullOrEmpty(auditEntry.EntityId))
-            {
-                auditEntry.EntityId = GetEntityId(auditEntry.Entry);
-            }
-
-            var title = GenerateTitle(auditEntry);
-            var description = GenerateDescription(auditEntry);
-            var severity = DetermineSeverity(auditEntry.ActivityType);
-            var icon = GetActivityIcon(auditEntry.ActivityType, auditEntry.EntityName);
-
-            await _auditService.LogActivityAsync(
-                activityType: auditEntry.ActivityType,
-                entityType: auditEntry.EntityName,
-                entityId: auditEntry.EntityId,
-                title: title,
-                description: description,
-                oldValues: auditEntry.OldValues,
-                newValues: auditEntry.NewValues,
-                severity: severity,
-                icon: icon
-            );
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing audit entry for {EntityName}", auditEntry.EntityName);
-        }
     }
 
     private string? GetEntityId(EntityEntry entry)
@@ -257,6 +295,9 @@ public class AuditInterceptor : SaveChangesInterceptor
             "Supplier" => "supplier",
             "StockMovement" => "stock movement",
             "StockAdjustment" => "stock adjustment",
+            "SalesOrderItem" => "sales order item",
+            "PurchaseOrderItem" => "purchase order item",
+            "InvoiceItem" => "invoice item",
             _ => entityName.ToLower()
         };
     }
@@ -294,6 +335,8 @@ public class AuditInterceptor : SaveChangesInterceptor
                 "PurchaseOrder" => "ShoppingBag",
                 "Invoice" => "FileText",
                 "Supplier" => "Truck",
+                "StockMovement" => "ArrowUpDown",
+                "StockAdjustment" => "RefreshCw",
                 _ => "Plus"
             };
         }

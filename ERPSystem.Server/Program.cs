@@ -16,8 +16,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Register HttpContextAccessor first as it's needed by other services
 builder.Services.AddHttpContextAccessor();
 
-// Register audit service first as it's needed by the interceptor
-builder.Services.AddScoped<IAuditService, AuditService>();
+// Register audit interceptor
 builder.Services.AddScoped<AuditInterceptor>();
 
 // Database Configuration with audit interceptor
@@ -27,6 +26,9 @@ builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
            .AddInterceptors(auditInterceptor);
 });
+
+// Register audit service
+builder.Services.AddScoped<IAuditService, AuditService>();
 
 // Configure Okta settings
 builder.Services.Configure<OktaSettings>(builder.Configuration.GetSection("Okta"));
@@ -43,6 +45,7 @@ builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IInvoiceExportService, InvoiceExportService>();
 builder.Services.AddScoped<IStockMovementService, StockMovementService>();
+builder.Services.AddScoped<AuditDataSeeder>();
 
 // Add Okta authentication for API protection
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -139,6 +142,10 @@ using (var scope = app.Services.CreateScope())
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     // Apply migrations for application data only
     await context.Database.MigrateAsync();
+    
+    // Seed audit data for testing
+    var auditSeeder = scope.ServiceProvider.GetRequiredService<AuditDataSeeder>();
+    await auditSeeder.SeedAuditDataAsync();
 }
 
 app.UseDefaultFiles();
