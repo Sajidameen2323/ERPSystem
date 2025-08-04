@@ -24,6 +24,7 @@ import {
 } from '../models/dashboard.model';
 import { SalesOrderStats } from '../../sales/models/sales-order.model';
 import { InvoiceStatistics, InvoiceStatus } from '../../sales/models/invoice.model';
+import { Result } from '../../core/models';
 
 @Injectable({
   providedIn: 'root'
@@ -192,9 +193,16 @@ export class DashboardService {
    * Get recent activities
    */
   getRecentActivities(limit: number = 10): Observable<RecentActivity[]> {
-    return this.http.get<RecentActivity[]>(`${this.baseUrl}/dashboard/activities`, {
+    return this.http.get<Result<RecentActivity[]>>(`${this.baseUrl}/dashboard/activities`, {
       params: new HttpParams().set('limit', limit.toString())
     }).pipe(
+      map(response => {
+        if (!response.data) return [];
+        return response.data.map((activity: any) => ({
+          ...activity,
+          timestamp: new Date(activity.timestamp) // Ensure timestamp is a Date object
+        }));
+      }),
       catchError(() => of(this.getMockRecentActivities()))
     );
   }
@@ -555,6 +563,42 @@ export class DashboardService {
         userId: 'system',
         entityId: '2',
         entityType: 'product'
+      },
+      {
+        id: '3',
+        type: 'customer',
+        title: 'New customer registered',
+        description: 'Customer John Doe has been added to the system',
+        timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000),
+        icon: 'UserPlus',
+        severity: 'success',
+        userId: 'system',
+        entityId: '3',
+        entityType: 'customer'
+      },
+      {
+        id: '4',
+        type: 'payment',
+        title: 'Payment received',
+        description: 'Payment of $1,250.00 received for Invoice #INV-001',
+        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
+        icon: 'DollarSign',
+        severity: 'success',
+        userId: 'system',
+        entityId: '4',
+        entityType: 'invoice'
+      },
+      {
+        id: '5',
+        type: 'system',
+        title: 'System backup completed',
+        description: 'Daily backup process completed successfully',
+        timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000),
+        icon: 'Database',
+        severity: 'info',
+        userId: 'system',
+        entityId: '5',
+        entityType: 'system'
       }
     ];
   }

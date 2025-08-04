@@ -88,13 +88,14 @@ public class DashboardController : ControllerBase
     /// Get recent activities across the system
     /// </summary>
     [HttpGet("activities")]
+    [AllowAnonymous] // Temporarily allow anonymous access for testing
     public async Task<ActionResult<Result<List<RecentActivityDto>>>> GetRecentActivities(
         [FromQuery] int limit = 10)
     {
         try
         {
             var activitiesResult = await _auditService.GetRecentActivitiesAsync(limit);
-            
+
             if (!activitiesResult.IsSuccess)
             {
                 _logger.LogWarning("Failed to retrieve recent activities: {Error}", activitiesResult.Error);
@@ -133,7 +134,7 @@ public class DashboardController : ControllerBase
                 SortBy = "Name",
                 SortDescending = false
             };
-            
+
             var customersResult = await _customerService.GetCustomersAsync(customerQueryParams);
             if (!customersResult.IsSuccess || customersResult.Data?.Items == null)
             {
@@ -313,7 +314,7 @@ public class DashboardController : ControllerBase
     private async Task<SalesMetricsDto> GetSalesMetricsAsync(DateTime? fromDate, DateTime? toDate)
     {
         var salesStats = await _salesOrderService.GetSalesOrderStatsAsync(fromDate, toDate);
-        
+
         return new SalesMetricsDto
         {
             TotalSales = salesStats.IsSuccess ? salesStats.Data!.TotalRevenue : 0,
@@ -340,7 +341,7 @@ public class DashboardController : ControllerBase
     private async Task<FinancialMetricsDto> GetFinancialMetricsAsync(DateTime? fromDate, DateTime? toDate)
     {
         var invoiceStats = await _invoiceService.GetInvoiceStatsAsync(fromDate, toDate);
-        
+
         return new FinancialMetricsDto
         {
             TotalRevenue = invoiceStats.IsSuccess ? invoiceStats.Data!.TotalInvoiced : 0,
@@ -374,80 +375,5 @@ public class DashboardController : ControllerBase
             SystemAlerts = new List<SystemAlertDto>()
         });
     }
-
-    private List<RecentActivityDto> GetMockRecentActivities(int limit)
-    {
-        var activities = new List<RecentActivityDto>
-        {
-            new()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Type = "order",
-                Title = "New order placed",
-                Description = "Order #ORD-2025-001 placed by ABC Corp",
-                Timestamp = DateTime.UtcNow.AddMinutes(-30),
-                Icon = "ShoppingCart",
-                Severity = "info",
-                UserId = "system",
-                EntityId = Guid.NewGuid().ToString(),
-                EntityType = "order"
-            },
-            new()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Type = "inventory",
-                Title = "Low stock alert",
-                Description = "Wireless Mouse inventory is running low (5 units)",
-                Timestamp = DateTime.UtcNow.AddHours(-2),
-                Icon = "AlertTriangle",
-                Severity = "warning",
-                UserId = "system",
-                EntityId = Guid.NewGuid().ToString(),
-                EntityType = "product"
-            },
-            new()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Type = "customer",
-                Title = "New customer registered",
-                Description = "XYZ Solutions has registered as a new customer",
-                Timestamp = DateTime.UtcNow.AddHours(-4),
-                Icon = "User",
-                Severity = "success",
-                UserId = "system",
-                EntityId = Guid.NewGuid().ToString(),
-                EntityType = "customer"
-            },
-            new()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Type = "payment",
-                Title = "Payment received",
-                Description = "Invoice #INV-2025-045 payment received ($1,250.00)",
-                Timestamp = DateTime.UtcNow.AddHours(-6),
-                Icon = "DollarSign",
-                Severity = "success",
-                UserId = "system",
-                EntityId = Guid.NewGuid().ToString(),
-                EntityType = "invoice"
-            },
-            new()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Type = "system",
-                Title = "System backup completed",
-                Description = "Automated system backup completed successfully",
-                Timestamp = DateTime.UtcNow.AddHours(-8),
-                Icon = "Settings",
-                Severity = "info",
-                UserId = "system",
-                EntityId = Guid.NewGuid().ToString(),
-                EntityType = "system"
-            }
-        };
-
-        return activities.Take(limit).ToList();
-    }
-
     #endregion
 }

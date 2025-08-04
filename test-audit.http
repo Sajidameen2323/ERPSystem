@@ -1,0 +1,57 @@
+### Test Automatic Audit Logging
+
+### 1. Get current audit count
+GET http://localhost:5225/api/testaudit/recent
+
+###
+
+### 2. Create a test customer (should create audit entry)
+POST http://localhost:5225/api/testaudit/create-customer
+Content-Type: application/json
+
+{
+    "name": "Test Customer for Audit",
+    "email": "testcustomer@audit.com",
+    "phone": "555-0123",
+    "address": "123 Audit Test Street"
+}
+
+###
+
+### 3. Get audit entries after creation
+GET http://localhost:5225/api/testaudit/recent
+
+###
+
+### 4. Update the test customer (should create another audit entry)
+PUT http://localhost:5225/api/testaudit/update-customer/1
+Content-Type: application/json
+
+{
+    "name": "Updated Test Customer",
+    "email": "updated@audit.com",
+    "phone": "555-9999",
+    "address": "456 Updated Audit Street"
+}
+
+###
+
+### 5. Get audit entries after update
+GET http://localhost:5225/api/testaudit/recent
+
+###
+
+### 6. Delete the test customer (should create delete audit entry)
+DELETE http://localhost:5225/api/testaudit/delete-customer/1
+
+###
+
+### 7. Get final audit entries after delete
+GET http://localhost:5225/api/testaudit/recent
+
+###
+
+### 8. Test dashboard integration
+GET http://localhost:5225/api/dashboard/recent-activities
+
+###

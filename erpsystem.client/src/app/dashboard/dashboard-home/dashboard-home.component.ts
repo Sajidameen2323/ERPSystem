@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { LucideAngularModule, User, Users, Package, TrendingUp, Settings, ShoppingCart, FileText, BarChart3, AlertTriangle, RefreshCw, Filter, Calendar, DollarSign, Clock, Eye, ChevronRight, ArrowUp, ArrowDown, Minus } from 'lucide-angular';
+import { LucideAngularModule, User, Users, Package, TrendingUp, Settings, ShoppingCart, FileText, BarChart3, AlertTriangle, RefreshCw, Filter, Calendar, DollarSign, Clock, Eye, ChevronRight, ArrowUp, ArrowDown, Minus, UserPlus, Database } from 'lucide-angular';
 import { Observable, Subject, interval, combineLatest, of } from 'rxjs';
 import { takeUntil, startWith, debounceTime, distinctUntilChanged, switchMap, catchError, share } from 'rxjs/operators';
 import { DashboardService } from '../services/dashboard.service';
@@ -52,7 +52,9 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
     ChevronRight,
     ArrowUp,
     ArrowDown,
-    Minus
+    Minus,
+    UserPlus,
+    Database
   };
 
   // State management
@@ -190,6 +192,7 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
         next: (overview) => {
           if (overview) {
             console.log('Dashboard Overview:', overview);
+            console.log('Recent Activities:', overview.recentActivities);
             this.dashboardOverview = overview;
             this.dashboardStats = overview.stats;
           }
@@ -359,27 +362,39 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
       case 'ShoppingCart': return this.icons.ShoppingCart;
       case 'AlertTriangle': return this.icons.AlertTriangle;
       case 'User': return this.icons.User;
+      case 'UserPlus': return this.icons.UserPlus;
       case 'FileText': return this.icons.FileText;
       case 'Package': return this.icons.Package;
       case 'DollarSign': return this.icons.DollarSign;
+      case 'Database': return this.icons.Database;
+      case 'Settings': return this.icons.Settings;
+      case 'Trash2': return this.icons.AlertTriangle; // Use AlertTriangle for delete
+      case 'Edit': return this.icons.Settings; // Use Settings for edit
+      case 'LogIn': return this.icons.User; // Use User for login
       default: return this.icons.BarChart3;
     }
   }
 
   getActivityIconColor(activity: RecentActivity): string {
-    switch (activity.severity) {
+    const normalizedSeverity = activity.severity?.toLowerCase() || 'info';
+    switch (normalizedSeverity) {
       case 'success': return 'text-green-600 dark:text-green-400';
       case 'warning': return 'text-yellow-600 dark:text-yellow-400';
-      case 'error': return 'text-red-600 dark:text-red-400';
+      case 'error':
+      case 'danger': return 'text-red-600 dark:text-red-400';
+      case 'info':
       default: return 'text-blue-600 dark:text-blue-400';
     }
   }
 
-  getSeverityBadgeClass(severity: 'info' | 'success' | 'warning' | 'error'): string {
-    switch (severity) {
+  getSeverityBadgeClass(severity: string): string {
+    const normalizedSeverity = severity?.toLowerCase() || 'info';
+    switch (normalizedSeverity) {
       case 'success': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       case 'warning': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      case 'error': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'error': 
+      case 'danger': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'info':
       default: return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
     }
   }

@@ -45,7 +45,6 @@ builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IInvoiceExportService, InvoiceExportService>();
 builder.Services.AddScoped<IStockMovementService, StockMovementService>();
-builder.Services.AddScoped<AuditDataSeeder>();
 
 // Add Okta authentication for API protection
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -142,10 +141,6 @@ using (var scope = app.Services.CreateScope())
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     // Apply migrations for application data only
     await context.Database.MigrateAsync();
-    
-    // Seed audit data for testing
-    var auditSeeder = scope.ServiceProvider.GetRequiredService<AuditDataSeeder>();
-    await auditSeeder.SeedAuditDataAsync();
 }
 
 app.UseDefaultFiles();

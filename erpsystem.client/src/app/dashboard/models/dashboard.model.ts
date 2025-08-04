@@ -44,12 +44,12 @@ export interface DashboardStats {
 
 export interface RecentActivity {
   id: string;
-  type: 'order' | 'invoice' | 'product' | 'customer' | 'payment' | 'system' | 'inventory';
+  type: string; // Changed from union type to string to match server DTO
   title: string;
   description: string;
   timestamp: Date;
   icon: string;
-  severity: 'info' | 'success' | 'warning' | 'error';
+  severity: string; // Changed from union type to string to match server DTO
   userId: string;
   entityId: string;
   entityType: string;
