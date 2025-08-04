@@ -10,7 +10,15 @@ public class SupplyChainProfile : Profile
     public SupplyChainProfile()
     {
         // Supplier mappings
-        CreateMap<Supplier, SupplierDto>();
+        CreateMap<Supplier, SupplierDto>()
+            .ForMember(dest => dest.TotalPurchases, opt => opt.MapFrom(src => 
+                src.PurchaseOrders != null ? 
+                src.PurchaseOrders.Where(po => !po.IsDeleted && po.Status == PurchaseOrderStatus.Received).Sum(po => po.TotalAmount) : 
+                src.TotalPurchases))
+            .ForMember(dest => dest.LastPurchaseDate, opt => opt.MapFrom(src =>
+                src.PurchaseOrders != null ?
+                src.PurchaseOrders.Where(po => !po.IsDeleted && po.Status == PurchaseOrderStatus.Received).Max(po => (DateTime?)po.OrderDate) :
+                (DateTime?)null));
         CreateMap<SupplierCreateDto, Supplier>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true))

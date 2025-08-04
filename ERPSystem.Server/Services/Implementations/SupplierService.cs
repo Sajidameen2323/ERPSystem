@@ -90,6 +90,7 @@ public class SupplierService : ISupplierService
 
             var totalCount = await query.CountAsync();
             var suppliers = await query
+                .Include(s => s.PurchaseOrders)  // Include PurchaseOrders for mapping calculations
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -120,6 +121,7 @@ public class SupplierService : ISupplierService
             // Use IgnoreQueryFilters to find supplier even if soft deleted
             var supplier = await _context.Suppliers
                 .IgnoreQueryFilters()
+                .Include(s => s.PurchaseOrders)  // Include PurchaseOrders for mapping calculations
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (supplier == null)

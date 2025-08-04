@@ -18,6 +18,7 @@ public class DashboardController : ControllerBase
     private readonly IInvoiceService _invoiceService;
     private readonly ICustomerService _customerService;
     private readonly IProductService _productService;
+    private readonly IAuditService _auditService;
     private readonly ILogger<DashboardController> _logger;
 
     public DashboardController(
@@ -25,12 +26,14 @@ public class DashboardController : ControllerBase
         IInvoiceService invoiceService,
         ICustomerService customerService,
         IProductService productService,
+        IAuditService auditService,
         ILogger<DashboardController> logger)
     {
         _salesOrderService = salesOrderService;
         _invoiceService = invoiceService;
         _customerService = customerService;
         _productService = productService;
+        _auditService = auditService;
         _logger = logger;
     }
 
@@ -85,23 +88,25 @@ public class DashboardController : ControllerBase
     /// Get recent activities across the system
     /// </summary>
     [HttpGet("activities")]
-    public Task<ActionResult<Result<List<RecentActivityDto>>>> GetRecentActivities(
+    public async Task<ActionResult<Result<List<RecentActivityDto>>>> GetRecentActivities(
         [FromQuery] int limit = 10)
     {
         try
         {
-            // TODO: Implement activity tracking service
-            // For now, return mock data
-            var activities = GetMockRecentActivities(limit);
+            var activitiesResult = await _auditService.GetRecentActivitiesAsync(limit);
+            
+            if (!activitiesResult.IsSuccess)
+            {
+                _logger.LogWarning("Failed to retrieve recent activities: {Error}", activitiesResult.Error);
+                return BadRequest(activitiesResult);
+            }
 
-            return Task.FromResult<ActionResult<Result<List<RecentActivityDto>>>>(
-                Ok(Result<List<RecentActivityDto>>.Success(activities)));
+            return Ok(activitiesResult);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving recent activities");
-            return Task.FromResult<ActionResult<Result<List<RecentActivityDto>>>>(
-                BadRequest(Result<List<RecentActivityDto>>.Failure("Failed to retrieve recent activities")));
+            return BadRequest(Result<List<RecentActivityDto>>.Failure("Failed to retrieve recent activities"));
         }
     }
 

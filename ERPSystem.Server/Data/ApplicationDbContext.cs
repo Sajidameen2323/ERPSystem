@@ -12,6 +12,9 @@ public class ApplicationDbContext : DbContext
 
     #region DbSets
 
+    // Audit Management
+    public DbSet<AuditLog> AuditLogs { get; set; }
+
     // Inventory Management
     public DbSet<Product> Products { get; set; }
     public DbSet<StockAdjustment> StockAdjustments { get; set; }

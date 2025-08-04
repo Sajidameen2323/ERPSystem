@@ -3,6 +3,7 @@ using ERPSystem.Server.Data;
 using ERPSystem.Server.Services.Interfaces;
 using ERPSystem.Server.Services.Implementations;
 using ERPSystem.Server.Services;
+using ERPSystem.Server.Data.Interceptors;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -12,9 +13,20 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-// Database Configuration
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Register HttpContextAccessor first as it's needed by other services
+builder.Services.AddHttpContextAccessor();
+
+// Register audit service first as it's needed by the interceptor
+builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddScoped<AuditInterceptor>();
+
+// Database Configuration with audit interceptor
+builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
+{
+    var auditInterceptor = serviceProvider.GetRequiredService<AuditInterceptor>();
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+           .AddInterceptors(auditInterceptor);
+});
 
 // Configure Okta settings
 builder.Services.Configure<OktaSettings>(builder.Configuration.GetSection("Okta"));
