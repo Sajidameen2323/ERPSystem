@@ -186,48 +186,83 @@ public class OktaService : IOktaService
 
             var client = CreateOktaApiClient();
 
-            // Build the update request with all fields at once using application-specific endpoint
-            var updateRequest = new
+            // First, get the current user to preserve existing email/login
+            var getCurrentUserResult = await GetUserByIdAsync(userId);
+            if (!getCurrentUserResult.IsSuccess)
             {
-                credentials = new
-                {
-                    userName = userId,
-                    password = !string.IsNullOrEmpty(updateDto.Password) ? new { value = updateDto.Password } : null
-                },
+                return Result<UserViewModel>.Failure(getCurrentUserResult.Error);
+            }
+
+            var currentUser = getCurrentUserResult.Data!;
+
+            // Update user profile with existing email/login preserved
+            var profileUpdateRequest = new
+            {
                 profile = new
                 {
-                    given_name = updateDto.FirstName,
-                    family_name = updateDto.LastName,
-                    name = updateDto.DisplayName ?? $"{updateDto.FirstName} {updateDto.LastName}",
+                    firstName = updateDto.FirstName,
+                    lastName = updateDto.LastName,
+                    email = currentUser.Email, // Preserve existing email
+                    login = currentUser.Email, // Preserve existing login (same as email)
                     roles = updateDto.Roles ?? Array.Empty<string>()
                 }
             };
 
-            var json = JsonSerializer.Serialize(updateRequest);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var profileJson = JsonSerializer.Serialize(profileUpdateRequest);
+            var profileContent = new StringContent(profileJson, Encoding.UTF8, "application/json");
 
-            // Use application-specific endpoint for updating user
-            var response = await client.PostAsync(
-                $"{_oktaSettings.OktaDomain}/api/v1/apps/{_oktaSettings.ClientAppId}/users/{userId}",
-                content);
+            // Use PUT method for updating user profile
+            var profileResponse = await client.PutAsync(
+                $"{_oktaSettings.OktaDomain}/api/v1/users/{userId}",
+                profileContent);
 
-            if (!response.IsSuccessStatusCode)
+            if (!profileResponse.IsSuccessStatusCode)
             {
-                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                if (profileResponse.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
                     return Result<UserViewModel>.Failure("User not found");
                 }
 
-                var error = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Failed to update user in Okta application: {Error}", error);
-                return Result<UserViewModel>.Failure("Failed to update user in Okta application");
+                var error = await profileResponse.Content.ReadAsStringAsync();
+                _logger.LogError("Failed to update user profile in Okta: {Error}", error);
+                return Result<UserViewModel>.Failure("Failed to update user profile in Okta");
             }
 
-            _logger.LogInformation("User {UserId} updated successfully in application", userId);
+            // Update password separately if provided
+            if (!string.IsNullOrEmpty(updateDto.Password))
+            {
+                var passwordUpdateRequest = new
+                {
+                    credentials = new
+                    {
+                        password = new { value = updateDto.Password }
+                    }
+                };
 
-            // Return updated user
+                var passwordJson = JsonSerializer.Serialize(passwordUpdateRequest);
+                var passwordContent = new StringContent(passwordJson, Encoding.UTF8, "application/json");
+
+                var passwordResponse = await client.PutAsync(
+                    $"{_oktaSettings.OktaDomain}/api/v1/users/{userId}",
+                    passwordContent);
+
+                if (!passwordResponse.IsSuccessStatusCode)
+                {
+                    var passwordError = await passwordResponse.Content.ReadAsStringAsync();
+                    _logger.LogWarning("Failed to update user password in Okta: {Error}", passwordError);
+                    // Don't fail the entire operation if only password update fails
+                }
+            }
+
+            _logger.LogInformation("User {UserId} updated", userId);
+
+            // Return user by calling GetApplicationUserByIdAsync
             var updatedUserResult = await GetApplicationUserByIdAsync(userId);
-            return updatedUserResult;
+            if (!updatedUserResult.IsSuccess || updatedUserResult.Data == null)
+            {
+                return Result<UserViewModel>.Failure("Failed to retrieve updated user from application by id");
+            }
+            return Result<UserViewModel>.Success(updatedUserResult.Data);
         }
         catch (Exception ex)
         {

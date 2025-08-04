@@ -64,8 +64,8 @@ export class DashboardRouterComponent implements OnInit {
     );
 
     if (businessRoles.length > 1) {
-      // User has multiple business roles, show admin dashboard for full access
-      return '/dashboard/admin';
+      // User has multiple business roles, show combined dashboard
+      return '/dashboard/combined';
     }
 
     // Single role routing
