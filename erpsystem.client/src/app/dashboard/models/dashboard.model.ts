@@ -76,11 +76,23 @@ export interface InventoryMetrics {
 }
 
 export interface FinancialMetrics {
+  // Sales/Revenue metrics
   totalRevenue: number;
   totalPaid: number;
   totalOutstanding: number;
   totalOverdue: number;
   averagePaymentDays: number;
+  
+  // Supply Chain/Purchase metrics  
+  totalPurchaseValue: number;
+  totalPurchasePaid: number;
+  totalPurchaseOutstanding: number;
+  totalReturnValue: number;
+  
+  // Combined metrics
+  netCashFlow: number; // Revenue - Purchases
+  grossMargin: number; // (Revenue - Purchase Cost) / Revenue * 100
+  
   paymentTrends: PaymentTrend[];
   cashFlow: CashFlow;
 }

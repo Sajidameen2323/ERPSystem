@@ -913,6 +913,7 @@ public class SalesOrderService : ISalesOrderService
             }
 
             var stats = await query
+                .Where(so => so.Status != SalesOrderStatus.Cancelled && so.Status != SalesOrderStatus.Returned && !so.IsDeleted)
                 .GroupBy(so => 1)
                 .Select(g => new SalesOrderStatsDto
                 {

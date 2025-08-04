@@ -7,6 +7,7 @@ import { Observable, Subject, interval, combineLatest, of } from 'rxjs';
 import { takeUntil, startWith, debounceTime, distinctUntilChanged, switchMap, catchError, share } from 'rxjs/operators';
 import { DashboardService } from '../services/dashboard.service';
 import { AuthService } from '../../core/services/auth.service';
+import { SalesChartComponent } from '../components/sales-chart/sales-chart.component';
 import { 
   DashboardOverview, 
   DashboardStats, 
@@ -17,13 +18,17 @@ import {
   LowStockAlert,
   TopCustomer,
   TopProduct,
-  RecentOrder
+  RecentOrder,
+  DashboardChartData
 } from '../models/dashboard.model';
+
+export type ChartType = 'line' | 'bar' | 'area';
+export type ChartTimeframe = 'daily' | 'weekly' | 'monthly';
 
 @Component({
   selector: 'app-dashboard-home',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule, ReactiveFormsModule],
+  imports: [CommonModule, RouterModule, LucideAngularModule, ReactiveFormsModule, SalesChartComponent],
   templateUrl: './dashboard-home.component.html',
   styleUrls: ['./dashboard-home.component.css']
 })
@@ -65,6 +70,12 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
   // Dashboard data
   dashboardOverview: DashboardOverview | null = null;
   dashboardStats: DashboardStats | null = null;
+
+  // Chart data and controls
+  salesChartData: DashboardChartData | null = null;
+  selectedChartType: ChartType = 'line';
+  selectedTimeframe: ChartTimeframe = 'daily';
+  isDarkMode = false; // TODO: Get from theme service
 
   // Filters and controls
   dateRangeControl = new FormControl<string>('30');
@@ -195,6 +206,9 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
             console.log('Recent Activities:', overview.recentActivities);
             this.dashboardOverview = overview;
             this.dashboardStats = overview.stats;
+            
+            // Load sales chart data
+            this.loadSalesChartData();
           }
           this.lastRefresh = new Date();
           this.isLoading = false;
@@ -458,5 +472,34 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
   // Utility methods
   trackByFn(index: number, item: any): any {
     return item.id || index;
+  }
+
+  // Chart methods
+  private loadSalesChartData(): void {
+    const dateRange = this.getDateRange();
+    
+    this.dashboardService.getSalesChartData(dateRange.from, dateRange.to)
+      .pipe(
+        takeUntil(this.destroy$),
+        catchError(error => {
+          console.error('Error loading sales chart data:', error);
+          return of(null);
+        })
+      )
+      .subscribe(chartData => {
+        this.salesChartData = chartData;
+      });
+  }
+
+  // Chart event handlers
+  onChartTypeChange(chartType: ChartType): void {
+    this.selectedChartType = chartType;
+    // Chart component will handle the type change automatically via input binding
+  }
+
+  onTimeframeChange(timeframe: ChartTimeframe): void {
+    this.selectedTimeframe = timeframe;
+    // Reload chart data with new timeframe
+    this.loadSalesChartData();
   }
 }

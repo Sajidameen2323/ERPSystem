@@ -1,0 +1,40 @@
+.sales-chart-container {
+  position: relative;
+  width: 100%;
+  min-height: 300px;
+}
+
+canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .sales-chart-container {
+    min-height: 250px;
+  }
+}
+
+@media (max-width: 640px) {
+  .sales-chart-container {
+    min-height: 200px;
+  }
+}
+
+/* Dark mode specific styles */
+:host-context(.dark) .sales-chart-container {
+  background-color: transparent;
+}
+
+/* Loading animation */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
