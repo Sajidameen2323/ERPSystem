@@ -194,50 +194,6 @@
               </span>
             </div>
           </div>
-          
-          <!-- Chart Type and Timeframe Controls -->
-          <div class="mt-4 flex items-center justify-between">
-            <!-- Chart Type Controls -->
-            <div class="flex items-center space-x-2">
-              <span class="text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">Chart Type:</span>
-              <div class="flex rounded-md shadow-sm">
-                <button
-                  (click)="onChartTypeChange('line')"
-                  [class]="selectedChartType === 'line' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'"
-                  class="px-3 py-1.5 text-xs font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-l-md inline-flex items-center"
-                  title="Line Chart">
-                  <lucide-angular [img]="icons.TrendingUp" class="w-4 h-4"></lucide-angular>
-                </button>
-                <button
-                  (click)="onChartTypeChange('area')"
-                  [class]="selectedChartType === 'area' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'"
-                  class="px-3 py-1.5 text-xs font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 inline-flex items-center border-l-0"
-                  title="Area Chart">
-                  <lucide-angular [img]="icons.BarChart3" class="w-4 h-4"></lucide-angular>
-                </button>
-                <button
-                  (click)="onChartTypeChange('bar')"
-                  [class]="selectedChartType === 'bar' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'"
-                  class="px-3 py-1.5 text-xs font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-r-md inline-flex items-center border-l-0"
-                  title="Bar Chart">
-                  <lucide-angular [img]="icons.BarChart3" class="w-4 h-4"></lucide-angular>
-                </button>
-              </div>
-            </div>
-
-            <!-- Timeframe Controls -->
-            <div class="flex items-center space-x-2">
-              <span class="text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">Period:</span>
-              <select 
-                [value]="selectedTimeframe"
-                (change)="onTimeframeChange($any($event.target).value)"
-                class="text-xs border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </div>
-          </div>
         </div>
         <div class="p-6">
           <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -265,18 +221,37 @@
             </div>
           </div>
 
-          <!-- Sales Chart -->
-          <app-sales-chart
-            [chartData]="salesChartData"
-            [options]="{
-              showRevenue: true,
-              showOrders: true,
-              chartType: selectedChartType,
-              timeframe: selectedTimeframe
-            }"
-            [darkMode]="isDarkMode"
-            height="320px">
-          </app-sales-chart>
+          <!-- Sales Chart with Controls -->
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+            <!-- Chart Controls -->
+            <app-chart-controls
+              [selectedChartType]="selectedChartType"
+              [selectedTimeframe]="selectedTimeframe"
+              [showRevenue]="showRevenue"
+              [showOrders]="showOrders"
+              (chartTypeChange)="onChartTypeChange($event)"
+              (timeframeChange)="onTimeframeChange($event)"
+              (datasetToggle)="onDatasetToggle($event)">
+            </app-chart-controls>
+            
+            <!-- Sales Chart -->
+            <div class="p-4">
+              <app-sales-chart
+                [chartData]="salesChartData"
+                [options]="{
+                  showRevenue: showRevenue,
+                  showOrders: showOrders,
+                  chartType: selectedChartType,
+                  timeframe: selectedTimeframe,
+                  groupBy: selectedTimeframe === 'daily' ? 'day' : 
+                           selectedTimeframe === 'weekly' ? 'week' :
+                           selectedTimeframe === 'monthly' ? 'month' : 'year'
+                }"
+                [darkMode]="isDarkMode"
+                height="320px">
+              </app-sales-chart>
+            </div>
+          </div>
         </div>
       </div>
     </div>

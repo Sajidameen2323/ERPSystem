@@ -251,28 +251,141 @@ public class DashboardController : ControllerBase
     /// Get sales chart data for dashboard visualization
     /// </summary>
     [HttpGet("sales-chart")]
-    public Task<ActionResult<Result<ChartDataDto>>> GetSalesChartData(
+    public async Task<ActionResult<Result<ChartDataDto>>> GetSalesChartData(
         [FromQuery] DateTime? fromDate = null,
         [FromQuery] DateTime? toDate = null,
         [FromQuery] string groupBy = "day")
     {
         try
         {
-            // TODO: Implement sales chart data aggregation
-            var chartData = new ChartDataDto
+            // Set default date range if not provided
+            fromDate ??= DateTime.UtcNow.AddDays(-30);
+            toDate ??= DateTime.UtcNow;
+
+            // Validate groupBy parameter
+            if (!new[] { "day", "week", "month", "year" }.Contains(groupBy.ToLower()))
             {
-                Labels = new List<string>(),
-                Datasets = new List<ChartDatasetDto>()
+                groupBy = "day";
+            }
+
+            _logger.LogInformation("Generating sales chart data from {FromDate} to {ToDate}, grouped by {GroupBy}", 
+                fromDate, toDate, groupBy);
+
+            // Get sales orders data
+            var salesOrderParams = new ERPSystem.Server.DTOs.Sales.SalesOrderQueryParameters
+            {
+                Page = 1,
+                PageSize = int.MaxValue, // Get all records for aggregation
+                OrderDateFrom = fromDate,
+                OrderDateTo = toDate,
+                SortBy = "OrderDate",
+                SortDescending = false
             };
 
-            return Task.FromResult<ActionResult<Result<ChartDataDto>>>(
-                Ok(Result<ChartDataDto>.Success(chartData)));
+            var salesOrdersResult = await _salesOrderService.GetSalesOrdersAsync(salesOrderParams);
+
+            // Get invoice data for more accurate revenue tracking
+            var invoiceParams = new ERPSystem.Server.DTOs.Sales.InvoiceQueryParameters
+            {
+                Page = 1,
+                PageSize = int.MaxValue,
+                InvoiceDateFrom = fromDate,
+                InvoiceDateTo = toDate,
+                SortBy = "InvoiceDate",
+                SortDescending = false
+            };
+
+            var invoicesResult = await _invoiceService.GetInvoicesAsync(invoiceParams);
+
+            var chartData = new ChartDataDto();
+
+            // Generate time period labels and data based on groupBy parameter
+            var salesData = new List<decimal>();
+            var revenueData = new List<decimal>();
+            var orderCountData = new List<decimal>();
+            var labels = new List<string>();
+
+            // Create time periods based on groupBy
+            var timePeriods = GenerateTimePeriods(fromDate.Value, toDate.Value, groupBy);
+
+            foreach (var period in timePeriods)
+            {
+                labels.Add(FormatPeriodLabel(period, groupBy));
+
+                // Calculate sales orders total for this period
+                decimal periodSalesTotal = 0;
+                int periodOrderCount = 0;
+
+                if (salesOrdersResult.IsSuccess && salesOrdersResult.Data?.Items != null)
+                {
+                    var periodOrders = salesOrdersResult.Data.Items.Where(so => 
+                        IsDateInPeriod(so.OrderDate, period, groupBy)).ToList();
+                    
+                    periodSalesTotal = periodOrders.Sum(so => so.TotalAmount);
+                    periodOrderCount = periodOrders.Count;
+                }
+
+                // Calculate invoice revenue for this period (more accurate for actual revenue)
+                decimal periodRevenue = 0;
+
+                if (invoicesResult.IsSuccess && invoicesResult.Data?.Items != null)
+                {
+                    var periodInvoices = invoicesResult.Data.Items.Where(inv => 
+                        IsDateInPeriod(inv.InvoiceDate, period, groupBy) && 
+                        inv.Status != InvoiceStatus.Cancelled).ToList();
+                    
+                    periodRevenue = periodInvoices.Sum(inv => inv.PaidAmount); // Use paid amount for actual revenue
+                }
+
+                salesData.Add(periodSalesTotal);
+                revenueData.Add(periodRevenue);
+                orderCountData.Add(periodOrderCount);
+            }
+
+            // Create datasets for the chart
+            chartData.Labels = labels;
+            chartData.Datasets = new List<ChartDatasetDto>
+            {
+                new ChartDatasetDto
+                {
+                    Label = "Sales Orders Total",
+                    Data = salesData,
+                    BackgroundColor = "rgba(54, 162, 235, 0.5)",
+                    BorderColor = "rgba(54, 162, 235, 1)",
+                    BorderWidth = 2,
+                    Fill = false,
+                    Tension = 0.1m
+                },
+                new ChartDatasetDto
+                {
+                    Label = "Revenue (Paid)",
+                    Data = revenueData,
+                    BackgroundColor = "rgba(75, 192, 192, 0.5)",
+                    BorderColor = "rgba(75, 192, 192, 1)",
+                    BorderWidth = 2,
+                    Fill = false,
+                    Tension = 0.1m
+                },
+                new ChartDatasetDto
+                {
+                    Label = "Order Count",
+                    Data = orderCountData,
+                    BackgroundColor = "rgba(255, 206, 86, 0.5)",
+                    BorderColor = "rgba(255, 206, 86, 1)",
+                    BorderWidth = 2,
+                    Fill = false,
+                    Tension = 0.1m
+                }
+            };
+
+            _logger.LogInformation("Generated sales chart data with {DataPoints} data points", labels.Count);
+
+            return Ok(Result<ChartDataDto>.Success(chartData));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving sales chart data");
-            return Task.FromResult<ActionResult<Result<ChartDataDto>>>(
-                BadRequest(Result<ChartDataDto>.Failure("Failed to retrieve sales chart data")));
+            return BadRequest(Result<ChartDataDto>.Failure("Failed to retrieve sales chart data"));
         }
     }
 
@@ -511,6 +624,98 @@ public class DashboardController : ControllerBase
             PendingTasks = new List<PendingTaskDto>(),
             SystemAlerts = new List<SystemAlertDto>()
         });
+    }
+
+    /// <summary>
+    /// Generate time periods based on the groupBy parameter
+    /// </summary>
+    private List<DateTime> GenerateTimePeriods(DateTime fromDate, DateTime toDate, string groupBy)
+    {
+        var periods = new List<DateTime>();
+        var current = fromDate.Date;
+
+        switch (groupBy.ToLower())
+        {
+            case "day":
+                while (current <= toDate.Date)
+                {
+                    periods.Add(current);
+                    current = current.AddDays(1);
+                }
+                break;
+
+            case "week":
+                // Start from the beginning of the week
+                var startOfWeek = current.AddDays(-(int)current.DayOfWeek);
+                current = startOfWeek;
+                while (current <= toDate.Date)
+                {
+                    periods.Add(current);
+                    current = current.AddDays(7);
+                }
+                break;
+
+            case "month":
+                // Start from the beginning of the month
+                current = new DateTime(current.Year, current.Month, 1);
+                while (current <= toDate.Date)
+                {
+                    periods.Add(current);
+                    current = current.AddMonths(1);
+                }
+                break;
+
+            case "year":
+                // Start from the beginning of the year
+                current = new DateTime(current.Year, 1, 1);
+                while (current <= toDate.Date)
+                {
+                    periods.Add(current);
+                    current = current.AddYears(1);
+                }
+                break;
+
+            default:
+                // Default to daily
+                while (current <= toDate.Date)
+                {
+                    periods.Add(current);
+                    current = current.AddDays(1);
+                }
+                break;
+        }
+
+        return periods;
+    }
+
+    /// <summary>
+    /// Format the period label based on groupBy parameter
+    /// </summary>
+    private string FormatPeriodLabel(DateTime period, string groupBy)
+    {
+        return groupBy.ToLower() switch
+        {
+            "day" => period.ToString("MMM dd"),
+            "week" => $"Week of {period:MMM dd}",
+            "month" => period.ToString("MMM yyyy"),
+            "year" => period.ToString("yyyy"),
+            _ => period.ToString("MMM dd")
+        };
+    }
+
+    /// <summary>
+    /// Check if a date falls within a specific period based on groupBy
+    /// </summary>
+    private bool IsDateInPeriod(DateTime date, DateTime period, string groupBy)
+    {
+        return groupBy.ToLower() switch
+        {
+            "day" => date.Date == period.Date,
+            "week" => date.Date >= period.Date && date.Date < period.AddDays(7).Date,
+            "month" => date.Year == period.Year && date.Month == period.Month,
+            "year" => date.Year == period.Year,
+            _ => date.Date == period.Date
+        };
     }
     #endregion
 }

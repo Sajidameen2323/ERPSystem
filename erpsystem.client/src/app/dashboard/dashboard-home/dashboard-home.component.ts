@@ -8,6 +8,7 @@ import { takeUntil, startWith, debounceTime, distinctUntilChanged, switchMap, ca
 import { DashboardService } from '../services/dashboard.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SalesChartComponent } from '../components/sales-chart/sales-chart.component';
+import { ChartControlsComponent } from '../components/chart-controls/chart-controls.component';
 import { 
   DashboardOverview, 
   DashboardStats, 
@@ -22,13 +23,13 @@ import {
   DashboardChartData
 } from '../models/dashboard.model';
 
-export type ChartType = 'line' | 'bar' | 'area';
-export type ChartTimeframe = 'daily' | 'weekly' | 'monthly';
+export type ChartType = 'line' | 'bar' | 'area' | 'doughnut' | 'radar' | 'scatter';
+export type ChartTimeframe = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 @Component({
   selector: 'app-dashboard-home',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule, ReactiveFormsModule, SalesChartComponent],
+  imports: [CommonModule, RouterModule, LucideAngularModule, ReactiveFormsModule, SalesChartComponent, ChartControlsComponent],
   templateUrl: './dashboard-home.component.html',
   styleUrls: ['./dashboard-home.component.css']
 })
@@ -75,6 +76,8 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
   salesChartData: DashboardChartData | null = null;
   selectedChartType: ChartType = 'line';
   selectedTimeframe: ChartTimeframe = 'daily';
+  showRevenue: boolean = true;
+  showOrders: boolean = true;
   isDarkMode = false; // TODO: Get from theme service
 
   // Filters and controls
@@ -478,7 +481,17 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
   private loadSalesChartData(): void {
     const dateRange = this.getDateRange();
     
-    this.dashboardService.getSalesChartData(dateRange.from, dateRange.to)
+    // Map timeframe to groupBy parameter for backend
+    const groupByMapping: { [key: string]: string } = {
+      'daily': 'day',
+      'weekly': 'week', 
+      'monthly': 'month',
+      'yearly': 'year'
+    };
+    
+    const groupBy = groupByMapping[this.selectedTimeframe] || 'day';
+    
+    this.dashboardService.getSalesChartData(dateRange.from, dateRange.to, groupBy)
       .pipe(
         takeUntil(this.destroy$),
         catchError(error => {
@@ -501,5 +514,14 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
     this.selectedTimeframe = timeframe;
     // Reload chart data with new timeframe
     this.loadSalesChartData();
+  }
+
+  onDatasetToggle(event: {type: 'revenue' | 'orders', visible: boolean}): void {
+    if (event.type === 'revenue') {
+      this.showRevenue = event.visible;
+    } else {
+      this.showOrders = event.visible;
+    }
+    // Chart component will handle the visibility change automatically via input binding
   }
 }

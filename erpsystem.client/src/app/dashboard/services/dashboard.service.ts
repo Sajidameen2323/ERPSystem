@@ -311,16 +311,35 @@ export class DashboardService {
   /**
    * Get chart data for sales trends
    */
-  getSalesChartData(fromDate?: Date, toDate?: Date): Observable<DashboardChartData> {
-    const params = new HttpParams()
-      .set('fromDate', fromDate?.toISOString() || '')
-      .set('toDate', toDate?.toISOString() || '');
+  getSalesChartData(fromDate?: Date, toDate?: Date, groupBy: string = 'day'): Observable<DashboardChartData> {
+    let params = new HttpParams();
+    
+    if (fromDate) {
+      params = params.set('fromDate', fromDate.toISOString());
+    }
+    if (toDate) {
+      params = params.set('toDate', toDate.toISOString());
+    }
+    params = params.set('groupBy', groupBy);
 
-    return this.http.get<DashboardChartData>(`${this.baseUrl}/dashboard/sales-chart`, { params }).pipe(
-      catchError(() => of({
-        labels: [],
-        datasets: []
-      }))
+    return this.http.get<Result<DashboardChartData>>(`${this.baseUrl}/dashboard/sales-chart`, { params }).pipe(
+      map(response => {
+        if (response.isSuccess && response.data) {
+          return response.data;
+        }
+        // Return empty chart data if API call fails
+        return {
+          labels: [],
+          datasets: []
+        };
+      }),
+      catchError(error => {
+        console.error('Error loading sales chart data:', error);
+        return of({
+          labels: [],
+          datasets: []
+        });
+      })
     );
   }
 
