@@ -143,14 +143,17 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.initializeForm();
-    this.setupPurchaseOrderSearch();
-
-    // Check if purchase order ID is provided in route
+    
+    // Check if purchase order ID is provided in route first
     this.route.queryParams.pipe(
       takeUntil(this.destroy$)
     ).subscribe(params => {
       if (params['purchaseOrderId']) {
+        // Pre-loading mode - don't setup search functionality
         this.loadPurchaseOrderForReturn(params['purchaseOrderId']);
+      } else {
+        // Normal mode - setup search functionality
+        this.setupPurchaseOrderSearch();
       }
     });
   }
@@ -187,8 +190,9 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
         return this.purchaseOrderService.getPurchaseOrders({
           page: 1,
           pageSize: 10,
-          searchTerm: searchTerm,
-          status: PurchaseOrderStatus.Received // Only allow returns for received orders
+          searchTerm: searchTerm
+          // Allow returns from Received, PartiallyReceived, and PartiallyReturned orders
+          // Backend will filter eligible orders based on business rules
         }).pipe(
           catchError(error => {
             console.error('Error searching purchase orders:', error);
@@ -210,7 +214,7 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
           this.showSearchDropdown.set(false);
           if (this.returnForm.get('purchaseOrderSearch')?.value?.length >= 3) {
             // Only show message if user has typed enough characters
-            this.error.set('No received purchase orders found matching your search.');
+            this.error.set('No eligible purchase orders found matching your search.');
           }
         }
       },
@@ -251,10 +255,16 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
       switchMap(poResult => {
         if (poResult) {
           this.selectedPurchaseOrder.set(poResult);
+          
+          // Pre-populate the form with purchase order details
           this.returnForm.patchValue({
             purchaseOrderId: purchaseOrderId,
-            purchaseOrderSearch: poResult.poNumber
+            purchaseOrderSearch: `${poResult.poNumber} - ${poResult.supplier?.name || 'N/A'}`
           });
+          
+          // Hide search dropdown since we have a direct selection
+          this.showSearchDropdown.set(false);
+          this.purchaseOrderSearchResults.set([]);
           
           // Load available items for return
           return this.returnService.getAvailableReturnItems(purchaseOrderId);
@@ -263,7 +273,7 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
       }),
       catchError(error => {
         console.error('Error loading purchase order:', error);
-        this.error.set('Failed to load purchase order details. Please try again.');
+        this.error.set('Failed to load purchase order details. Please check if the purchase order exists and is eligible for returns.');
         return of(null);
       }),
       takeUntil(this.destroy$)
@@ -272,6 +282,19 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
       if (result?.data) {
         this.availableItems.set(result.data);
         this.populateAvailableItems(result.data);
+        
+        // Show success message when pre-loading from URL parameter
+        if (this.route.snapshot.queryParams['purchaseOrderId']) {
+          this.success.set(`Purchase order ${this.selectedPurchaseOrder()?.poNumber} loaded successfully. Select items to return below.`);
+          
+          // Clear success message after a few seconds
+          setTimeout(() => {
+            this.success.set(null);
+          }, 4000);
+        }
+      } else if (result === null) {
+        // This means the purchase order was found but has no returnable items
+        this.error.set('This purchase order has no items available for return. All items may have already been returned or the order may not be in a returnable status.');
       }
     });
   }
@@ -661,6 +684,10 @@ export class ReturnFormComponent implements OnInit, OnDestroy {
         return 'Partially Received';
       case PurchaseOrderStatus.Received:
         return 'Received';
+      case PurchaseOrderStatus.PartiallyReturned:
+        return 'Partially Returned';
+      case PurchaseOrderStatus.Returned:
+        return 'Returned';
       case PurchaseOrderStatus.Cancelled:
         return 'Cancelled';
       default:

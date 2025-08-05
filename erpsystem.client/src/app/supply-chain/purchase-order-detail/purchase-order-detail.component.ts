@@ -397,6 +397,36 @@ export class PurchaseOrderDetailComponent implements OnInit, OnDestroy {
     return this.purchaseOrderService.canReceiveItems(status);
   }
 
+  canCreateReturn(status: PurchaseOrderStatus): boolean {
+    return this.purchaseOrderService.canCreateReturn(status);
+  }
+
+  hasPurchaseOrderReturnStatus(status: PurchaseOrderStatus): boolean {
+    return status === PurchaseOrderStatus.PartiallyReturned || status === PurchaseOrderStatus.Returned;
+  }
+
+  getPurchaseOrderReturnStatusText(status: PurchaseOrderStatus): string {
+    switch (status) {
+      case PurchaseOrderStatus.PartiallyReturned:
+        return 'Partially Returned';
+      case PurchaseOrderStatus.Returned:
+        return 'Fully Returned';
+      default:
+        return '';
+    }
+  }
+
+  getPurchaseOrderReturnStatusBadgeClass(status: PurchaseOrderStatus): string {
+    switch (status) {
+      case PurchaseOrderStatus.PartiallyReturned:
+        return 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400';
+      case PurchaseOrderStatus.Returned:
+        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
+      default:
+        return '';
+    }
+  }
+
   formatCurrency(amount: number): string {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -571,6 +601,10 @@ export class PurchaseOrderDetailComponent implements OnInit, OnDestroy {
         return 'Partially Received';
       case PurchaseOrderStatus.Received:
         return 'Received';
+      case PurchaseOrderStatus.PartiallyReturned:
+        return 'Partially Returned';
+      case PurchaseOrderStatus.Returned:
+        return 'Returned';
       case PurchaseOrderStatus.Cancelled:
         return 'Cancelled';
       default:

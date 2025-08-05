@@ -85,6 +85,18 @@
         <lucide-angular [img]="PackageIcon" class="w-4 h-4"></lucide-angular>
         Receive All
       </button>
+
+      <!-- Create Return (Received/PartiallyReceived/PartiallyReturned) -->
+      <a
+        *ngIf="canCreateReturn(purchaseOrder.status)"
+        [routerLink]="['/dashboard/supply-chain/purchase-order-returns/new']"
+        [queryParams]="{ purchaseOrderId: purchaseOrder.id }"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+        title="Create Return"
+      >
+        <lucide-angular [img]="RotateCcwIcon" class="w-4 h-4"></lucide-angular>
+        Create Return
+      </a>
     </div>
   </div>
 
@@ -105,12 +117,15 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Order Summary</h2>
-        <span
-          class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
-          [ngClass]="getStatusBadgeClass(purchaseOrder.status)"
-        >
-          {{ getStatusText(purchaseOrder.status) }}
-        </span>
+        <div class="flex flex-col gap-2">
+          <!-- Main Status -->
+          <span
+            class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
+            [ngClass]="getStatusBadgeClass(purchaseOrder.status)"
+          >
+            {{ getStatusText(purchaseOrder.status) }}
+          </span>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

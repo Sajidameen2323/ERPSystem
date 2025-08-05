@@ -7,6 +7,8 @@ export enum PurchaseOrderStatus {
   Sent = 'Sent',
   PartiallyReceived = 'PartiallyReceived',
   Received = 'Received',
+  PartiallyReturned = 'PartiallyReturned',
+  Returned = 'Returned',
   Cancelled = 'Cancelled'
 }
 

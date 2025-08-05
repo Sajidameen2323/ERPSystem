@@ -281,6 +281,8 @@ export class PurchaseOrderService {
       { value: PurchaseOrderStatus.Sent, label: 'Sent to Supplier' },
       { value: PurchaseOrderStatus.PartiallyReceived, label: 'Partially Received' },
       { value: PurchaseOrderStatus.Received, label: 'Fully Received' },
+      { value: PurchaseOrderStatus.PartiallyReturned, label: 'Partially Returned' },
+      { value: PurchaseOrderStatus.Returned, label: 'Fully Returned' },
       { value: PurchaseOrderStatus.Cancelled, label: 'Cancelled' }
     ];
   }
@@ -291,21 +293,25 @@ export class PurchaseOrderService {
   getStatusBadgeClass(status: PurchaseOrderStatus): string {
     switch (status) {
       case PurchaseOrderStatus.Draft:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
       case PurchaseOrderStatus.Pending:
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400';
       case PurchaseOrderStatus.Approved:
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
       case PurchaseOrderStatus.Sent:
-        return 'bg-orange-100 text-orange-800';
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400';
       case PurchaseOrderStatus.PartiallyReceived:
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400';
       case PurchaseOrderStatus.Received:
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
+      case PurchaseOrderStatus.PartiallyReturned:
+        return 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400';
+      case PurchaseOrderStatus.Returned:
+        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
       case PurchaseOrderStatus.Cancelled:
-        return 'bg-red-100 text-red-800';
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     }
   }
 
@@ -350,6 +356,15 @@ export class PurchaseOrderService {
   canReceiveItems(status: PurchaseOrderStatus): boolean {
     return status === PurchaseOrderStatus.PartiallyReceived || 
            status === PurchaseOrderStatus.Sent;
+  }
+
+  /**
+   * Check if returns can be created from purchase order
+   */
+  canCreateReturn(status: PurchaseOrderStatus): boolean {
+    return status === PurchaseOrderStatus.Received || 
+           status === PurchaseOrderStatus.PartiallyReceived ||
+           status === PurchaseOrderStatus.PartiallyReturned;
   }
 
   /**

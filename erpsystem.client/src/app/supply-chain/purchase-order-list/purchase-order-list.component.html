@@ -141,12 +141,15 @@
 
             <!-- Status -->
             <td class="px-6 py-4 whitespace-nowrap">
+              <div class="flex flex-col gap-1 items-center">
+              <!-- Main Status -->
               <span
-                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium text-center"
                 [ngClass]="getStatusBadgeClass(po.status)"
               >
                 {{ getStatusText(po.status) }}
-              </span>
+              </span>              
+              </div>
             </td>
 
             <!-- Expected Delivery -->
@@ -210,6 +213,17 @@
                   title="Receive Items"
                 >
                   <lucide-angular [img]="TruckIcon" class="w-4 h-4"></lucide-angular>
+                </a>
+
+                <!-- Create Return (for Received/PartiallyReceived/PartiallyReturned) -->
+                <a
+                  *ngIf="canCreateReturn(po.status)"
+                  [routerLink]="['/dashboard/supply-chain/purchase-order-returns/new']"
+                  [queryParams]="{ purchaseOrderId: po.id }"
+                  class="text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300"
+                  title="Create Return"
+                >
+                  <lucide-angular [img]="RotateCcwIcon" class="w-4 h-4"></lucide-angular>
                 </a>
               </div>
             </td>

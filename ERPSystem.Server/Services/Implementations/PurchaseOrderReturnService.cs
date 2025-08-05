@@ -167,7 +167,8 @@ public class PurchaseOrderReturnService : IPurchaseOrderReturnService
             }
 
             if (purchaseOrder.Status != PurchaseOrderStatus.Received && 
-                purchaseOrder.Status != PurchaseOrderStatus.PartiallyReceived)
+                purchaseOrder.Status != PurchaseOrderStatus.PartiallyReceived &&
+                purchaseOrder.Status != PurchaseOrderStatus.PartiallyReturned)
             {
                 return Result<PurchaseOrderReturnDto>.Failure("Can only return items from received purchase orders");
             }
@@ -365,6 +366,13 @@ public class PurchaseOrderReturnService : IPurchaseOrderReturnService
             // Now process stock updates when return is being processed
             await ProcessStockUpdatesForReturnAsync(returnEntity.Items.ToList(), returnEntity.ReturnNumber, userId);
 
+            // Save changes first to ensure the return status is committed
+            await _context.SaveChangesAsync();
+
+            // Update purchase order status based on return quantities (after saving the return status)
+            await UpdatePurchaseOrderStatusAsync(returnEntity.PurchaseOrderId);
+
+            // Save the purchase order status update
             await _context.SaveChangesAsync();
 
             var updatedReturn = await _context.PurchaseOrderReturns
@@ -399,7 +407,8 @@ public class PurchaseOrderReturnService : IPurchaseOrderReturnService
             }
 
             if (purchaseOrder.Status != PurchaseOrderStatus.Received && 
-                purchaseOrder.Status != PurchaseOrderStatus.PartiallyReceived)
+                purchaseOrder.Status != PurchaseOrderStatus.PartiallyReceived &&
+                purchaseOrder.Status != PurchaseOrderStatus.PartiallyReturned)
             {
                 return Result<List<AvailableReturnItemDto>>.Failure("Can only return items from received purchase orders");
             }
@@ -576,6 +585,79 @@ public class PurchaseOrderReturnService : IPurchaseOrderReturnService
             product.UpdatedAt = DateTime.UtcNow;
 
             _context.StockMovements.Add(stockMovement);
+        }
+    }
+
+    private async Task UpdatePurchaseOrderStatusAsync(Guid purchaseOrderId)
+    {
+        try
+        {
+            var purchaseOrder = await _context.PurchaseOrders
+                .Include(po => po.Items)
+                .FirstOrDefaultAsync(po => po.Id == purchaseOrderId);
+
+            if (purchaseOrder == null)
+            {
+                _logger.LogWarning("Purchase order {PurchaseOrderId} not found when updating status after return", purchaseOrderId);
+                return;
+            }
+
+            // Calculate total received and returned quantities
+            var totalReceivedQuantity = purchaseOrder.Items.Sum(item => item.ReceivedQuantity);
+            
+            // Get total returned quantity from all processed returns
+            var totalReturnedQuantity = await _context.PurchaseOrderReturnItems
+                .Include(ri => ri.PurchaseOrderReturn)
+                .Where(ri => ri.PurchaseOrderReturn.PurchaseOrderId == purchaseOrderId && 
+                           ri.PurchaseOrderReturn.Status == ReturnStatus.Processed)
+                .SumAsync(ri => ri.ReturnQuantity);
+
+            _logger.LogInformation(
+                "Calculating status for purchase order {PurchaseOrderId}: " +
+                "Total received: {TotalReceived}, Total returned: {TotalReturned}",
+                purchaseOrderId, totalReceivedQuantity, totalReturnedQuantity);
+
+            // Determine new status based on return quantities
+            PurchaseOrderStatus oldStatus = purchaseOrder.Status;
+            PurchaseOrderStatus newStatus;
+
+            if (totalReturnedQuantity == 0)
+            {
+                // No returns - keep current status (should be Received or PartiallyReceived)
+                return;
+            }
+            else if (totalReturnedQuantity >= totalReceivedQuantity)
+            {
+                // All received items have been returned
+                newStatus = PurchaseOrderStatus.Returned;
+            }
+            else if (totalReturnedQuantity > 0)
+            {
+                // Some items have been returned but not all
+                newStatus = PurchaseOrderStatus.PartiallyReturned;
+            }
+            else
+            {
+                // Fallback - keep current status
+                newStatus = purchaseOrder.Status;
+            }
+
+            // Update status if it changed
+            if (oldStatus != newStatus)
+            {
+                purchaseOrder.Status = newStatus;
+                purchaseOrder.UpdatedAt = DateTime.UtcNow;
+                
+                _logger.LogInformation(
+                    "Updated purchase order {PurchaseOrderId} status from {OldStatus} to {NewStatus}. " +
+                    "Total received: {TotalReceived}, Total returned: {TotalReturned}",
+                    purchaseOrderId, oldStatus, newStatus, totalReceivedQuantity, totalReturnedQuantity);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating purchase order status for PO {PurchaseOrderId} after return processing", purchaseOrderId);
+            // Don't throw here as this is a secondary operation - the return processing should still succeed
         }
     }
 }

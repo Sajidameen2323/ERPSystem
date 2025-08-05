@@ -10,7 +10,9 @@ public enum PurchaseOrderStatus
     Sent = 3,
     PartiallyReceived = 4,
     Received = 5,
-    Cancelled = 6
+    PartiallyReturned = 6,
+    Returned = 7,
+    Cancelled = 8
 }
 
 public class PurchaseOrder
