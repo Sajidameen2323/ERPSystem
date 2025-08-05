@@ -6,6 +6,34 @@ This project uses a simple file-based configuration approach:
 - **Backend (ASP.NET Core)**: Uses appsettings files with local development configuration
 - **Frontend (Angular)**: Uses TypeScript environment files with local configuration
 
+## Recent Updates
+
+### Enhanced Financial Metrics API
+
+The dashboard now includes comprehensive financial metrics that aggregate data from multiple sources:
+
+#### New API Endpoint: `/api/dashboard/financial-metrics`
+
+**Purpose**: Provides complete financial overview including sales revenue, purchase costs, and returns.
+
+**Data Sources**:
+- **Sales Revenue**: From `Invoice` table (existing functionality)
+- **Purchase Costs**: From `PurchaseOrder` table (newly implemented)
+- **Purchase Returns**: From `PurchaseOrderReturn` table (newly implemented)
+
+**Key Metrics Provided**:
+- Sales metrics: Total revenue, paid amounts, outstanding, overdue
+- Purchase metrics: Purchase costs, payments, outstanding amounts
+- Return metrics: Total value of processed returns
+- Combined metrics: Net cash flow, gross margin calculations
+
+**Role-Based Access**: Only users with 'admin' or 'salesuser' roles can access financial data.
+
+**Implementation Details**:
+- Backend: Enhanced `DashboardController.GetComprehensiveFinancialMetrics()` method
+- Frontend: Updated `DashboardService.getFinancialMetrics()` to use new endpoint
+- Replaces the previous invoice-only approach with comprehensive financial tracking
+
 ## Backend Server Setup
 
 ### For New Developers

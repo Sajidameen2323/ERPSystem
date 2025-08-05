@@ -389,8 +389,8 @@
                 <div class="flex justify-between items-center">
                   <span class="text-sm text-gray-600 dark:text-gray-400">Total Revenue</span>
                   <span class="font-semibold text-gray-900 dark:text-white currency-compact"
-                    [title]="formatFullCurrency(dashboardOverview?.financialMetrics?.totalRevenue || 0)">
-                    {{ formatCurrency(dashboardOverview?.financialMetrics?.totalRevenue || 0) }}
+                    [title]="formatFullCurrency(dashboardStats?.totalRevenue ?? 0)">
+                    {{ formatCurrency(dashboardStats?.totalRevenue || 0) }}
                   </span>
                 </div>
                 <div class="flex justify-between items-center">

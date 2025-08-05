@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using ERPSystem.Server.Services.Interfaces;
 using ERPSystem.Server.Common;
 using ERPSystem.Server.DTOs.Dashboard;
+using ERPSystem.Server.Models;
 
 namespace ERPSystem.Server.Controllers;
 
@@ -19,6 +20,8 @@ public class DashboardController : ControllerBase
     private readonly ICustomerService _customerService;
     private readonly IProductService _productService;
     private readonly IAuditService _auditService;
+    private readonly IPurchaseOrderService _purchaseOrderService;
+    private readonly IPurchaseOrderReturnService _purchaseOrderReturnService;
     private readonly ILogger<DashboardController> _logger;
 
     public DashboardController(
@@ -27,6 +30,8 @@ public class DashboardController : ControllerBase
         ICustomerService customerService,
         IProductService productService,
         IAuditService auditService,
+        IPurchaseOrderService purchaseOrderService,
+        IPurchaseOrderReturnService purchaseOrderReturnService,
         ILogger<DashboardController> logger)
     {
         _salesOrderService = salesOrderService;
@@ -34,6 +39,8 @@ public class DashboardController : ControllerBase
         _customerService = customerService;
         _productService = productService;
         _auditService = auditService;
+        _purchaseOrderService = purchaseOrderService;
+        _purchaseOrderReturnService = purchaseOrderReturnService;
         _logger = logger;
     }
 
@@ -309,6 +316,30 @@ public class DashboardController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Get comprehensive financial metrics including sales revenue, purchase costs, and returns
+    /// </summary>
+    [HttpGet("financial-metrics")]
+    public async Task<ActionResult<Result<FinancialMetricsDto>>> GetComprehensiveFinancialMetrics(
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null)
+    {
+        try
+        {
+            // Set default date range if not provided
+            fromDate ??= DateTime.UtcNow.AddDays(-30);
+            toDate ??= DateTime.UtcNow;
+
+            var financialMetrics = await GetComprehensiveFinancialMetricsAsync(fromDate, toDate);
+            return Ok(Result<FinancialMetricsDto>.Success(financialMetrics));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving comprehensive financial metrics");
+            return BadRequest(Result<FinancialMetricsDto>.Failure("Failed to retrieve comprehensive financial metrics"));
+        }
+    }
+
     #region Private Helper Methods
 
     private async Task<SalesMetricsDto> GetSalesMetricsAsync(DateTime? fromDate, DateTime? toDate)
@@ -340,16 +371,123 @@ public class DashboardController : ControllerBase
 
     private async Task<FinancialMetricsDto> GetFinancialMetricsAsync(DateTime? fromDate, DateTime? toDate)
     {
-        var invoiceStats = await _invoiceService.GetInvoiceStatsAsync(fromDate, toDate);
+        // Use the comprehensive financial metrics
+        return await GetComprehensiveFinancialMetricsAsync(fromDate, toDate);
+    }
 
-        return new FinancialMetricsDto
+    private async Task<FinancialMetricsDto> GetComprehensiveFinancialMetricsAsync(DateTime? fromDate, DateTime? toDate)
+    {
+        try
         {
-            TotalRevenue = invoiceStats.IsSuccess ? invoiceStats.Data!.TotalInvoiced : 0,
-            TotalPaid = invoiceStats.IsSuccess ? invoiceStats.Data!.TotalPaid : 0,
-            TotalOutstanding = invoiceStats.IsSuccess ? invoiceStats.Data!.TotalOutstanding : 0,
-            TotalOverdue = invoiceStats.IsSuccess ? invoiceStats.Data!.TotalOverdue : 0,
-            AveragePaymentDays = invoiceStats.IsSuccess ? invoiceStats.Data!.AveragePaymentDays : 0
-        };
+            // Get sales revenue data from invoices
+            var invoiceStatsTask = _invoiceService.GetInvoiceStatsAsync(fromDate, toDate);
+
+            // Get purchase costs data from purchase orders
+            var purchaseOrdersTask = _purchaseOrderService.GetFinancialDataAsync(fromDate, toDate);
+
+            // Get returns data from purchase order returns
+            var purchaseReturnsTask = GetPurchaseReturnFinancialDataAsync(fromDate, toDate);
+
+            // Execute all tasks in parallel
+            await Task.WhenAll(invoiceStatsTask, purchaseOrdersTask, purchaseReturnsTask);
+
+            var invoiceStats = await invoiceStatsTask;
+            var purchaseData = await purchaseOrdersTask;
+            var returnData = await purchaseReturnsTask;
+
+            // Sales/Revenue metrics (from Invoices)
+            var totalRevenue = invoiceStats.IsSuccess ? invoiceStats.Data!.TotalInvoiced : 0;
+            var totalPaid = invoiceStats.IsSuccess ? invoiceStats.Data!.TotalPaid : 0;
+            var totalOutstanding = invoiceStats.IsSuccess ? invoiceStats.Data!.TotalOutstanding : 0;
+            var totalOverdue = invoiceStats.IsSuccess ? invoiceStats.Data!.TotalOverdue : 0;
+            var averagePaymentDays = invoiceStats.IsSuccess ? invoiceStats.Data!.AveragePaymentDays : 0;
+
+            // Purchase metrics
+            var totalPurchaseValue = purchaseData.TotalPurchaseValue;
+            var totalPurchasePaid = purchaseData.TotalPurchasePaid;
+            var totalPurchaseOutstanding = purchaseData.TotalPurchaseOutstanding;
+
+            // Return metrics
+            var totalReturnValue = returnData;
+
+            // Calculate combined metrics
+            var grossMargin = totalRevenue > 0 ? ((totalRevenue - totalPurchaseValue) / totalRevenue * 100) : 0;
+            var netCashFlow = totalPaid - totalPurchasePaid + totalReturnValue;
+
+            return new FinancialMetricsDto
+            {
+                // Sales/Revenue metrics
+                TotalRevenue = totalRevenue,
+                TotalPaid = totalPaid,
+                TotalOutstanding = totalOutstanding,
+                TotalOverdue = totalOverdue,
+                AveragePaymentDays = averagePaymentDays,
+
+                // Supply Chain/Purchase metrics
+                TotalPurchaseValue = totalPurchaseValue,
+                TotalPurchasePaid = totalPurchasePaid,
+                TotalPurchaseOutstanding = totalPurchaseOutstanding,
+                TotalReturnValue = totalReturnValue,
+
+                // Combined metrics
+                NetCashFlow = netCashFlow,
+                GrossMargin = grossMargin,
+
+                PaymentTrends = new List<PaymentTrendDto>(), // TODO: Implement payment trends
+                CashFlow = new CashFlowDto
+                {
+                    Income = totalPaid,
+                    Expenses = totalPurchasePaid,
+                    Net = netCashFlow
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating comprehensive financial metrics");
+            return new FinancialMetricsDto();
+        }
+    }
+
+    private async Task<decimal> GetPurchaseReturnFinancialDataAsync(DateTime? fromDate, DateTime? toDate)
+    {
+        try
+        {
+            // Get all purchase order returns within the date range
+            var returnsResult = await _purchaseOrderReturnService.GetReturnsAsync(
+                page: 1,
+                pageSize: int.MaxValue, // Get all records for financial calculation
+                search: null,
+                status: null,
+                dateFrom: fromDate,
+                dateTo: toDate
+            );
+
+            if (returnsResult?.Items == null)
+            {
+                return 0;
+            }
+
+            var returns = returnsResult.Items;
+
+            decimal totalReturnValue = 0;
+
+            foreach (var returnItem in returns)
+            {
+                // Only count processed returns for financial impact
+                if (returnItem.Status == (int)ReturnStatus.Processed)
+                {
+                    totalReturnValue += returnItem.TotalReturnAmount;
+                }
+            }
+
+            return totalReturnValue;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating purchase return financial data");
+            return 0;
+        }
     }
 
     private Task<CustomerMetricsDto> GetCustomerMetricsAsync(DateTime? fromDate, DateTime? toDate)

@@ -277,33 +277,16 @@ export class DashboardService {
       return of(this.getEmptyFinancialMetrics());
     }
 
-    return this.invoiceService.getInvoiceStatistics(
-      fromDate?.toISOString(), 
-      toDate?.toISOString()
-    ).pipe(
+    const params = new HttpParams()
+      .set('fromDate', fromDate?.toISOString() || '')
+      .set('toDate', toDate?.toISOString() || '');
+
+    return this.http.get<Result<FinancialMetrics>>(`${this.baseUrl}/dashboard/financial-metrics`, { params }).pipe(
       map(response => {
-        const stats = response.isSuccess ? response.data! : this.getEmptyInvoiceStats();
-        return {
-          // Sales/Revenue metrics
-          totalRevenue: stats.totalAmount,
-          totalPaid: stats.totalPaid,
-          totalOutstanding: stats.totalAmount - stats.totalPaid,
-          totalOverdue: stats.totalOverdue,
-          averagePaymentDays: stats.averagePaymentTime,
-          
-          // Supply Chain/Purchase metrics (TODO: implement when backend is ready)
-          totalPurchaseValue: 0,
-          totalPurchasePaid: 0,
-          totalPurchaseOutstanding: 0,
-          totalReturnValue: 0,
-          
-          // Combined metrics
-          netCashFlow: stats.totalPaid, // Revenue - Purchase costs (simplified for now)
-          grossMargin: stats.totalAmount > 0 ? ((stats.totalAmount * 0.3) / stats.totalAmount * 100) : 0, // Estimated 30% margin
-          
-          paymentTrends: [], // TODO: Implement payment trends
-          cashFlow: { income: stats.totalPaid, expenses: 0, net: stats.totalPaid }
-        };
+        if (!response.isSuccess || !response.data) {
+          return this.getEmptyFinancialMetrics();
+        }
+        return response.data;
       }),
       catchError(() => of(this.getEmptyFinancialMetrics()))
     );

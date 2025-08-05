@@ -42,4 +42,9 @@ public interface IPurchaseOrderService
         int pageSize = 10);
 
     Task<Result<StockMovementDto>> CreateStockMovementAsync(StockMovementCreateDto dto, string userId);
+
+    // Financial metrics
+    Task<(decimal TotalPurchaseValue, decimal TotalPurchasePaid, decimal TotalPurchaseOutstanding)> GetFinancialDataAsync(
+        DateTime? fromDate = null, 
+        DateTime? toDate = null);
 }

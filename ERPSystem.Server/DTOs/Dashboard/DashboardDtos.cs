@@ -48,11 +48,23 @@ public class InventoryMetricsDto
 /// </summary>
 public class FinancialMetricsDto
 {
+    // Sales/Revenue metrics (from Invoices)
     public decimal TotalRevenue { get; set; }
     public decimal TotalPaid { get; set; }
     public decimal TotalOutstanding { get; set; }
     public decimal TotalOverdue { get; set; }
     public int AveragePaymentDays { get; set; }
+    
+    // Supply Chain/Purchase metrics (from Purchase Orders)
+    public decimal TotalPurchaseValue { get; set; }
+    public decimal TotalPurchasePaid { get; set; }
+    public decimal TotalPurchaseOutstanding { get; set; }
+    public decimal TotalReturnValue { get; set; }
+    
+    // Combined metrics
+    public decimal NetCashFlow { get; set; }
+    public decimal GrossMargin { get; set; }
+    
     public List<PaymentTrendDto> PaymentTrends { get; set; } = new();
     public CashFlowDto CashFlow { get; set; } = new();
 }

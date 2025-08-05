@@ -92,7 +92,7 @@ public class PurchaseOrderService : IPurchaseOrderService
                 .ToListAsync();
 
             // when mapping make sure enum string values are used
-        
+
             var purchaseOrderDtos = _mapper.Map<List<PurchaseOrderDto>>(purchaseOrders);
 
             var result = new PagedResult<PurchaseOrderDto>
@@ -122,7 +122,7 @@ public class PurchaseOrderService : IPurchaseOrderService
                     .ThenInclude(poi => poi.Product)
                 .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(po => po.Id == id);
-            
+
             if (purchaseOrder == null)
             {
                 return Result<PurchaseOrderDto>.Failure("Purchase order not found");
@@ -296,7 +296,7 @@ public class PurchaseOrderService : IPurchaseOrderService
                 var existingItems = await _context.PurchaseOrderItems
                     .Where(poi => poi.PurchaseOrderId == id)
                     .ToListAsync();
-                
+
                 _context.PurchaseOrderItems.RemoveRange(existingItems);
                 await _context.SaveChangesAsync(); // Save the removal first
 
@@ -550,7 +550,7 @@ public class PurchaseOrderService : IPurchaseOrderService
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            _logger.LogInformation("Received {Quantity} of item {ProductName} from PO {PONumber}", 
+            _logger.LogInformation("Received {Quantity} of item {ProductName} from PO {PONumber}",
                 dto.ReceivedQuantity, item.Product.Name, item.PurchaseOrder.PONumber);
 
             return Result<bool>.Success(true);
@@ -623,7 +623,7 @@ public class PurchaseOrderService : IPurchaseOrderService
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            _logger.LogInformation("Fully received purchase order {PurchaseOrderId} - {PONumber}", 
+            _logger.LogInformation("Fully received purchase order {PurchaseOrderId} - {PONumber}",
                 purchaseOrder.Id, purchaseOrder.PONumber);
 
             return Result<bool>.Success(true);
@@ -740,7 +740,7 @@ public class PurchaseOrderService : IPurchaseOrderService
             await transaction.CommitAsync();
 
             var stockMovementDto = _mapper.Map<StockMovementDto>(stockMovement);
-            _logger.LogInformation("Created stock movement {StockMovementId} for product {ProductName}", 
+            _logger.LogInformation("Created stock movement {StockMovementId} for product {ProductName}",
                 stockMovement.Id, product.Name);
 
             return Result<StockMovementDto>.Success(stockMovementDto);
@@ -771,5 +771,74 @@ public class PurchaseOrderService : IPurchaseOrderService
         }
 
         return $"PO{nextNumber:D6}"; // Format: PO000001, PO000002, etc.
+    }
+
+    public async Task<(decimal TotalPurchaseValue, decimal TotalPurchasePaid, decimal TotalPurchaseOutstanding)> GetFinancialDataAsync(
+        DateTime? fromDate = null,
+        DateTime? toDate = null)
+    {
+        try
+        {
+            // Build query for purchase orders within the date range
+            var query = _context.PurchaseOrders.AsQueryable();
+
+            // Apply date filters
+            if (fromDate.HasValue)
+            {
+                query = query.Where(po => po.OrderDate >= fromDate.Value);
+            }
+
+            if (toDate.HasValue)
+            {
+                query = query.Where(po => po.OrderDate <= toDate.Value);
+            }
+
+            // Get only the data we need for financial calculations
+            var purchaseOrders = await query
+                .Where(po => !po.IsDeleted) // Exclude soft-deleted orders
+                .Select(po => new { po.Status, po.TotalAmount, po.PONumber })
+                .ToListAsync();
+
+            decimal totalPurchaseValue = 0;
+            decimal totalPurchasePaid = 0;
+            decimal totalPurchaseOutstanding = 0;
+
+            foreach (var po in purchaseOrders)
+            {
+                // Only count received or partially received orders for financial impact
+                if (po.Status == PurchaseOrderStatus.Received || po.Status == PurchaseOrderStatus.PartiallyReceived)
+                {
+                    totalPurchaseValue += po.TotalAmount;
+
+                    // For simplicity, assume orders that are fully received are paid
+                    // In a real system, you might have a separate Payment tracking for Purchase Orders
+                    if (po.Status == PurchaseOrderStatus.Received)
+                    {
+                        totalPurchasePaid += po.TotalAmount;
+                    }
+                    else if (po.Status == PurchaseOrderStatus.PartiallyReceived)
+                    {
+                        // Calculate partial payment based on received items
+                        // For now, assume 50% is paid for partially received orders
+                        var partialPayment = po.TotalAmount * 0.5m;
+                        totalPurchasePaid += partialPayment;
+                        totalPurchaseOutstanding += (po.TotalAmount - partialPayment);
+                    }
+                }
+                else if (po.Status == PurchaseOrderStatus.Sent)
+                {
+                    // Orders that are sent but not received yet are outstanding
+                    totalPurchaseValue += po.TotalAmount;
+                    totalPurchaseOutstanding += po.TotalAmount;
+                }
+            }
+
+            return (totalPurchaseValue, totalPurchasePaid, totalPurchaseOutstanding);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating purchase order financial data");
+            return (0, 0, 0);
+        }
     }
 }
