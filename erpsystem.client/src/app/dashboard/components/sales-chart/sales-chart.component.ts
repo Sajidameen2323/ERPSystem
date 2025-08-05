@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, OnChanges, SimpleChanges, ViewChild, ElementRef, AfterViewInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   Chart,
@@ -28,7 +28,7 @@ export interface SalesChartOptions {
   templateUrl: './sales-chart.component.html',
   styleUrl: './sales-chart.component.css'
 })
-export class SalesChartComponent implements OnInit, AfterViewInit, OnDestroy {
+export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
   @ViewChild('chartCanvas', { static: true }) chartCanvas!: ElementRef<HTMLCanvasElement>;
   
   @Input() chartData: DashboardChartData | null = null;
@@ -44,8 +44,23 @@ export class SalesChartComponent implements OnInit, AfterViewInit, OnDestroy {
   private chart: Chart | null = null;
   isShowingSampleData: boolean = false;
   
+  constructor(private cdr: ChangeDetectorRef) {}
+  
   ngOnInit() {
-    // Chart will be initialized in AfterViewInit
+    // Initialize isShowingSampleData state early
+    this.checkIfShowingSampleData();
+  }
+  
+  ngOnChanges(changes: SimpleChanges) {
+    // React to input changes, especially chartData
+    if (changes['chartData']) {
+      this.checkIfShowingSampleData();
+      if (this.chart) {
+        const chartData = this.prepareChartData();
+        this.chart.data = chartData;
+        this.chart.update('resize');
+      }
+    }
   }
   
   ngAfterViewInit() {
@@ -55,6 +70,17 @@ export class SalesChartComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy() {
     if (this.chart) {
       this.chart.destroy();
+    }
+  }
+  
+  private checkIfShowingSampleData() {
+    // Check if we should show sample data and update the flag
+    const shouldShowSample = !this.chartData || !this.chartData.labels || this.chartData.labels.length === 0 || 
+        !this.chartData.datasets || this.chartData.datasets.length === 0;
+    
+    if (this.isShowingSampleData !== shouldShowSample) {
+      this.isShowingSampleData = shouldShowSample;
+      this.cdr.detectChanges();
     }
   }
   
@@ -80,18 +106,18 @@ export class SalesChartComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   
   private prepareChartData(): ChartData {
-    // If no chart data or empty data, use default sample data
-    if (!this.chartData || !this.chartData.labels || this.chartData.labels.length === 0 || 
-        !this.chartData.datasets || this.chartData.datasets.length === 0) {
+    // Check the state before preparing data
+    this.checkIfShowingSampleData();
+    
+    // If showing sample data, use default chart data
+    if (this.isShowingSampleData) {
       console.log('No chart data available, using sample data');
-      this.isShowingSampleData = true;
       return this.getDefaultChartData();
     }
     
-    this.isShowingSampleData = false;
     return {
-      labels: this.chartData.labels,
-      datasets: this.chartData.datasets.map((dataset, index) => ({
+      labels: this.chartData!.labels,
+      datasets: this.chartData!.datasets.map((dataset, index) => ({
         label: dataset.label,
         data: dataset.data,
         backgroundColor: dataset.backgroundColor || this.getDefaultColors().backgroundColor[index],
@@ -327,6 +353,7 @@ export class SalesChartComponent implements OnInit, AfterViewInit, OnDestroy {
   // Public method to update chart data
   updateChart(newData: DashboardChartData | null) {
     this.chartData = newData;
+    this.checkIfShowingSampleData();
     if (this.chart) {
       const chartData = this.prepareChartData();
       this.chart.data = chartData;

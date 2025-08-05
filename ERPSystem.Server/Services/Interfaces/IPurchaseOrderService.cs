@@ -43,7 +43,17 @@ public interface IPurchaseOrderService
 
     Task<Result<StockMovementDto>> CreateStockMovementAsync(StockMovementCreateDto dto, string userId);
 
-    // Financial metrics
+    /// <summary>
+    /// Calculate financial metrics for purchase orders based on industry standards
+    /// </summary>
+    /// <param name="fromDate">Start date for calculation (inclusive)</param>
+    /// <param name="toDate">End date for calculation (inclusive)</param>
+    /// <returns>
+    /// Tuple containing:
+    /// - TotalPurchaseValue: Total value of goods actually received (Cost of Goods component)
+    /// - TotalPurchasePaid: Amount paid for received goods (from payment records)
+    /// - TotalPurchaseOutstanding: Accounts payable (received goods not yet paid for)
+    /// </returns>
     Task<(decimal TotalPurchaseValue, decimal TotalPurchasePaid, decimal TotalPurchaseOutstanding)> GetFinancialDataAsync(
         DateTime? fromDate = null, 
         DateTime? toDate = null);

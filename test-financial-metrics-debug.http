@@ -1,0 +1,26 @@
+### Test Financial Metrics - Debug Purchase Order Data
+### This file is for testing the financial metrics endpoint temporarily without authorization
+
+### Test the financial metrics endpoint
+GET http://localhost:5154/api/dashboard/financial-metrics
+Content-Type: application/json
+
+### Test with date range
+GET http://localhost:5154/api/dashboard/financial-metrics?fromDate=2024-01-01&toDate=2024-12-31
+Content-Type: application/json
+
+### Test with last 30 days (default)
+GET http://localhost:5154/api/dashboard/financial-metrics
+Content-Type: application/json
+
+### Check purchase orders directly
+GET http://localhost:5154/api/purchaseorders
+Content-Type: application/json
+
+### Check purchase orders with status filter
+GET http://localhost:5154/api/purchaseorders?status=Received
+Content-Type: application/json
+
+### Check invoices
+GET http://localhost:5154/api/invoices
+Content-Type: application/json

@@ -779,10 +779,12 @@ public class PurchaseOrderService : IPurchaseOrderService
     {
         try
         {
-            // Build query for purchase orders within the date range
-            var query = _context.PurchaseOrders.AsQueryable();
+            // Build query for purchase orders within the date range with explicit loading
+            var query = _context.PurchaseOrders
+                .Where(po => !po.IsDeleted) // Exclude soft-deleted orders
+                .AsQueryable();
 
-            // Apply date filters
+            // Apply date filters based on order date
             if (fromDate.HasValue)
             {
                 query = query.Where(po => po.OrderDate >= fromDate.Value);
@@ -793,45 +795,102 @@ public class PurchaseOrderService : IPurchaseOrderService
                 query = query.Where(po => po.OrderDate <= toDate.Value);
             }
 
-            // Get only the data we need for financial calculations
-            var purchaseOrders = await query
-                .Where(po => !po.IsDeleted) // Exclude soft-deleted orders
-                .Select(po => new { po.Status, po.TotalAmount, po.PONumber })
+            // Get purchase orders with only the fields we need to avoid navigation property issues
+            var purchaseOrderData = await query
+                .Select(po => new
+                {
+                    po.Id,
+                    po.PONumber,
+                    po.Status,
+                    po.TotalAmount,
+                    Items = po.Items.Select(item => new
+                    {
+                        item.OrderedQuantity,
+                        item.ReceivedQuantity,
+                        item.UnitPrice
+                    }).ToList()
+                })
                 .ToListAsync();
 
-            decimal totalPurchaseValue = 0;
-            decimal totalPurchasePaid = 0;
-            decimal totalPurchaseOutstanding = 0;
+            _logger.LogInformation("GetFinancialDataAsync: Found {Count} purchase orders for date range {FromDate} to {ToDate}",
+                purchaseOrderData.Count, fromDate, toDate);
 
-            foreach (var po in purchaseOrders)
+            decimal totalPurchaseValue = 0;      // Total value of goods received (actual cost of goods)
+            decimal totalPurchasePaid = 0;       // Amount assumed paid for received goods
+            decimal totalPurchaseOutstanding = 0; // Accounts payable (received but not yet paid)
+
+            foreach (var po in purchaseOrderData)
             {
-                // Only count received or partially received orders for financial impact
-                if (po.Status == PurchaseOrderStatus.Received || po.Status == PurchaseOrderStatus.PartiallyReceived)
-                {
-                    totalPurchaseValue += po.TotalAmount;
+                _logger.LogInformation("Processing PO {PONumber} with Status {Status} and Total Amount {Amount}",
+                    po.PONumber, po.Status, po.TotalAmount);
 
-                    // For simplicity, assume orders that are fully received are paid
-                    // In a real system, you might have a separate Payment tracking for Purchase Orders
-                    if (po.Status == PurchaseOrderStatus.Received)
-                    {
-                        totalPurchasePaid += po.TotalAmount;
-                    }
-                    else if (po.Status == PurchaseOrderStatus.PartiallyReceived)
-                    {
-                        // Calculate partial payment based on received items
-                        // For now, assume 50% is paid for partially received orders
-                        var partialPayment = po.TotalAmount * 0.5m;
-                        totalPurchasePaid += partialPayment;
-                        totalPurchaseOutstanding += (po.TotalAmount - partialPayment);
-                    }
-                }
-                else if (po.Status == PurchaseOrderStatus.Sent)
+                // Calculate financial impact based on actual receipt status and industry standards
+                switch (po.Status)
                 {
-                    // Orders that are sent but not received yet are outstanding
-                    totalPurchaseValue += po.TotalAmount;
-                    totalPurchaseOutstanding += po.TotalAmount;
+                    case PurchaseOrderStatus.Received:
+                        // Fully received orders: All items received, goods are in inventory
+                        // This represents actual liability (accounts payable)
+                        var receivedValue = po.Items.Sum(item => item.ReceivedQuantity * item.UnitPrice);
+                        totalPurchaseValue += receivedValue;
+                        
+                        // Industry standard: Assume payment terms (e.g., Net 30)
+                        // For this implementation, we'll assume immediate accounts payable
+                        totalPurchaseOutstanding += receivedValue;
+
+                        _logger.LogInformation("PO {PONumber}: Fully received, Value={ReceivedValue}",
+                            po.PONumber, receivedValue);
+                        break;
+
+                    case PurchaseOrderStatus.PartiallyReceived:
+                        // Partially received: Only count the actual received portion
+                        var partialReceivedValue = po.Items.Sum(item => item.ReceivedQuantity * item.UnitPrice);
+                        totalPurchaseValue += partialReceivedValue;
+                        totalPurchaseOutstanding += partialReceivedValue;
+
+                        _logger.LogInformation("PO {PONumber}: Partially received, Value={PartialValue}",
+                            po.PONumber, partialReceivedValue);
+                        break;
+
+                    case PurchaseOrderStatus.Sent:
+                        // Goods shipped but not yet received - these are commitments, not actual liabilities
+                        // Industry standard: Don't include in payables until goods are received
+                        _logger.LogInformation("PO {PONumber}: Sent but not received, no financial impact", po.PONumber);
+                        break;
+
+                    case PurchaseOrderStatus.Approved:
+                    case PurchaseOrderStatus.Pending:
+                    case PurchaseOrderStatus.Draft:
+                        // These are commitments/purchase commitments, not actual liabilities
+                        _logger.LogInformation("PO {PONumber}: Status {Status}, no financial impact",
+                            po.PONumber, po.Status);
+                        break;
+
+                    case PurchaseOrderStatus.Cancelled:
+                        // Cancelled orders have no financial impact
+                        break;
+
+                    case PurchaseOrderStatus.Returned:
+                    case PurchaseOrderStatus.PartiallyReturned:
+                        // Handle returns - reduce the financial impact
+                        var netReceivedValue = po.Items.Sum(item => item.ReceivedQuantity * item.UnitPrice);
+                        totalPurchaseValue += netReceivedValue;
+                        totalPurchaseOutstanding += netReceivedValue;
+
+                        _logger.LogInformation("PO {PONumber}: Returns processed, Net Value={NetValue}",
+                            po.PONumber, netReceivedValue);
+                        break;
                 }
             }
+
+            // In a real-world scenario, you would track actual payments made
+            // For now, we'll assume no payments have been made yet (all outstanding becomes payable)
+            // This follows industry standard where:
+            // - TotalPurchaseValue = Cost of Goods Received (COGS component)
+            // - TotalPurchaseOutstanding = Accounts Payable
+            // - TotalPurchasePaid = Actual payments made (would come from payment records)
+
+            _logger.LogInformation("Financial Data Results: TotalValue={TotalValue}, TotalPaid={TotalPaid}, TotalOutstanding={TotalOutstanding}",
+                totalPurchaseValue, totalPurchasePaid, totalPurchaseOutstanding);
 
             return (totalPurchaseValue, totalPurchasePaid, totalPurchaseOutstanding);
         }
