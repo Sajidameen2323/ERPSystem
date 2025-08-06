@@ -1,0 +1,36 @@
+### Test Date Filtering in Financial Metrics
+### This file tests the updated GetFinancialDataAsync method
+
+### Test 1: Financial metrics without date range (should use last 30 days default)
+GET http://localhost:5225/api/dashboard/financial-metrics
+Content-Type: application/json
+
+###
+
+### Test 2: Financial metrics with a specific date range
+GET http://localhost:5225/api/dashboard/financial-metrics?fromDate=2024-01-01&toDate=2024-12-31
+Content-Type: application/json
+
+###
+
+### Test 3: Financial metrics with a recent date range (last 7 days)
+GET http://localhost:5225/api/dashboard/financial-metrics?fromDate=2025-07-30&toDate=2025-08-06
+Content-Type: application/json
+
+###
+
+### Test 4: Dashboard overview which uses the financial metrics internally
+GET http://localhost:5225/api/dashboard/overview?fromDate=2024-01-01&toDate=2024-12-31
+Content-Type: application/json
+
+###
+
+### Test 5: Check raw purchase orders to verify data exists
+GET http://localhost:5225/api/purchaseorders
+Content-Type: application/json
+
+###
+
+### Test 6: Purchase orders with specific date range
+GET http://localhost:5225/api/purchaseorders?fromDate=2024-01-01&toDate=2024-12-31
+Content-Type: application/json

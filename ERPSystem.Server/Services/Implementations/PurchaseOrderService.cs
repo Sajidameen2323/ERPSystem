@@ -779,21 +779,23 @@ public class PurchaseOrderService : IPurchaseOrderService
     {
         try
         {
+            _logger.LogInformation("GetFinancialDataAsync: Retrieving financial metrics from {FromDate} to {ToDate}", fromDate, toDate);
+            
             // Build query for purchase orders within the date range with explicit loading
             var query = _context.PurchaseOrders
-                .Where(po => !po.IsDeleted) // Exclude soft-deleted orders
-                .AsQueryable();
+                .Where(po => !po.IsDeleted);
 
-            // Apply date filters based on order date
             if (fromDate.HasValue)
-            {
                 query = query.Where(po => po.OrderDate >= fromDate.Value);
-            }
 
             if (toDate.HasValue)
-            {
                 query = query.Where(po => po.OrderDate <= toDate.Value);
-            }
+
+            _logger.LogInformation("GetFinancialDataAsync: Executing query with date range {FromDate} to {ToDate}", fromDate, toDate);
+
+            // First, get a count of orders that match the date filter to verify filtering is working
+            var filteredOrderCount = await query.CountAsync();
+            _logger.LogInformation("GetFinancialDataAsync: Found {FilteredCount} purchase orders matching date filter", filteredOrderCount);
 
             // Get purchase orders with only the fields we need to avoid navigation property issues
             var purchaseOrderData = await query
@@ -803,6 +805,8 @@ public class PurchaseOrderService : IPurchaseOrderService
                     po.PONumber,
                     po.Status,
                     po.TotalAmount,
+                    po.OrderDate, // Include OrderDate for debugging
+                    po.ActualDeliveryDate, // Include for comparison
                     Items = po.Items.Select(item => new
                     {
                         item.OrderedQuantity,
@@ -815,15 +819,19 @@ public class PurchaseOrderService : IPurchaseOrderService
             _logger.LogInformation("GetFinancialDataAsync: Found {Count} purchase orders for date range {FromDate} to {ToDate}",
                 purchaseOrderData.Count, fromDate, toDate);
 
+            // Log sample order dates for debugging
+            if (purchaseOrderData.Any())
+            {
+                _logger.LogInformation("GetFinancialDataAsync: Sample order dates: {SampleDates}", 
+                    string.Join(", ", purchaseOrderData.Take(3).Select(po => $"{po.PONumber}:{po.OrderDate:yyyy-MM-dd HH:mm}")));
+            }
+
             decimal totalPurchaseValue = 0;      // Total value of goods received (actual cost of goods)
             decimal totalPurchasePaid = 0;       // Amount assumed paid for received goods
             decimal totalPurchaseOutstanding = 0; // Accounts payable (received but not yet paid)
 
             foreach (var po in purchaseOrderData)
             {
-                _logger.LogInformation("Processing PO {PONumber} with Status {Status} and Total Amount {Amount}",
-                    po.PONumber, po.Status, po.TotalAmount);
-
                 // Calculate financial impact based on actual receipt status and industry standards
                 switch (po.Status)
                 {
@@ -832,13 +840,10 @@ public class PurchaseOrderService : IPurchaseOrderService
                         // This represents actual liability (accounts payable)
                         var receivedValue = po.Items.Sum(item => item.ReceivedQuantity * item.UnitPrice);
                         totalPurchaseValue += receivedValue;
-                        
+
                         // Industry standard: Assume payment terms (e.g., Net 30)
                         // For this implementation, we'll assume immediate accounts payable
                         totalPurchaseOutstanding += receivedValue;
-
-                        _logger.LogInformation("PO {PONumber}: Fully received, Value={ReceivedValue}",
-                            po.PONumber, receivedValue);
                         break;
 
                     case PurchaseOrderStatus.PartiallyReceived:
@@ -846,23 +851,17 @@ public class PurchaseOrderService : IPurchaseOrderService
                         var partialReceivedValue = po.Items.Sum(item => item.ReceivedQuantity * item.UnitPrice);
                         totalPurchaseValue += partialReceivedValue;
                         totalPurchaseOutstanding += partialReceivedValue;
-
-                        _logger.LogInformation("PO {PONumber}: Partially received, Value={PartialValue}",
-                            po.PONumber, partialReceivedValue);
                         break;
 
                     case PurchaseOrderStatus.Sent:
                         // Goods shipped but not yet received - these are commitments, not actual liabilities
                         // Industry standard: Don't include in payables until goods are received
-                        _logger.LogInformation("PO {PONumber}: Sent but not received, no financial impact", po.PONumber);
                         break;
 
                     case PurchaseOrderStatus.Approved:
                     case PurchaseOrderStatus.Pending:
                     case PurchaseOrderStatus.Draft:
                         // These are commitments/purchase commitments, not actual liabilities
-                        _logger.LogInformation("PO {PONumber}: Status {Status}, no financial impact",
-                            po.PONumber, po.Status);
                         break;
 
                     case PurchaseOrderStatus.Cancelled:
@@ -875,9 +874,6 @@ public class PurchaseOrderService : IPurchaseOrderService
                         var netReceivedValue = po.Items.Sum(item => item.ReceivedQuantity * item.UnitPrice);
                         totalPurchaseValue += netReceivedValue;
                         totalPurchaseOutstanding += netReceivedValue;
-
-                        _logger.LogInformation("PO {PONumber}: Returns processed, Net Value={NetValue}",
-                            po.PONumber, netReceivedValue);
                         break;
                 }
             }
@@ -889,8 +885,8 @@ public class PurchaseOrderService : IPurchaseOrderService
             // - TotalPurchaseOutstanding = Accounts Payable
             // - TotalPurchasePaid = Actual payments made (would come from payment records)
 
-            _logger.LogInformation("Financial Data Results: TotalValue={TotalValue}, TotalPaid={TotalPaid}, TotalOutstanding={TotalOutstanding}",
-                totalPurchaseValue, totalPurchasePaid, totalPurchaseOutstanding);
+            _logger.LogInformation("GetFinancialDataAsync: Processed {Count} purchase orders, Total Value: {TotalValue}",
+                purchaseOrderData.Count, totalPurchaseValue);
 
             return (totalPurchaseValue, totalPurchasePaid, totalPurchaseOutstanding);
         }
