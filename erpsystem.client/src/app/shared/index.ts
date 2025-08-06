@@ -1,11 +1,25 @@
-// Export all AG Grid components and services for easy import
-export { AgGridTableComponent } from './components/ag-grid-table/ag-grid-table.component';
-export type { AgGridConfig } from './components/ag-grid-table/ag-grid-table.component';
-export { ActionCellRendererComponent } from './components/ag-grid-renderers/action-cell-renderer/action-cell-renderer.component';
-export { StatusCellRendererComponent } from './components/ag-grid-renderers/status-cell-renderer/status-cell-renderer.component';
-export { UserInfoCellRendererComponent } from './components/ag-grid-renderers/user-info-cell-renderer/user-info-cell-renderer.component';
-export { RolesCellRendererComponent } from './components/ag-grid-renderers/roles-cell-renderer/roles-cell-renderer.component';
-export { UserGridService } from './services/user-grid.service';
+// Export all custom table components and services
+export { CustomTableComponent } from './components/custom-table/custom-table.component';
+export type { 
+  TableConfig, 
+  TableColumn, 
+  TableAction, 
+  TableSortEvent, 
+  TablePageEvent, 
+  TableSelectionEvent 
+} from './components/custom-table/custom-table.component';
+
+// Export table cell components
+export { UserInfoCellComponent } from './components/table-cells/user-info-cell.component';
+export { StatusCellComponent } from './components/table-cells/status-cell.component';
+export { RolesCellComponent } from './components/table-cells/roles-cell.component';
+export { ActionsCellComponent } from './components/table-cells/actions-cell.component';
+export { DateCellComponent } from './components/table-cells/date-cell.component';
+
+// Export table service
+export { UserTableService } from './services/user-table.service';
+
+// Export other shared components
 export { BulkActionsComponent } from './components/bulk-actions/bulk-actions.component';
 export type { BulkAction, BulkActionConfirmation } from './components/bulk-actions/bulk-actions.component';
 export { ConfirmationModalComponent } from './components/confirmation-modal/confirmation-modal.component';

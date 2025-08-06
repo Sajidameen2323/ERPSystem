@@ -1,0 +1,232 @@
+<div class="custom-table-container">
+  <!-- Loading Overlay -->
+  <div *ngIf="config.loading" class="loading-overlay">
+    <div class="loading-spinner">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+      <span class="ml-2 text-sm text-gray-600 dark:text-gray-400">Loading...</span>
+    </div>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="config.error && !config.loading" class="error-message">
+    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded">
+      {{ config.error }}
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div *ngIf="!config.error" class="table-wrapper">
+    <table class="custom-table">
+      <!-- Header -->
+      <thead class="table-header">
+        <tr>
+          <!-- Select All Checkbox -->
+          <th *ngIf="config.selectable && config.multiSelect" class="select-column">
+            <button
+              type="button"
+              (click)="onSelectAll()"
+              [disabled]="config.loading"
+              class="checkbox-button"
+              [class.checked]="allSelected"
+              [class.indeterminate]="indeterminate">
+              <lucide-angular 
+                [img]="allSelected ? icons.CheckSquare : icons.Square"
+                class="checkbox-icon"
+                [class.text-red-600]="allSelected"
+                [class.text-gray-400]="!allSelected">
+              </lucide-angular>
+            </button>
+          </th>
+
+          <!-- Column Headers -->
+          <th 
+            *ngFor="let column of config.columns"
+            [class]="'table-header-cell ' + (column.headerClass || '')"
+            [style.width]="column.width"
+            [style.min-width]="column.minWidth"
+            [style.max-width]="column.maxWidth"
+            [style.text-align]="column.align || 'left'">
+            
+            <button
+              *ngIf="column.sortable && config.sortable; else nonSortableHeader"
+              type="button"
+              (click)="onSort(column)"
+              [disabled]="config.loading"
+              class="sort-button">
+              <span>{{ column.header }}</span>
+              <lucide-angular 
+                *ngIf="getSortIcon(column)"
+                [img]="getSortIcon(column)"
+                class="sort-icon">
+              </lucide-angular>
+            </button>
+
+            <ng-template #nonSortableHeader>
+              <span>{{ column.header }}</span>
+            </ng-template>
+          </th>
+
+          <!-- Actions Column -->
+          <th *ngIf="config.actions && config.actions.length > 0" class="actions-column">
+            Actions
+          </th>
+        </tr>
+      </thead>
+
+      <!-- Body -->
+      <tbody class="table-body">
+        <!-- Empty State -->
+        <tr *ngIf="config.data.length === 0 && !config.loading" class="empty-row">
+          <td [colSpan]="getTotalColumns()" class="empty-cell">
+            <div class="empty-state">
+              <p class="text-gray-500 dark:text-gray-400">{{ config.emptyMessage }}</p>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Data Rows -->
+        <tr 
+          *ngFor="let row of config.data; let i = index"
+          [class]="getRowClass(row, i)"
+          (click)="onRowClick(row)">
+          
+          <!-- Select Checkbox -->
+          <td *ngIf="config.selectable" class="select-cell">
+            <button
+              type="button"
+              (click)="onSelectRow(row, $event)"
+              [disabled]="config.loading"
+              class="checkbox-button"
+              [class.checked]="isRowSelected(row)">
+              <lucide-angular 
+                [img]="isRowSelected(row) ? icons.CheckSquare : icons.Square"
+                class="checkbox-icon"
+                [class.text-red-600]="isRowSelected(row)"
+                [class.text-gray-400]="!isRowSelected(row)">
+              </lucide-angular>
+            </button>
+          </td>
+
+          <!-- Data Cells -->
+          <td 
+            *ngFor="let column of config.columns"
+            [class]="'table-cell ' + (column.cellClass || '')"
+            [style.text-align]="column.align || 'left'">
+            
+            <!-- Custom Component Cell -->
+            <ng-container *ngIf="column.cellComponent; else defaultCell">
+              <!-- This can be implemented when needed for custom cell components -->
+            </ng-container>
+
+            <!-- Default Cell -->
+            <ng-template #defaultCell>
+              <span [innerHTML]="getCellValue(row, column)"></span>
+            </ng-template>
+          </td>
+
+          <!-- Actions Cell -->
+          <td *ngIf="config.actions && config.actions.length > 0" class="actions-cell">
+            <div class="actions-container">
+              <ng-container *ngFor="let action of config.actions">
+                <button
+                  *ngIf="isActionVisible(action, row)"
+                  type="button"
+                  (click)="onActionClick(action, row, $event)"
+                  [disabled]="isActionDisabled(action, row) || config.loading"
+                  [class]="'action-button ' + (action.class || 'default-action')"
+                  [title]="action.label">
+                  
+                  <lucide-angular 
+                    *ngIf="action.icon"
+                    [img]="action.icon"
+                    class="action-icon">
+                  </lucide-angular>
+                  
+                  <span *ngIf="!action.icon">{{ action.label }}</span>
+                </button>
+              </ng-container>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div *ngIf="config.pagination && config.data.length > 0" class="pagination-container">
+    <div class="pagination-info">
+      <span class="text-sm text-gray-700 dark:text-gray-300">
+        Showing {{ getStartRecord() }} to {{ getEndRecord() }} of {{ getTotalRecords() }} results
+      </span>
+    </div>
+
+    <div class="pagination-controls">
+      <!-- Page Size Selector -->
+      <div class="page-size-selector">
+        <label class="text-sm text-gray-700 dark:text-gray-300">Show:</label>
+        <select
+          [value]="config.pageSize"
+          (change)="onPageSizeChange(+$any($event.target).value)"
+          [disabled]="config.loading"
+          class="page-size-select">
+          <option *ngFor="let size of config.pageSizeOptions" [value]="size">
+            {{ size }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Page Navigation -->
+      <div class="page-navigation">
+        <!-- First Page -->
+        <button
+          type="button"
+          (click)="onPageChange(1)"
+          [disabled]="config.currentPage === 1 || config.loading"
+          class="page-button"
+          title="First Page">
+          <lucide-angular [img]="icons.ChevronsLeft" class="page-icon"></lucide-angular>
+        </button>
+
+        <!-- Previous Page -->
+        <button
+          type="button"
+          (click)="onPageChange((config.currentPage || 1) - 1)"
+          [disabled]="config.currentPage === 1 || config.loading"
+          class="page-button"
+          title="Previous Page">
+          <lucide-angular [img]="icons.ChevronLeft" class="page-icon"></lucide-angular>
+        </button>
+
+        <!-- Page Numbers -->
+        <button
+          *ngFor="let page of visiblePages"
+          type="button"
+          (click)="onPageChange(page)"
+          [disabled]="config.loading"
+          [class]="'page-button ' + (page === config.currentPage ? 'active' : '')">
+          {{ page }}
+        </button>
+
+        <!-- Next Page -->
+        <button
+          type="button"
+          (click)="onPageChange((config.currentPage || 1) + 1)"
+          [disabled]="config.currentPage === totalPages || config.loading"
+          class="page-button"
+          title="Next Page">
+          <lucide-angular [img]="icons.ChevronRight" class="page-icon"></lucide-angular>
+        </button>
+
+        <!-- Last Page -->
+        <button
+          type="button"
+          (click)="onPageChange(totalPages)"
+          [disabled]="config.currentPage === totalPages || config.loading"
+          class="page-button"
+          title="Last Page">
+          <lucide-angular [img]="icons.ChevronsRight" class="page-icon"></lucide-angular>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

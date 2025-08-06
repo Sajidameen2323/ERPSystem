@@ -7,26 +7,29 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { UserService } from '../../../core/services/user.service';
 import { User, UserSearchRequest, PagedResult, Result } from '../../../core/models/user.interface';
 import {
-  AgGridTableComponent,
-  AgGridConfig,
+  CustomTableComponent,
+  TableConfig,
+  TableSortEvent,
+  TablePageEvent,
+  TableSelectionEvent,
   BulkActionsComponent,
   BulkAction,
   BulkActionConfirmation,
   ConfirmationModalComponent,
-  ConfirmationConfig
+  ConfirmationConfig,
+  UserTableService
 } from '../../../shared';
-import { UserGridService } from '../../../shared/services/user-grid.service';
 import { UpdateUserModalComponent } from './update-user-modal/update-user-modal.component';
 
 @Component({
   selector: 'app-admin-users',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule, AgGridTableComponent, BulkActionsComponent, ConfirmationModalComponent, UpdateUserModalComponent],
+  imports: [CommonModule, FormsModule, LucideAngularModule, CustomTableComponent, BulkActionsComponent, ConfirmationModalComponent, UpdateUserModalComponent],
   templateUrl: './admin-users.component.html',
   styleUrl: './admin-users.component.css'
 })
 export class AdminUsersComponent implements OnInit, OnDestroy {
-  @ViewChild(AgGridTableComponent) gridComponent!: AgGridTableComponent;
+  @ViewChild(CustomTableComponent) tableComponent!: CustomTableComponent<User>;
 
   readonly icons = {
     Search,
@@ -39,14 +42,24 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
   users: User[] = [];
   searchRequest: UserSearchRequest = {
     searchTerm: '',
-    isActive: undefined
-    // Removed page and pageSize - AG Grid will handle pagination
+    isActive: undefined,
+    page: 1,
+    pageSize: 10
   };
 
   pagedResult: PagedResult<User> | null = null;
   loading = false;
   error: string | null = null;
-  gridConfig: AgGridConfig<User>;
+  tableConfig: TableConfig<User>;
+
+  // Pagination state
+  currentPage = 1;
+  pageSize = 10;
+  totalItems = 0;
+
+  // Sorting state
+  sortBy = '';
+  sortDirection: 'asc' | 'desc' = 'asc';
 
   // Multi-select and bulk actions
   selectedUsers: User[] = [];
@@ -72,17 +85,19 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
   constructor(
     private userService: UserService,
     private router: Router,
-    private userGridService: UserGridService
+    private userTableService: UserTableService
   ) {
-    // Initialize grid config with empty data
-    this.gridConfig = this.userGridService.createUserGridConfig(
+    // Initialize table config with empty data
+    this.tableConfig = this.userTableService.createUserTableConfig(
       [],
+      0,
+      this.currentPage,
+      this.pageSize,
       true,
       null,
-      (user) => this.editUser(user),
-      (user) => this.toggleUserStatus(user),
-      true, // Always enable multi-select for user table
-      (action, user, callback) => this.showIndividualActionConfirmation(action, user, callback)
+      (user: User) => this.editUser(user),
+      (user: User) => this.toggleUserStatus(user),
+      true
     );
   }
 
@@ -96,6 +111,7 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
       )
       .subscribe(searchTerm => {
         this.searchRequest.searchTerm = searchTerm;
+        this.currentPage = 1; // Reset to first page on search
         this.loadUsers();
       });
 
@@ -106,6 +122,7 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$)
       )
       .subscribe(() => {
+        this.currentPage = 1; // Reset to first page on filter change
         this.loadUsers();
       });
 
@@ -121,42 +138,79 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.error = null;
 
-    // Update grid config immediately to show loading state
-    this.updateGridConfig();
+    // Update search request with current pagination and sorting
+    this.searchRequest.page = this.currentPage;
+    this.searchRequest.pageSize = this.pageSize;
+
+    // Update table config immediately to show loading state
+    this.updateTableConfig();
 
     this.userService.getUsers(this.searchRequest).subscribe({
       next: (result: Result<PagedResult<User>>) => {
         this.loading = false;
         if (result.isSuccess && result.data) {
           this.pagedResult = result.data;
-          console.log('Paged Result:', this.pagedResult);
-          this.users = result.data.items; // Use users as processed by UserService (isActive already set correctly)
-          this.updateGridConfig();
+          this.users = result.data.items;
+          this.totalItems = result.data.totalCount;
+          this.updateTableConfig();
         } else {
           this.error = result.message || result.error || 'Failed to load users';
-          this.updateGridConfig();
+          this.updateTableConfig();
         }
       },
       error: (error) => {
         this.loading = false;
         this.error = 'Failed to load users: ' + (error.error?.message || error.message);
-        this.updateGridConfig();
+        this.updateTableConfig();
       }
     });
   }
 
-  private updateGridConfig() {
-    this.gridConfig = this.userGridService.createUserGridConfig(
+  private updateTableConfig() {
+    this.tableConfig = this.userTableService.createUserTableConfig(
       this.users,
+      this.totalItems,
+      this.currentPage,
+      this.pageSize,
       this.loading,
       this.error,
-      (user) => this.editUser(user),
-      (user) => this.toggleUserStatus(user),
-      true, // Always enable multi-select for user table
-      (action, user, callback) => this.showIndividualActionConfirmation(action, user, callback)
+      (user: User) => this.editUser(user),
+      (user: User) => this.toggleUserStatus(user),
+      true
     );
+
+    // Apply current sorting
+    if (this.sortBy) {
+      this.tableConfig.sortBy = this.sortBy;
+      this.tableConfig.sortDirection = this.sortDirection;
+    }
   }
 
+  // Table event handlers
+  onSortChanged(event: TableSortEvent) {
+    this.sortBy = event.sortBy;
+    this.sortDirection = event.sortDirection;
+    this.currentPage = 1; // Reset to first page on sort change
+    this.loadUsers();
+  }
+
+  onPageChanged(event: TablePageEvent) {
+    this.currentPage = event.currentPage;
+    this.pageSize = event.pageSize;
+    this.loadUsers();
+  }
+
+  onSelectionChanged(event: TableSelectionEvent<User>) {
+    this.selectedUsers = event.selectedRows;
+    this.selectedCount = event.selectedCount;
+  }
+
+  onRowClicked(user: User) {
+    // Optional: Handle row click
+    console.log('Row clicked:', user);
+  }
+
+  // Search and filter methods
   onSearch() {
     // Immediate search when Enter key is pressed
     this.loadUsers();
@@ -190,8 +244,8 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
     // Update the user in the current list
     const index = this.users.findIndex(u => u.id === updatedUser.id);
     if (index !== -1) {
-      this.users[index] = { ...updatedUser, isActive: updatedUser.status === "ACTIVE" }; // Ensure isActive is set correctly
-      this.updateGridConfig();
+      this.users[index] = { ...updatedUser, isActive: updatedUser.status === "ACTIVE" };
+      this.updateTableConfig();
     }
     this.showUpdateModal = false;
   }
@@ -234,8 +288,8 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
 
   toggleUserStatus(user: User) {
     this.loading = true;
-    // Update grid config immediately to show loading state
-    this.updateGridConfig();
+    // Update table config immediately to show loading state
+    this.updateTableConfig();
 
     const action = user.isActive ?
       this.userService.deactivateUser(user.id) :
@@ -248,27 +302,24 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
           this.loadUsers(); // Refresh the list
         } else {
           this.error = result.message || result.error || 'Failed to update user status';
-          this.updateGridConfig();
+          this.updateTableConfig();
         }
       },
       error: (error) => {
         this.loading = false;
         this.error = 'Failed to update user status: ' + (error.error?.message || error.message);
-        this.updateGridConfig();
+        this.updateTableConfig();
       }
     });
   }
 
-
-
-  onSelectedRowsChanged(selectedRows: User[]) {
-    this.selectedUsers = selectedRows;
-    this.selectedCount = selectedRows.length;
-  }
-
   onClearSelection() {
-    if (this.gridComponent) {
-      this.gridComponent.clearSelection();
+    this.selectedUsers = [];
+    this.selectedCount = 0;
+    // Clear selection in table component if needed
+    if (this.tableComponent) {
+      // Custom table component should handle clearing its own selection
+      this.tableComponent.internalSelectedRows = [];
     }
   }
 
@@ -385,8 +436,8 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
 
   private processBulkStatusChange(users: User[], activate: boolean) {
     this.loading = true;
-    // Update grid config immediately to show loading state
-    this.updateGridConfig();
+    // Update table config immediately to show loading state
+    this.updateTableConfig();
 
     const userIds = users.map(user => user.id);
 

@@ -21,12 +21,10 @@ export class UserService {
 
   /**
    * Get list of users (Admin only)
-   * Uses the unified users endpoint that supports optional filtering
-   * Backend always returns PagedResult regardless of filters
+   * Uses the unified users endpoint that supports filtering and pagination
+   * Backend returns PagedResult with server-side pagination
    */
   getUsers(request?: UserSearchRequest): Observable<Result<PagedResult<User>>> {
-    // Use the default users endpoint - supports optional filtering
-    // Backend handles filtering, AG Grid handles pagination and sorting
     const endpoint = `${this.baseUrl}`;
     let params = new HttpParams();
 
@@ -36,6 +34,14 @@ export class UserService {
     }
     if (request?.isActive !== undefined) {
       params = params.set('isActive', request.isActive.toString());
+    }
+
+    // Add pagination parameters
+    if (request?.page) {
+      params = params.set('page', request.page.toString());
+    }
+    if (request?.pageSize) {
+      params = params.set('pageSize', request.pageSize.toString());
     }
 
     return this.http.get<Result<PagedResult<User>>>(endpoint, { params }).pipe(

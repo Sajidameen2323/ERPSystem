@@ -38,10 +38,12 @@ export interface UpdateUserRequest {
   roles?: string[];
 }
 
-// UserSearchRequest for filtering (pagination handled by AG Grid)
+// UserSearchRequest for filtering and pagination
 export interface UserSearchRequest {
   searchTerm?: string;
   isActive?: boolean;
+  page?: number;
+  pageSize?: number;
 }
 
 // AssignRolesRequest interface

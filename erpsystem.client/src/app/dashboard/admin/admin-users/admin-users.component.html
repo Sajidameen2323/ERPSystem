@@ -59,13 +59,16 @@
     </div>
   </div>
 
-  <!-- AG Grid Table -->
-  <div *ngIf="gridConfig" class="w-full">
-    <app-ag-grid-table 
-      #gridComponent
-      [config]="gridConfig"
-      (selectedRowsChanged)="onSelectedRowsChanged($event)">
-    </app-ag-grid-table>
+  <!-- Custom Table -->
+  <div *ngIf="tableConfig" class="w-full">
+    <app-custom-table 
+      #tableComponent
+      [config]="tableConfig"
+      (sortChanged)="onSortChanged($event)"
+      (pageChanged)="onPageChanged($event)"
+      (selectionChanged)="onSelectionChanged($event)"
+      (rowClicked)="onRowClicked($event)">
+    </app-custom-table>
   </div>
 
   <!-- Bulk Actions Bar (shown when items are selected) -->
