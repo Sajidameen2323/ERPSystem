@@ -2,12 +2,13 @@ import { Component, OnInit, OnDestroy, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { LucideAngularModule, User, Users, Package, TrendingUp, Settings, ShoppingCart, FileText, BarChart3, AlertTriangle, RefreshCw, Filter, Calendar, DollarSign, Clock, Eye, ChevronRight, ArrowUp, ArrowDown, Minus, UserPlus, Database } from 'lucide-angular';
+import { LucideAngularModule, User, Users, Package, TrendingUp, Settings, ShoppingCart, FileText, BarChart3, AlertTriangle, RefreshCw, Filter, Calendar, DollarSign, Clock, Eye, ChevronRight, ArrowUp, ArrowDown, Minus, UserPlus, Database, Zap,Activity } from 'lucide-angular';
 import { Observable, Subject, interval, combineLatest, of } from 'rxjs';
 import { takeUntil, startWith, debounceTime, distinctUntilChanged, switchMap, catchError, share } from 'rxjs/operators';
 import { DashboardService } from '../services/dashboard.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SalesChartComponent } from '../components/sales-chart/sales-chart.component';
+import { ProductPerformanceChartComponent } from '../components/product-performance-chart/product-performance-chart.component';
 import { ChartControlsComponent, SalesChartType, ChartTimeframe as SalesTimeframe, ExportFormat } from '../components/chart-controls/chart-controls.component';
 import { 
   DashboardOverview, 
@@ -20,13 +21,14 @@ import {
   TopCustomer,
   TopProduct,
   RecentOrder,
-  DashboardChartData
+  DashboardChartData,
+  ProductPerformanceData
 } from '../models/dashboard.model';
 
 @Component({
   selector: 'app-dashboard-home',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule, ReactiveFormsModule, SalesChartComponent, ChartControlsComponent],
+  imports: [CommonModule, RouterModule, LucideAngularModule, ReactiveFormsModule, SalesChartComponent, ProductPerformanceChartComponent, ChartControlsComponent],
   templateUrl: './dashboard-home.component.html',
   styleUrls: ['./dashboard-home.component.css']
 })
@@ -59,7 +61,9 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
     ArrowDown,
     Minus,
     UserPlus,
-    Database
+    Database,
+    Zap,
+    Activity
   };
 
   // State management
@@ -73,6 +77,7 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
 
   // Chart data and controls
   salesChartData: DashboardChartData | null = null;
+  productPerformanceData: ProductPerformanceData[] = [];
   selectedChartType: SalesChartType = 'line';
   selectedTimeframe: SalesTimeframe = 'daily';
   isDarkMode = false; // TODO: Get from theme service
@@ -209,6 +214,9 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
             
             // Load sales chart data
             this.loadSalesChartData();
+            
+            // Load product performance data
+            this.loadProductPerformanceData();
           }
           this.lastRefresh = new Date();
           this.isLoading = false;
@@ -499,6 +507,105 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
       .subscribe(chartData => {
         this.salesChartData = chartData;
       });
+  }
+
+  private loadProductPerformanceData(): void {
+    // For now, generate sample data since the backend might not have this endpoint yet
+    // TODO: Replace with actual API call when backend is ready
+    this.productPerformanceData = this.generateSampleProductData();
+  }
+
+  private generateSampleProductData(): ProductPerformanceData[] {
+    return [
+      {
+        id: '1',
+        name: 'Premium Headphones',
+        sku: 'HEADP-001',
+        salesCount: 245,
+        revenue: 49000,
+        profitMargin: 32.5,
+        stockLevel: 85,
+        category: 'Electronics',
+        color: '#3B82F6'
+      },
+      {
+        id: '2',
+        name: 'Wireless Mouse',
+        sku: 'MOUSE-002',
+        salesCount: 189,
+        revenue: 7560,
+        profitMargin: 45.2,
+        stockLevel: 120,
+        category: 'Electronics',
+        color: '#10B981'
+      },
+      {
+        id: '3',
+        name: 'Gaming Keyboard',
+        sku: 'KEYB-003',
+        salesCount: 156,
+        revenue: 18720,
+        profitMargin: 38.7,
+        stockLevel: 67,
+        category: 'Electronics',
+        color: '#F59E0B'
+      },
+      {
+        id: '4',
+        name: 'Desk Lamp',
+        sku: 'LAMP-004',
+        salesCount: 134,
+        revenue: 6700,
+        profitMargin: 28.9,
+        stockLevel: 45,
+        category: 'Office',
+        color: '#EF4444'
+      },
+      {
+        id: '5',
+        name: 'Office Chair',
+        sku: 'CHAIR-005',
+        salesCount: 98,
+        revenue: 29400,
+        profitMargin: 35.1,
+        stockLevel: 23,
+        category: 'Furniture',
+        color: '#8B5CF6'
+      },
+      {
+        id: '6',
+        name: 'Monitor Stand',
+        sku: 'STAND-006',
+        salesCount: 87,
+        revenue: 4350,
+        profitMargin: 42.3,
+        stockLevel: 78,
+        category: 'Office',
+        color: '#06B6D4'
+      },
+      {
+        id: '7',
+        name: 'Webcam HD',
+        sku: 'WEBCAM-007',
+        salesCount: 76,
+        revenue: 9120,
+        profitMargin: 33.8,
+        stockLevel: 92,
+        category: 'Electronics',
+        color: '#F97316'
+      },
+      {
+        id: '8',
+        name: 'Notebook Set',
+        sku: 'NOTE-008',
+        salesCount: 65,
+        revenue: 1950,
+        profitMargin: 55.0,
+        stockLevel: 156,
+        category: 'Stationery',
+        color: '#84CC16'
+      }
+    ];
   }
 
   // Chart event handlers

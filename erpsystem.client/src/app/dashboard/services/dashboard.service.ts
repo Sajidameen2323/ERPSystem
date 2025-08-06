@@ -260,7 +260,8 @@ export class DashboardService {
         outOfStockItems: lowStockAlerts.filter(item => item.currentStock === 0).length,
         totalInventoryValue: totalValue,
         lowStockAlerts,
-        topProducts
+        topProducts,
+        productPerformance: [] // TODO: Add actual product performance data from backend
       })),
       catchError(() => of(this.getEmptyInventoryMetrics()))
     );
@@ -472,7 +473,8 @@ export class DashboardService {
         outOfStockItems: 0,
         totalInventoryValue: 0,
         lowStockAlerts: [],
-        topProducts: []
+        topProducts: [],
+        productPerformance: []
       },
       financialMetrics: {
         // Sales/Revenue metrics
@@ -662,7 +664,8 @@ export class DashboardService {
       outOfStockItems: 0,
       totalInventoryValue: 0,
       lowStockAlerts: [],
-      topProducts: []
+      topProducts: [],
+      productPerformance: []
     };
   }
 

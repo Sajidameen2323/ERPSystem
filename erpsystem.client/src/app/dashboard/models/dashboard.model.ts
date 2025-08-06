@@ -73,6 +73,7 @@ export interface InventoryMetrics {
   totalInventoryValue: number;
   lowStockAlerts: LowStockAlert[];
   topProducts: TopProduct[];
+  productPerformance: ProductPerformanceData[];
 }
 
 export interface FinancialMetrics {
@@ -123,6 +124,18 @@ export interface TopProduct {
   revenue: number;
   currentStock: number;
   image?: string;
+}
+
+export interface ProductPerformanceData {
+  id: string;
+  name: string;
+  sku: string;
+  salesCount: number;
+  revenue: number;
+  profitMargin: number;
+  stockLevel: number;
+  category?: string;
+  color?: string;
 }
 
 export interface LowStockAlert {

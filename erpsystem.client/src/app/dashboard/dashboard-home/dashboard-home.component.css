@@ -162,7 +162,7 @@
   position: relative;
 }
 
-.activity-item {
+/* .activity-item {
   transition: all 0.2s ease-in-out;
 }
 
@@ -171,7 +171,7 @@
   border-radius: 8px;
   padding: 8px;
   margin: -8px;
-}
+} */
 
 /* Icon animations */
 .stat-icon {
