@@ -4,7 +4,7 @@ import { RouterModule } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { LucideAngularModule, User, Users, Package, TrendingUp, Settings, ShoppingCart, FileText, BarChart3, AlertTriangle, RefreshCw, Filter, Calendar, DollarSign, Clock, Eye, ChevronRight, ArrowUp, ArrowDown, Minus, UserPlus, Database, Zap,Activity } from 'lucide-angular';
 import { Observable, Subject, interval, combineLatest, of } from 'rxjs';
-import { takeUntil, startWith, debounceTime, distinctUntilChanged, switchMap, catchError, share } from 'rxjs/operators';
+import { takeUntil, startWith, debounceTime, distinctUntilChanged, switchMap, catchError, share, finalize } from 'rxjs/operators';
 import { DashboardService } from '../services/dashboard.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SalesChartComponent } from '../components/sales-chart/sales-chart.component';
@@ -34,6 +34,7 @@ import {
 })
 export class DashboardHomeComponent implements OnInit, OnDestroy {
   @ViewChild(SalesChartComponent) salesChartComponent!: SalesChartComponent;
+  @ViewChild('productPerformanceChart') productPerformanceChartComponent!: ProductPerformanceChartComponent;
   
   private readonly destroy$ = new Subject<void>();
   private readonly dashboardService = inject(DashboardService);
@@ -78,6 +79,7 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
   // Chart data and controls
   salesChartData: DashboardChartData | null = null;
   productPerformanceData: ProductPerformanceData[] = [];
+  isLoadingProductPerformance = false;
   selectedChartType: SalesChartType = 'line';
   selectedTimeframe: SalesTimeframe = 'daily';
   isDarkMode = false; // TODO: Get from theme service
@@ -239,6 +241,16 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
   // Public methods
   refreshDashboard() {
     this.loadDashboardData();
+    
+    // Also refresh charts to ensure they update with new data
+    setTimeout(() => {
+      if (this.salesChartComponent) {
+        this.salesChartComponent.resetZoom();
+      }
+      if (this.productPerformanceChartComponent) {
+        this.productPerformanceChartComponent.refreshChart();
+      }
+    }, 500);
   }
 
   hasRole(role: string): boolean {
@@ -482,6 +494,10 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
     return item.id || index;
   }
 
+  trackProductData(index: number, item: ProductPerformanceData): string {
+    return item.id;
+  }
+
   // Chart methods
   private loadSalesChartData(): void {
     const dateRange = this.getDateRange();
@@ -510,9 +526,33 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
   }
 
   private loadProductPerformanceData(): void {
-    // For now, generate sample data since the backend might not have this endpoint yet
-    // TODO: Replace with actual API call when backend is ready
-    this.productPerformanceData = this.generateSampleProductData();
+    const dateRange = this.getDateRange();
+    
+    this.isLoadingProductPerformance = true;
+    
+    this.dashboardService.getProductPerformanceData(dateRange.from, dateRange.to, 8)
+      .pipe(
+        takeUntil(this.destroy$),
+        catchError(error => {
+          console.error('Error loading product performance data:', error);
+          return of([]);
+        }),
+        finalize(() => {
+          this.isLoadingProductPerformance = false;
+        })
+      )
+      .subscribe(data => {
+        // Ensure we have a new array reference to trigger change detection
+        this.productPerformanceData = Array.isArray(data) ? [...data] : [];
+        console.log('Product performance data updated:', this.productPerformanceData);
+        
+        // Force chart refresh if component is available
+        setTimeout(() => {
+          if (this.productPerformanceChartComponent) {
+            this.productPerformanceChartComponent.refreshChart();
+          }
+        }, 100);
+      });
   }
 
   private generateSampleProductData(): ProductPerformanceData[] {

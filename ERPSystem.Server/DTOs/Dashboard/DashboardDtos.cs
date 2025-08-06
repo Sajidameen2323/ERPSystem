@@ -296,3 +296,19 @@ public class WidgetConfigDto
     public string? DataSource { get; set; }
     public Dictionary<string, object>? ChartOptions { get; set; }
 }
+
+/// <summary>
+/// Product performance data for dashboard charts
+/// </summary>
+public class ProductPerformanceDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Sku { get; set; } = string.Empty;
+    public int SalesCount { get; set; }
+    public decimal Revenue { get; set; }
+    public decimal ProfitMargin { get; set; }
+    public int StockLevel { get; set; }
+    public string? Category { get; set; }
+    public string? Color { get; set; }
+}

@@ -390,7 +390,12 @@
 
         <!-- Product Performance Chart -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          <app-product-performance-chart [productData]="productPerformanceData" [darkMode]="isDarkMode" height="280px"
+          <app-product-performance-chart 
+            #productPerformanceChart
+            [productData]="productPerformanceData" 
+            [darkMode]="isDarkMode" 
+            [isLoading]="isLoadingProductPerformance"
+            height="280px"
             metric="revenue">
           </app-product-performance-chart>
         </div>

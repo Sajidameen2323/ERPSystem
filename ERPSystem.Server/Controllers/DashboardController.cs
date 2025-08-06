@@ -390,6 +390,109 @@ public class DashboardController : ControllerBase
     }
 
     /// <summary>
+    /// Get product performance data for dashboard visualization
+    /// </summary>
+    [HttpGet("product-performance")]
+    public async Task<ActionResult<Result<List<ProductPerformanceDto>>>> GetProductPerformanceData(
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null,
+        [FromQuery] int limit = 10)
+    {
+        try
+        {
+            // Set default date range if not provided
+            fromDate ??= DateTime.UtcNow.AddDays(-30);
+            toDate ??= DateTime.UtcNow;
+
+            _logger.LogInformation("Generating product performance data from {FromDate} to {ToDate}, limit {Limit}", 
+                fromDate, toDate, limit);
+
+            // Get all products
+            var productQueryParams = new ERPSystem.Server.DTOs.Inventory.ProductQueryParameters
+            {
+                Page = 1,
+                PageSize = 1000,
+                SortBy = "Name",
+                SortDirection = "asc"
+            };
+
+            var productsResult = await _productService.GetProductsAsync(productQueryParams);
+            if (productsResult.Items == null || !productsResult.Items.Any())
+            {
+                return Ok(Result<List<ProductPerformanceDto>>.Success(new List<ProductPerformanceDto>()));
+            }
+
+            var products = productsResult.Items;
+
+            // Get sales orders within date range to calculate performance
+            var salesQueryParams = new ERPSystem.Server.DTOs.Sales.SalesOrderQueryParameters
+            {
+                Page = 1,
+                PageSize = 10000,
+                SortBy = "OrderDate",
+                SortDescending = true,
+                OrderDateFrom = fromDate,
+                OrderDateTo = toDate
+            };
+
+            var salesOrdersResult = await _salesOrderService.GetSalesOrdersAsync(salesQueryParams);
+            var salesOrders = salesOrdersResult.IsSuccess && salesOrdersResult.Data?.Items != null 
+                ? salesOrdersResult.Data.Items 
+                : new List<ERPSystem.Server.DTOs.Sales.SalesOrderDto>();
+
+            // Calculate performance metrics for each product
+            var productPerformance = new List<ProductPerformanceDto>();
+            var colorPalette = new[] { "#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4", "#F97316", "#84CC16" };
+
+            foreach (var product in products)
+            {
+                // Find all order items for this product within the date range
+                var productSales = salesOrders
+                    .Where(o => o.OrderItems?.Any(i => i.ProductId == product.Id) == true)
+                    .SelectMany(o => o.OrderItems?.Where(i => i.ProductId == product.Id) ?? new List<ERPSystem.Server.DTOs.Sales.SalesOrderItemDto>())
+                    .ToList();
+
+                if (productSales.Any())
+                {
+                    var totalQuantitySold = productSales.Sum(i => i.Quantity);
+                    var totalRevenue = productSales.Sum(i => i.Quantity * i.UnitPriceAtTimeOfOrder);
+                    
+                    // Calculate profit margin using actual cost price
+                    var profitMargin = product.UnitPrice > 0 ? ((product.UnitPrice - product.CostPrice) / product.UnitPrice) * 100 : 0;
+
+                    productPerformance.Add(new ProductPerformanceDto
+                    {
+                        Id = product.Id.ToString(),
+                        Name = product.Name,
+                        Sku = product.SKU,
+                        SalesCount = totalQuantitySold,
+                        Revenue = totalRevenue,
+                        ProfitMargin = Math.Round(profitMargin, 1),
+                        StockLevel = product.CurrentStock,
+                        Category = "General", // ProductDto doesn't have Category field, use default
+                        Color = colorPalette[productPerformance.Count % colorPalette.Length]
+                    });
+                }
+            }
+
+            // Sort by revenue descending and take the top performers
+            var topPerformers = productPerformance
+                .OrderByDescending(p => p.Revenue)
+                .Take(limit)
+                .ToList();
+
+            _logger.LogInformation("Generated product performance data for {Count} products", topPerformers.Count);
+
+            return Ok(Result<List<ProductPerformanceDto>>.Success(topPerformers));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving product performance data");
+            return BadRequest(Result<List<ProductPerformanceDto>>.Failure("Failed to retrieve product performance data"));
+        }
+    }
+
+    /// <summary>
     /// Get total inventory value
     /// </summary>
     [HttpGet("inventory-value")]

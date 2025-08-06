@@ -39,8 +39,17 @@
 
   <!-- Chart Content -->
   <div class="p-6">
+    <!-- Loading State -->
+    <div *ngIf="isLoading" class="text-center py-12">
+      <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-4">
+        <lucide-angular [img]="icons.BarChart3" class="w-8 h-8 text-blue-600 dark:text-blue-400 animate-pulse"></lucide-angular>
+      </div>
+      <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Loading Product Data</h4>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Fetching product performance metrics...</p>
+    </div>
+
     <!-- No Data State -->
-    <div *ngIf="!productData || productData.length === 0" class="text-center py-12">
+    <div *ngIf="!isLoading && (!productData || productData.length === 0)" class="text-center py-12">
       <div class="w-16 h-16 bg-gray-200 dark:bg-gray-600 rounded-full flex items-center justify-center mx-auto mb-4">
         <lucide-angular [img]="icons.BarChart3" class="w-8 h-8 text-gray-500 dark:text-gray-400"></lucide-angular>
       </div>
@@ -49,9 +58,13 @@
     </div>
 
     <!-- Chart Container -->
-    <div *ngIf="productData && productData.length > 0" class="relative">
+    <div *ngIf="!isLoading && productData && productData.length > 0" class="relative">
       <div class="chart-container" [style.height]="height">
-        <canvas #chartCanvas></canvas>
+        <canvas #chartCanvas 
+                width="400" 
+                height="400"
+                [attr.aria-label]="'Product performance chart showing ' + getMetricLabel()">
+        </canvas>
       </div>
       
       <!-- Chart Summary Stats -->

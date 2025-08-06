@@ -20,7 +20,8 @@ import {
   TopProduct,
   LowStockAlert,
   RecentOrder,
-  PendingTask
+  PendingTask,
+  ProductPerformanceData
 } from '../models/dashboard.model';
 import { SalesOrderStats } from '../../sales/models/sales-order.model';
 import { InvoiceStatistics, InvoiceStatus } from '../../sales/models/invoice.model';
@@ -340,6 +341,35 @@ export class DashboardService {
           labels: [],
           datasets: []
         });
+      })
+    );
+  }
+
+  /**
+   * Get product performance data for dashboard charts
+   */
+  getProductPerformanceData(fromDate?: Date, toDate?: Date, limit: number = 10): Observable<ProductPerformanceData[]> {
+    let params = new HttpParams();
+    
+    if (fromDate) {
+      params = params.set('fromDate', fromDate.toISOString());
+    }
+    if (toDate) {
+      params = params.set('toDate', toDate.toISOString());
+    }
+    params = params.set('limit', limit.toString());
+
+    return this.http.get<Result<ProductPerformanceData[]>>(`${this.baseUrl}/dashboard/product-performance`, { params }).pipe(
+      map(response => {
+        if (response.isSuccess && response.data) {
+          return response.data;
+        }
+        // Return empty array if API call fails
+        return [];
+      }),
+      catchError(error => {
+        console.error('Error loading product performance data:', error);
+        return of([]);
       })
     );
   }
