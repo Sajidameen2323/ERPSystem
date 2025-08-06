@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -8,7 +8,7 @@ import { takeUntil, startWith, debounceTime, distinctUntilChanged, switchMap, ca
 import { DashboardService } from '../services/dashboard.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SalesChartComponent } from '../components/sales-chart/sales-chart.component';
-import { ChartControlsComponent } from '../components/chart-controls/chart-controls.component';
+import { ChartControlsComponent, SalesChartType, ChartTimeframe as SalesTimeframe, ExportFormat } from '../components/chart-controls/chart-controls.component';
 import { 
   DashboardOverview, 
   DashboardStats, 
@@ -23,9 +23,6 @@ import {
   DashboardChartData
 } from '../models/dashboard.model';
 
-export type ChartType = 'line' | 'bar' | 'area' | 'doughnut' | 'radar' | 'scatter';
-export type ChartTimeframe = 'daily' | 'weekly' | 'monthly' | 'yearly';
-
 @Component({
   selector: 'app-dashboard-home',
   standalone: true,
@@ -34,6 +31,8 @@ export type ChartTimeframe = 'daily' | 'weekly' | 'monthly' | 'yearly';
   styleUrls: ['./dashboard-home.component.css']
 })
 export class DashboardHomeComponent implements OnInit, OnDestroy {
+  @ViewChild(SalesChartComponent) salesChartComponent!: SalesChartComponent;
+  
   private readonly destroy$ = new Subject<void>();
   private readonly dashboardService = inject(DashboardService);
   private readonly authService = inject(AuthService);
@@ -74,10 +73,8 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
 
   // Chart data and controls
   salesChartData: DashboardChartData | null = null;
-  selectedChartType: ChartType = 'line';
-  selectedTimeframe: ChartTimeframe = 'daily';
-  showRevenue: boolean = true;
-  showOrders: boolean = true;
+  selectedChartType: SalesChartType = 'line';
+  selectedTimeframe: SalesTimeframe = 'daily';
   isDarkMode = false; // TODO: Get from theme service
 
   // Filters and controls
@@ -505,23 +502,42 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
   }
 
   // Chart event handlers
-  onChartTypeChange(chartType: ChartType): void {
+  onChartTypeChange(chartType: SalesChartType): void {
     this.selectedChartType = chartType;
     // Chart component will handle the type change automatically via input binding
   }
 
-  onTimeframeChange(timeframe: ChartTimeframe): void {
+  onTimeframeChange(timeframe: SalesTimeframe): void {
     this.selectedTimeframe = timeframe;
     // Reload chart data with new timeframe
     this.loadSalesChartData();
   }
 
-  onDatasetToggle(event: {type: 'revenue' | 'orders', visible: boolean}): void {
-    if (event.type === 'revenue') {
-      this.showRevenue = event.visible;
-    } else {
-      this.showOrders = event.visible;
+  onExportRequest(format: ExportFormat): void {
+    // Call the export method on the sales chart component
+    if (this.salesChartComponent) {
+      this.salesChartComponent.exportChart(format);
     }
-    // Chart component will handle the visibility change automatically via input binding
+  }
+
+  onResetZoomRequest(): void {
+    // Call the reset zoom method on the sales chart component
+    if (this.salesChartComponent) {
+      this.salesChartComponent.resetZoom();
+    }
+  }
+
+  onZoomInRequest(): void {
+    // Call the zoomIn method on the sales chart component
+    if (this.salesChartComponent) {
+      this.salesChartComponent.zoomIn();
+    }
+  }
+
+  onZoomOutRequest(): void {
+    // Call the zoomOut method on the sales chart component
+    if (this.salesChartComponent) {
+      this.salesChartComponent.zoomOut();
+    }
   }
 }

@@ -1,9 +1,10 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, BarChart3, LineChart, TrendingUp, PieChart, Zap, BarChart } from 'lucide-angular';
+import { LucideAngularModule, BarChart3, LineChart, TrendingUp, Download, RotateCcw, ZoomIn, ZoomOut } from 'lucide-angular';
 
-export type ChartType = 'line' | 'bar' | 'area' | 'doughnut' | 'radar' | 'scatter';
+export type SalesChartType = 'line' | 'bar' | 'area';
 export type ChartTimeframe = 'daily' | 'weekly' | 'monthly' | 'yearly';
+export type ExportFormat = 'png' | 'pdf' | 'csv' | 'excel';
 
 @Component({
   selector: 'app-chart-controls',
@@ -27,29 +28,8 @@ export type ChartTimeframe = 'daily' | 'weekly' | 'monthly' | 'yearly';
         </div>
       </div>
 
-      <!-- Timeframe and Dataset Controls -->
+      <!-- Controls Section -->
       <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        <!-- Dataset Toggle -->
-        <div class="flex items-center gap-2">
-          <span class="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Show:</span>
-          <div class="flex gap-1">
-            <button
-              (click)="toggleDataset('revenue')"
-              [class]="getDatasetButtonClass('revenue')"
-              class="px-2 py-1 text-xs rounded-md transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              title="Toggle Revenue Data">
-              Revenue
-            </button>
-            <button
-              (click)="toggleDataset('orders')"
-              [class]="getDatasetButtonClass('orders')"
-              class="px-2 py-1 text-xs rounded-md transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              title="Toggle Order Count Data">
-              Orders
-            </button>
-          </div>
-        </div>
-
         <!-- Timeframe Controls -->
         <div class="flex items-center gap-2">
           <span class="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Period:</span>
@@ -61,6 +41,55 @@ export type ChartTimeframe = 'daily' | 'weekly' | 'monthly' | 'yearly';
               {{ timeframe.label }}
             </option>
           </select>
+        </div>
+
+        <!-- Export Controls -->
+        <div class="flex items-center gap-1">
+          <div class="relative">
+            <button
+              (click)="toggleExportDropdown()"
+              class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              title="Export Chart">
+              <lucide-angular [img]="icons.Download" class="w-3.5 h-3.5"></lucide-angular>
+              <span class="ml-1.5 hidden sm:inline">Export</span>
+            </button>
+            
+            <!-- Export Dropdown -->
+            <div *ngIf="showExportDropdown" 
+              class="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg z-50">
+              <button
+                *ngFor="let format of exportFormats"
+                (click)="onExportClick(format.value)"
+                class="w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 first:rounded-t-md last:rounded-b-md">
+                {{ format.label }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Zoom and Reset Controls -->
+          <div *ngIf="enableZoom" class="flex items-center gap-1">
+            <button
+              (click)="onZoomIn()"
+              class="inline-flex items-center px-2 py-1.5 text-xs font-medium rounded-md bg-gray-500 text-white hover:bg-gray-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              title="Zoom In">
+              <lucide-angular [img]="icons.ZoomIn" class="w-3.5 h-3.5"></lucide-angular>
+            </button>
+            
+            <button
+              (click)="onZoomOut()"
+              class="inline-flex items-center px-2 py-1.5 text-xs font-medium rounded-md bg-gray-500 text-white hover:bg-gray-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              title="Zoom Out">
+              <lucide-angular [img]="icons.ZoomOut" class="w-3.5 h-3.5"></lucide-angular>
+            </button>
+
+            <!-- Reset Zoom Button -->
+            <button
+              (click)="onResetZoom()"
+              class="inline-flex items-center px-2 py-1.5 text-xs font-medium rounded-md bg-red-500 text-white hover:bg-red-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500"
+              title="Reset Zoom">
+              <lucide-angular [img]="icons.RotateCcw" class="w-3.5 h-3.5"></lucide-angular>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -90,22 +119,30 @@ export type ChartTimeframe = 'daily' | 'weekly' | 'monthly' | 'yearly';
   `]
 })
 export class ChartControlsComponent {
-  @Input() selectedChartType: ChartType = 'line';
+  @Input() selectedChartType: SalesChartType = 'line';
   @Input() selectedTimeframe: ChartTimeframe = 'daily';
-  @Input() showRevenue: boolean = true;
-  @Input() showOrders: boolean = true;
+  @Input() enableZoom: boolean = true;
   
-  @Output() chartTypeChange = new EventEmitter<ChartType>();
+  @Output() chartTypeChange = new EventEmitter<SalesChartType>();
   @Output() timeframeChange = new EventEmitter<ChartTimeframe>();
-  @Output() datasetToggle = new EventEmitter<{type: 'revenue' | 'orders', visible: boolean}>();
+  @Output() exportRequest = new EventEmitter<ExportFormat>();
+  @Output() resetZoomRequest = new EventEmitter<void>();
+  @Output() zoomInRequest = new EventEmitter<void>();
+  @Output() zoomOutRequest = new EventEmitter<void>();
+
+  showExportDropdown = false;
+
+  readonly icons = {
+    Download,
+    RotateCcw,
+    ZoomIn,
+    ZoomOut
+  };
 
   readonly chartTypes = [
-    { value: 'line' as ChartType, label: 'Line Chart', icon: LineChart },
-    { value: 'area' as ChartType, label: 'Area Chart', icon: TrendingUp },
-    { value: 'bar' as ChartType, label: 'Bar Chart', icon: BarChart3 },
-    { value: 'doughnut' as ChartType, label: 'Doughnut Chart', icon: PieChart },
-    { value: 'radar' as ChartType, label: 'Radar Chart', icon: Zap },
-    { value: 'scatter' as ChartType, label: 'Scatter Plot', icon: BarChart }
+    { value: 'line' as SalesChartType, label: 'Line Chart', icon: LineChart },
+    { value: 'area' as SalesChartType, label: 'Area Chart', icon: TrendingUp },
+    { value: 'bar' as SalesChartType, label: 'Bar Chart', icon: BarChart3 }
   ];
 
   readonly timeframes = [
@@ -115,7 +152,14 @@ export class ChartControlsComponent {
     { value: 'yearly' as ChartTimeframe, label: 'Yearly' }
   ];
 
-  onChartTypeChange(type: ChartType) {
+  readonly exportFormats = [
+    { value: 'png' as ExportFormat, label: 'PNG Image' },
+    { value: 'pdf' as ExportFormat, label: 'PDF Report' },
+    { value: 'csv' as ExportFormat, label: 'CSV Data' },
+    { value: 'excel' as ExportFormat, label: 'Excel File' }
+  ];
+
+  onChartTypeChange(type: SalesChartType) {
     this.selectedChartType = type;
     this.chartTypeChange.emit(type);
   }
@@ -127,7 +171,7 @@ export class ChartControlsComponent {
     this.timeframeChange.emit(timeframe);
   }
 
-  getButtonClass(type: ChartType): string {
+  getButtonClass(type: SalesChartType): string {
     const baseClasses = 'inline-flex items-center transition-all duration-200';
     const stateClasses = this.selectedChartType === type 
       ? 'bg-blue-600 text-white shadow-md' 
@@ -136,29 +180,39 @@ export class ChartControlsComponent {
     return `${baseClasses} ${stateClasses}`;
   }
 
-  getDatasetButtonClass(dataset: 'revenue' | 'orders'): string {
-    const isVisible = dataset === 'revenue' ? this.showRevenue : this.showOrders;
-    const baseClasses = 'transition-colors duration-200';
-    
-    return isVisible 
-      ? `${baseClasses} bg-green-600 text-white`
-      : `${baseClasses} bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-500`;
+  toggleExportDropdown(): void {
+    this.showExportDropdown = !this.showExportDropdown;
   }
 
-  toggleDataset(type: 'revenue' | 'orders'): void {
-    const currentValue = type === 'revenue' ? this.showRevenue : this.showOrders;
-    const newValue = !currentValue;
-    
-    if (type === 'revenue') {
-      this.showRevenue = newValue;
-    } else {
-      this.showOrders = newValue;
-    }
-    
-    this.datasetToggle.emit({ type, visible: newValue });
+  onExportClick(format: ExportFormat): void {
+    this.showExportDropdown = false;
+    this.exportRequest.emit(format);
+  }
+
+  onResetZoom(): void {
+    this.resetZoomRequest.emit();
+  }
+
+  onZoomIn(): void {
+    this.zoomInRequest.emit();
+  }
+
+  onZoomOut(): void {
+    this.zoomOutRequest.emit();
   }
 
   trackByChartType(index: number, item: any): string {
     return item.value;
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event): void {
+    if (this.showExportDropdown) {
+      const target = event.target as HTMLElement;
+      const dropdown = target.closest('.relative');
+      if (!dropdown) {
+        this.showExportDropdown = false;
+      }
+    }
   }
 }

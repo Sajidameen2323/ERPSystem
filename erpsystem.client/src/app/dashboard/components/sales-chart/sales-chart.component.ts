@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, OnDestroy, OnChanges, SimpleChanges, ViewChild, ElementRef, AfterViewInit, ChangeDetectorRef } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, OnChanges, SimpleChanges, ViewChild, ElementRef, AfterViewInit, ChangeDetectorRef, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   Chart,
@@ -8,18 +8,26 @@ import {
   registerables,
   TooltipItem
 } from 'chart.js';
+import zoomPlugin from 'chartjs-plugin-zoom';
+import annotationPlugin from 'chartjs-plugin-annotation';
 import 'chartjs-adapter-date-fns';
 import { DashboardChartData } from '../../models/dashboard.model';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
 
-// Register Chart.js components
-Chart.register(...registerables);
+// Register Chart.js components and plugins
+Chart.register(...registerables, zoomPlugin, annotationPlugin);
+
+export type SalesChartType = 'line' | 'bar' | 'area';
+export type SalesTimeframe = 'daily' | 'weekly' | 'monthly' | 'yearly';
+export type ExportFormat = 'png' | 'pdf' | 'csv' | 'excel';
 
 export interface SalesChartOptions {
-  showRevenue?: boolean;
-  showOrders?: boolean;
-  chartType?: 'line' | 'bar' | 'area' | 'doughnut' | 'radar' | 'scatter';
-  timeframe?: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  chartType?: SalesChartType;
+  timeframe?: SalesTimeframe;
   groupBy?: 'day' | 'week' | 'month' | 'year';
+  enableZoom?: boolean;
+  enableAnnotations?: boolean;
 }
 
 @Component({
@@ -34,14 +42,16 @@ export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, On
   
   @Input() chartData: DashboardChartData | null = null;
   @Input() options: SalesChartOptions = {
-    showRevenue: true,
-    showOrders: true,
     chartType: 'line',
     timeframe: 'daily',
-    groupBy: 'day'
+    groupBy: 'day',
+    enableZoom: true,
+    enableAnnotations: false
   };
   @Input() height: string = '400px';
   @Input() darkMode: boolean = false;
+  
+  @Output() chartExported = new EventEmitter<{format: ExportFormat, success: boolean}>();
   
   private chart: Chart | null = null;
   isShowingSampleData: boolean = false;
@@ -110,6 +120,11 @@ export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, On
     const chartConfig = this.getChartConfiguration(chartData);
     
     this.chart = new Chart(ctx, chartConfig);
+    
+    // Apply smooth area chart styling if chart type is area
+    if (this.options.chartType === 'area') {
+      this.applyAreaChartSmoothing(true);
+    }
   }
   
   private prepareChartData(): ChartData {
@@ -122,116 +137,40 @@ export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, On
       return this.getDefaultChartData();
     }
 
-    // Transform data based on chart type
-    if (this.options.chartType === 'scatter') {
-      return this.prepareScatterData();
-    } else if (this.options.chartType === 'radar') {
-      return this.prepareRadarData();
-    } else if (this.options.chartType === 'doughnut') {
-      return this.prepareDoughnutData();
-    }
-
-    // Default data preparation for line, bar, area charts
+    // Sales charts only support line, bar, and area - all use the same data structure
     return {
       labels: this.chartData!.labels,
-      datasets: this.chartData!.datasets.map((dataset, index) => ({
-        label: dataset.label,
-        data: dataset.data,
-        backgroundColor: dataset.backgroundColor || this.getDefaultColors().backgroundColor[index],
-        borderColor: dataset.borderColor || this.getDefaultColors().borderColor[index],
-        borderWidth: dataset.borderWidth || 2,
-        fill: dataset.fill !== undefined ? dataset.fill : (this.options.chartType === 'area'),
-        tension: dataset.tension || 0.4,
-        pointBackgroundColor: dataset.borderColor || this.getDefaultColors().borderColor[index],
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        yAxisID: dataset.label?.toLowerCase().includes('revenue') ? 'y' : 'y1'
-      }))
-    };
-  }
-
-  private prepareScatterData(): ChartData {
-    if (!this.chartData?.datasets || this.chartData.datasets.length < 2) {
-      return this.getDefaultChartData();
-    }
-
-    const revenueData = this.chartData.datasets.find(d => d.label?.toLowerCase().includes('revenue'))?.data || [];
-    const ordersData = this.chartData.datasets.find(d => d.label?.toLowerCase().includes('orders'))?.data || [];
-
-    const scatterPoints = revenueData.map((revenue, index) => ({
-      x: revenue,
-      y: ordersData[index] || 0
-    }));
-
-    return {
-      labels: [],
-      datasets: [{
-        label: 'Revenue vs Orders',
-        data: scatterPoints,
-        backgroundColor: 'rgba(59, 130, 246, 0.6)',
-        borderColor: '#3B82F6',
-        pointRadius: 6,
-        pointHoverRadius: 8
-      }]
-    };
-  }
-
-  private prepareRadarData(): ChartData {
-    if (!this.chartData?.labels || this.chartData.labels.length === 0) {
-      return this.getDefaultChartData();
-    }
-
-    // For radar charts, limit to a reasonable number of points (max 12)
-    const maxPoints = 12;
-    const step = Math.max(1, Math.floor(this.chartData.labels.length / maxPoints));
-    
-    const radarLabels = this.chartData.labels.filter((_, index) => index % step === 0).slice(0, maxPoints);
-    
-    return {
-      labels: radarLabels,
-      datasets: this.chartData.datasets.map((dataset, index) => ({
-        label: dataset.label,
-        data: dataset.data.filter((_, dataIndex) => dataIndex % step === 0).slice(0, maxPoints),
-        backgroundColor: this.getDefaultColors().backgroundColor[index],
-        borderColor: this.getDefaultColors().borderColor[index],
-        borderWidth: 2,
-        pointBackgroundColor: this.getDefaultColors().borderColor[index],
-        pointBorderColor: '#fff',
-        pointRadius: 4
-      }))
-    };
-  }
-
-  private prepareDoughnutData(): ChartData {
-    if (!this.chartData?.datasets || this.chartData.datasets.length === 0) {
-      return this.getDefaultChartData();
-    }
-
-    // For doughnut charts, aggregate data by dataset
-    const totalRevenue = this.chartData.datasets
-      .find(d => d.label?.toLowerCase().includes('revenue'))?.data
-      .reduce((sum, val) => sum + val, 0) || 0;
-    
-    const totalOrders = this.chartData.datasets
-      .find(d => d.label?.toLowerCase().includes('orders'))?.data
-      .reduce((sum, val) => sum + val, 0) || 0;
-
-    return {
-      labels: ['Revenue', 'Orders (scaled)'],
-      datasets: [{
-        data: [totalRevenue, totalOrders * 100], // Scale orders to be visible with revenue
-        backgroundColor: [
-          this.getDefaultColors().backgroundColor[0],
-          this.getDefaultColors().backgroundColor[1]
-        ],
-        borderColor: [
-          this.getDefaultColors().borderColor[0],
-          this.getDefaultColors().borderColor[1]
-        ],
-        borderWidth: 2
-      }]
+      datasets: this.chartData!.datasets.map((dataset, index) => {
+        const isAreaChart = this.options.chartType === 'area';
+        const isRevenue = dataset.label?.toLowerCase().includes('revenue');
+        
+        return {
+          label: dataset.label,
+          data: dataset.data,
+          backgroundColor: dataset.backgroundColor || this.getDefaultColors().backgroundColor[index],
+          borderColor: dataset.borderColor || this.getDefaultColors().borderColor[index],
+          borderWidth: isAreaChart ? 2.5 : (dataset.borderWidth || 2),
+          fill: dataset.fill !== undefined ? dataset.fill : 
+                isAreaChart ? (isRevenue ? {
+                  target: 'origin',
+                  above: dataset.backgroundColor || 'rgba(59, 130, 246, 0.15)',
+                  below: 'rgba(59, 130, 246, 0.05)'
+                } : {
+                  target: '-1',
+                  above: dataset.backgroundColor || 'rgba(16, 185, 129, 0.15)', 
+                  below: 'rgba(16, 185, 129, 0.05)'
+                }) : false,
+          tension: isAreaChart ? 0.4 : (dataset.tension || 0.1),
+          pointBackgroundColor: dataset.borderColor || this.getDefaultColors().borderColor[index],
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          pointRadius: isAreaChart ? 3 : 4,
+          pointHoverRadius: 6,
+          yAxisID: isRevenue ? 'y' : 'y1',
+          cubicInterpolationMode: isAreaChart ? 'monotone' : 'default',
+          stepped: false
+        };
+      })
     };
   }
   
@@ -278,41 +217,53 @@ export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, On
     
     const datasets: any[] = [];
     
-    if (this.options.showRevenue) {
-      datasets.push({
-        label: 'Revenue ($)',
-        data: revenueData,
-        borderColor: '#3B82F6',
-        backgroundColor: this.options.chartType === 'area' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.8)',
-        borderWidth: 2,
-        fill: this.options.chartType === 'area',
-        tension: 0.4,
-        yAxisID: 'y',
-        pointBackgroundColor: '#3B82F6',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6
-      });
-    }
+    // Always show revenue dataset
+    datasets.push({
+      label: 'Revenue ($)',
+      data: revenueData,
+      borderColor: '#3B82F6',
+      backgroundColor: this.options.chartType === 'area' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.8)',
+      borderWidth: this.options.chartType === 'area' ? 2.5 : 2,
+      fill: this.options.chartType === 'area' ? {
+        target: 'origin',
+        above: 'rgba(59, 130, 246, 0.15)',
+        below: 'rgba(59, 130, 246, 0.05)'
+      } : false,
+      tension: this.options.chartType === 'area' ? 0.4 : 0.1,
+      yAxisID: 'y',
+      pointBackgroundColor: '#3B82F6',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+      pointRadius: this.options.chartType === 'area' ? 3 : 4,
+      pointHoverRadius: 6,
+      order: 1,
+      cubicInterpolationMode: this.options.chartType === 'area' ? 'monotone' : 'default',
+      stepped: false
+    });
     
-    if (this.options.showOrders) {
-      datasets.push({
-        label: 'Orders',
-        data: ordersData,
-        borderColor: '#10B981',
-        backgroundColor: this.options.chartType === 'area' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.8)',
-        borderWidth: 2,
-        fill: this.options.chartType === 'area',
-        tension: 0.4,
-        yAxisID: 'y1',
-        pointBackgroundColor: '#10B981',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6
-      });
-    }
+    // Always show orders dataset
+    datasets.push({
+      label: 'Orders',
+      data: ordersData,
+      borderColor: '#10B981',
+      backgroundColor: this.options.chartType === 'area' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.8)',
+      borderWidth: this.options.chartType === 'area' ? 2.5 : 2,
+      fill: this.options.chartType === 'area' ? {
+        target: '-1',
+        above: 'rgba(16, 185, 129, 0.15)',
+        below: 'rgba(16, 185, 129, 0.05)'
+      } : false,
+      tension: this.options.chartType === 'area' ? 0.4 : 0.1,
+      yAxisID: 'y1',
+      pointBackgroundColor: '#10B981',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+      pointRadius: this.options.chartType === 'area' ? 3 : 4,
+      pointHoverRadius: 6,
+      order: 2,
+      cubicInterpolationMode: this.options.chartType === 'area' ? 'monotone' : 'default',
+      stepped: false
+    });
     
     return {
       labels: labels,
@@ -322,13 +273,22 @@ export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, On
   
   private getDefaultColors() {
     const isDark = this.darkMode;
+    const isAreaChart = this.options.chartType === 'area';
     
     return {
       backgroundColor: [
-        isDark ? 'rgba(59, 130, 246, 0.8)' : 'rgba(59, 130, 246, 0.6)',
-        isDark ? 'rgba(16, 185, 129, 0.8)' : 'rgba(16, 185, 129, 0.6)',
-        isDark ? 'rgba(245, 158, 11, 0.8)' : 'rgba(245, 158, 11, 0.6)',
-        isDark ? 'rgba(239, 68, 68, 0.8)' : 'rgba(239, 68, 68, 0.6)',
+        isAreaChart ? 
+          (isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)') : 
+          (isDark ? 'rgba(59, 130, 246, 0.8)' : 'rgba(59, 130, 246, 0.6)'),
+        isAreaChart ? 
+          (isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.15)') : 
+          (isDark ? 'rgba(16, 185, 129, 0.8)' : 'rgba(16, 185, 129, 0.6)'),
+        isAreaChart ? 
+          (isDark ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.15)') : 
+          (isDark ? 'rgba(245, 158, 11, 0.8)' : 'rgba(245, 158, 11, 0.6)'),
+        isAreaChart ? 
+          (isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.15)') : 
+          (isDark ? 'rgba(239, 68, 68, 0.8)' : 'rgba(239, 68, 68, 0.6)'),
       ],
       borderColor: [
         '#3B82F6',
@@ -348,15 +308,12 @@ export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, On
     const chartTypeMapping: { [key: string]: ChartType } = {
       'line': 'line',
       'bar': 'bar',
-      'area': 'line', // Area is line with fill: true
-      'doughnut': 'doughnut',
-      'radar': 'radar',
-      'scatter': 'scatter'
+      'area': 'line' // Area is line with fill: true
     };
     
     const mappedChartType = chartTypeMapping[this.options.chartType || 'line'] || 'line';
     
-    // Base configuration
+    // Base configuration with industry-standard features
     const config: ChartConfiguration = {
       type: mappedChartType,
       data: chartData,
@@ -374,24 +331,148 @@ export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, On
             labels: {
               color: textColor,
               usePointStyle: true,
-              padding: 20
+              padding: 20,
+              font: {
+                size: 12,
+                weight: 'normal'
+              }
             }
           },
           tooltip: {
-            backgroundColor: isDark ? 'rgba(17, 24, 39, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+            backgroundColor: isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)',
             titleColor: textColor,
             bodyColor: textColor,
             borderColor: gridColor,
             borderWidth: 1,
+            cornerRadius: 8,
+            displayColors: true,
+            titleFont: {
+              size: 13,
+              weight: 'bold'
+            },
+            bodyFont: {
+              size: 12
+            },
+            padding: 12,
             callbacks: {
+              title: (context: TooltipItem<any>[]) => {
+                return context[0]?.label || '';
+              },
               label: (context: TooltipItem<any>) => {
                 const label = context.dataset.label || '';
                 const value = context.parsed.y;
                 
                 if (label.toLowerCase().includes('revenue')) {
-                  return `${label}: $${value.toLocaleString()}`;
+                  return `${label}: $${value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
                 }
-                return `${label}: ${value.toLocaleString()}`;
+                return `${label}: ${value.toLocaleString('en-US')}`;
+              },
+              footer: (context: TooltipItem<any>[]) => {
+                if (context.length > 1) {
+                  const total = context.reduce((sum, item) => {
+                    if (item.dataset.label?.toLowerCase().includes('revenue')) {
+                      return sum + item.parsed.y;
+                    }
+                    return sum;
+                  }, 0);
+                  return total > 0 ? `Total Revenue: $${total.toLocaleString()}` : '';
+                }
+                return '';
+              }
+            }
+          },
+          zoom: this.options.enableZoom ? {
+            pan: {
+              enabled: true,
+              mode: 'x' as const,
+              modifierKey: 'ctrl' as const
+            },
+            zoom: {
+              wheel: {
+                enabled: true,
+                modifierKey: 'ctrl' as const
+              },
+              pinch: {
+                enabled: true
+              },
+              mode: 'x' as const
+            }
+          } as any : undefined
+        },
+        scales: {
+          x: {
+            display: true,
+            title: {
+              display: true,
+              text: this.getXAxisTitle(),
+              color: textColor,
+              font: {
+                size: 13,
+                weight: 'bold'
+              }
+            },
+            grid: {
+              color: gridColor,
+              display: true
+            },
+            ticks: {
+              color: textColor,
+              maxTicksLimit: 10,
+              font: {
+                size: 11
+              }
+            }
+          },
+          y: {
+            type: 'linear',
+            display: true,
+            position: 'left',
+            title: {
+              display: true,
+              text: 'Revenue ($)',
+              color: textColor,
+              font: {
+                size: 13,
+                weight: 'bold'
+              }
+            },
+            grid: {
+              color: gridColor,
+              display: true
+            },
+            ticks: {
+              color: textColor,
+              font: {
+                size: 11
+              },
+              callback: function(value: any) {
+                return '$' + value.toLocaleString('en-US', { 
+                  notation: value > 1000000 ? 'compact' : 'standard',
+                  compactDisplay: 'short'
+                });
+              }
+            }
+          },
+          y1: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            title: {
+              display: true,
+              text: 'Order Count',
+              color: textColor,
+              font: {
+                size: 13,
+                weight: 'bold'
+              }
+            },
+            grid: {
+              drawOnChartArea: false,
+            },
+            ticks: {
+              color: textColor,
+              font: {
+                size: 11
               }
             }
           }
@@ -399,128 +480,56 @@ export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, On
       }
     };
 
-    // Configure scales based on chart type
-    if (['line', 'bar', 'area'].includes(this.options.chartType || 'line')) {
-      config.options!.scales = {
-        x: {
-          display: true,
-          title: {
-            display: true,
-            text: 'Time Period',
-            color: textColor
-          },
-          grid: {
-            color: gridColor,
-            display: true
-          },
-          ticks: {
-            color: textColor,
-            maxTicksLimit: 10
-          }
-        },
-        y: {
-          type: 'linear',
-          display: true,
-          position: 'left',
-          title: {
-            display: true,
-            text: 'Revenue ($)',
-            color: textColor
-          },
-          grid: {
-            color: gridColor,
-            display: true
-          },
-          ticks: {
-            color: textColor,
-            callback: function(value: any) {
-              return '$' + value.toLocaleString();
-            }
-          }
-        },
-        y1: {
-          type: 'linear',
-          display: true,
-          position: 'right',
-          title: {
-            display: true,
-            text: 'Orders',
-            color: textColor
-          },
-          grid: {
-            drawOnChartArea: false,
-          },
-          ticks: {
-            color: textColor
-          }
-        }
-      };
-    }
-
-    // Configure radar chart scales
-    if (this.options.chartType === 'radar') {
-      config.options!.scales = {
-        r: {
-          beginAtZero: true,
-          grid: {
-            color: gridColor
-          },
-          pointLabels: {
-            color: textColor
-          },
-          ticks: {
-            color: textColor,
-            backdropColor: 'transparent'
-          }
-        }
-      };
-    }
-
-    // Configure scatter chart scales
-    if (this.options.chartType === 'scatter') {
-      config.options!.scales = {
-        x: {
-          type: 'linear',
-          position: 'bottom',
-          title: {
-            display: true,
-            text: 'Revenue ($)',
-            color: textColor
-          },
-          ticks: {
-            color: textColor,
-            callback: function(value: any) {
-              return '$' + value.toLocaleString();
-            }
-          }
-        },
-        y: {
-          title: {
-            display: true,
-            text: 'Order Count',
-            color: textColor
-          },
-          ticks: {
-            color: textColor
-          }
-        }
-      };
-    }
-
-    // Set element styles
+    // Set element styles for better visual appeal
     if (['line', 'area'].includes(this.options.chartType || 'line')) {
+      const isAreaChart = this.options.chartType === 'area';
+      
       config.options!.elements = {
         point: {
-          radius: 4,
-          hoverRadius: 6
+          radius: isAreaChart ? 3 : 4,
+          hoverRadius: isAreaChart ? 6 : 7,
+          borderWidth: 2,
+          backgroundColor: 'rgba(255, 255, 255, 1)',
+          hitRadius: 10
         },
         line: {
-          borderWidth: 2
+          borderWidth: isAreaChart ? 2.5 : 3,
+          tension: isAreaChart ? 0.4 : 0.2,
+          borderCapStyle: 'round',
+          borderJoinStyle: 'round',
+          cubicInterpolationMode: isAreaChart ? 'monotone' : 'default'
         }
       };
+      
+      // Add specific area chart animations for smooth transitions
+      if (isAreaChart) {
+        config.options!.animation = {
+          duration: 1000,
+          easing: 'easeInOutCubic'
+        };
+        
+        // Add transitions for smooth updates
+        config.options!.transitions = {
+          active: {
+            animation: {
+              duration: 300
+            }
+          }
+        };
+      }
     }
 
     return config;
+  }
+
+  private getXAxisTitle(): string {
+    switch (this.options.timeframe) {
+      case 'daily': return 'Date';
+      case 'weekly': return 'Week';
+      case 'monthly': return 'Month';
+      case 'yearly': return 'Year';
+      default: return 'Time Period';
+    }
   }
   
   // Public method to update chart data
@@ -531,13 +540,26 @@ export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, On
       const chartData = this.prepareChartData();
       this.chart.data = chartData;
       this.chart.update('resize');
+      
+      // Reapply smooth area chart styling if chart type is area
+      if (this.options.chartType === 'area') {
+        this.applyAreaChartSmoothing(true);
+      }
     }
   }
   
   // Public method to toggle chart type
-  toggleChartType(type: 'line' | 'bar' | 'area' | 'doughnut' | 'radar' | 'scatter') {
+  toggleChartType(type: SalesChartType) {
     this.options.chartType = type;
     this.initializeChart();
+    
+    // Apply smooth area chart styling if switching to area chart
+    if (type === 'area') {
+      // Use setTimeout to ensure chart is fully initialized before applying styling
+      setTimeout(() => {
+        this.applyAreaChartSmoothing(true);
+      }, 100);
+    }
   }
 
   // Public method to update groupBy and refresh chart data
@@ -552,28 +574,230 @@ export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, On
     return this.options.groupBy || 'day';
   }
 
-  // Public method to toggle dataset visibility
-  toggleDatasetVisibility(datasetType: 'revenue' | 'orders', visible: boolean) {
-    if (datasetType === 'revenue') {
-      this.options.showRevenue = visible;
-    } else {
-      this.options.showOrders = visible;
-    }
-    
-    // Re-prepare data and update chart
-    if (this.chart) {
-      const chartData = this.prepareChartData();
-      this.chart.data = chartData;
-      this.chart.update('resize');
-    }
-  }
-
   // Public method to check if chart type supports certain features
   supportsMultipleDatasets(): boolean {
-    return !['doughnut', 'scatter'].includes(this.options.chartType || 'line');
+    return true; // All sales chart types support multiple datasets
   }
 
   supportsDualAxis(): boolean {
-    return ['line', 'bar', 'area'].includes(this.options.chartType || 'line');
+    return true; // All sales chart types support dual axis
+  }
+
+  supportsZoom(): boolean {
+    return ['line', 'area'].includes(this.options.chartType || 'line');
+  }
+
+  // Export functions
+  async exportChart(format: ExportFormat): Promise<void> {
+    if (!this.chart) {
+      console.error('Chart not initialized');
+      this.chartExported.emit({ format, success: false });
+      return;
+    }
+
+    try {
+      switch (format) {
+        case 'png':
+          await this.exportToPNG();
+          break;
+        case 'pdf':
+          await this.exportToPDF();
+          break;
+        case 'csv':
+          await this.exportToCSV();
+          break;
+        case 'excel':
+          await this.exportToExcel();
+          break;
+        default:
+          throw new Error(`Unsupported export format: ${format}`);
+      }
+      this.chartExported.emit({ format, success: true });
+    } catch (error) {
+      console.error(`Error exporting chart as ${format}:`, error);
+      this.chartExported.emit({ format, success: false });
+    }
+  }
+
+  private async exportToPNG(): Promise<void> {
+    if (!this.chart) return;
+    
+    const canvas = this.chart.canvas;
+    const url = canvas.toDataURL('image/png');
+    
+    const link = document.createElement('a');
+    link.download = `sales-chart-${this.getFilenameSuffix()}.png`;
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  private async exportToPDF(): Promise<void> {
+    if (!this.chart) return;
+
+    const canvas = this.chart.canvas;
+    const imgData = canvas.toDataURL('image/png');
+    
+    const pdf = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    
+    // Calculate aspect ratio to fit the image
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
+    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+    
+    const width = imgWidth * ratio;
+    const height = imgHeight * ratio;
+    
+    // Center the image
+    const x = (pdfWidth - width) / 2;
+    const y = (pdfHeight - height) / 2;
+
+    // Add title
+    pdf.setFontSize(16);
+    pdf.text('Sales Chart Report', pdfWidth / 2, 15, { align: 'center' });
+    
+    // Add timestamp
+    pdf.setFontSize(10);
+    const timestamp = new Date().toLocaleString();
+    pdf.text(`Generated: ${timestamp}`, pdfWidth / 2, 25, { align: 'center' });
+
+    // Add chart
+    pdf.addImage(imgData, 'PNG', x, y + 20, width, height - 20);
+
+    pdf.save(`sales-chart-${this.getFilenameSuffix()}.pdf`);
+  }
+
+  private async exportToCSV(): Promise<void> {
+    const data = this.prepareDataForExport();
+    const csv = this.convertToCSV(data);
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `sales-data-${this.getFilenameSuffix()}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  private async exportToExcel(): Promise<void> {
+    const data = this.prepareDataForExport();
+    
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    
+    // Auto-size columns
+    const columnWidths = Object.keys(data[0] || {}).map(key => ({
+      wch: Math.max(key.length, ...data.map(row => String(row[key]).length))
+    }));
+    worksheet['!cols'] = columnWidths;
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sales Data');
+    
+    XLSX.writeFile(workbook, `sales-data-${this.getFilenameSuffix()}.xlsx`);
+  }
+
+  private prepareDataForExport(): any[] {
+    const chartData = this.isShowingSampleData ? this.getDefaultChartData() : this.prepareChartData();
+    const labels = chartData.labels || [];
+    const datasets = chartData.datasets || [];
+    
+    return labels.map((label, index) => {
+      const row: any = { 'Time Period': label };
+      
+      datasets.forEach(dataset => {
+        const value = dataset.data[index];
+        row[dataset.label || 'Unknown'] = value;
+      });
+      
+      return row;
+    });
+  }
+
+  private convertToCSV(data: any[]): string {
+    if (data.length === 0) return '';
+    
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => 
+        headers.map(header => {
+          const value = row[header];
+          // Escape commas and quotes in CSV
+          if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value;
+        }).join(',')
+      )
+    ].join('\n');
+    
+    return csvContent;
+  }
+
+  private getFilenameSuffix(): string {
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+    return `${dateStr}_${timeStr}`;
+  }
+
+  // Reset zoom functionality
+  resetZoom(): void {
+    if (this.chart && this.options.enableZoom) {
+      (this.chart as any).resetZoom?.();
+    }
+  }
+
+  // Zoom in functionality
+  zoomIn(): void {
+    if (this.chart && this.options.enableZoom) {
+      (this.chart as any).zoom?.(1.2);
+    }
+  }
+
+  // Zoom out functionality
+  zoomOut(): void {
+    if (this.chart && this.options.enableZoom) {
+      (this.chart as any).zoom?.(0.8);
+    }
+  }
+
+  // Apply smooth area chart styling
+  private applyAreaChartSmoothing(smooth: boolean = true): void {
+    if (!this.chart || this.options.chartType !== 'area') {
+      return;
+    }
+
+    // Update all datasets for area chart fill and smoothing
+    this.chart.data.datasets.forEach((dataset: any) => {
+      dataset.fill = 'origin';
+      dataset.tension = smooth ? 0.4 : 0;
+    });
+
+    // Update chart options for line element tension
+    if (this.chart.options?.elements?.line) {
+      (this.chart.options.elements.line as any).tension = smooth ? 0.4 : 0;
+    }
+
+    // Update the chart to apply changes
+    this.chart.update('resize');
+  }
+
+  // Public method to toggle smooth area chart
+  toggleSmoothAreaChart(smooth: boolean = true): void {
+    this.applyAreaChartSmoothing(smooth);
   }
 }
