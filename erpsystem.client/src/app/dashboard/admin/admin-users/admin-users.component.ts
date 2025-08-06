@@ -250,6 +250,17 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
     this.showUpdateModal = false;
   }
 
+  onActionClicked(event: { action: any, row: User }) {
+    const { action, row: user } = event;
+    
+    // Call the action function directly
+    if (action.action && typeof action.action === 'function') {
+      action.action(user);
+    } else {
+      console.warn('Action function not found:', action);
+    }
+  }
+
   onUpdateModalCancelled() {
     this.showUpdateModal = false;
     this.selectedUserId = '';

@@ -1,39 +1,44 @@
-<div class="custom-table-container">
+<div class="relative w-full bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
   <!-- Loading Overlay -->
-  <div *ngIf="config.loading" class="loading-overlay">
-    <div class="loading-spinner">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
-      <span class="ml-2 text-sm text-gray-600 dark:text-gray-400">Loading...</span>
+  <div *ngIf="config.loading" class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center z-10">
+    <div class="flex items-center space-x-3">
+      <div class="animate-spin rounded-full h-6 w-6 border-2 border-b-red-600"></div>
+      <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Loading...</span>
     </div>
   </div>
 
   <!-- Error Message -->
-  <div *ngIf="config.error && !config.loading" class="error-message">
-    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded">
-      {{ config.error }}
+  <div *ngIf="config.error && !config.loading" class="p-4">
+    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg">
+      <div class="flex items-center">
+        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+        </svg>
+        {{ config.error }}
+      </div>
     </div>
   </div>
 
   <!-- Table -->
-  <div *ngIf="!config.error" class="table-wrapper">
-    <table class="custom-table">
+  <div *ngIf="!config.error" class="overflow-x-auto">
+    <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
       <!-- Header -->
-      <thead class="table-header">
+      <thead class="bg-gray-50 dark:bg-gray-900">
         <tr>
           <!-- Select All Checkbox -->
-          <th *ngIf="config.selectable && config.multiSelect" class="select-column">
+          <th *ngIf="config.selectable && config.multiSelect" class="w-12 px-6 py-4 text-left">
             <button
               type="button"
               (click)="onSelectAll()"
               [disabled]="config.loading"
-              class="checkbox-button"
-              [class.checked]="allSelected"
-              [class.indeterminate]="indeterminate">
+              class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+              [class.text-red-600]="allSelected"
+              [class.text-red-500]="indeterminate"
+              [class.text-gray-400]="!allSelected && !indeterminate"
+              [title]="allSelected ? 'Deselect all' : 'Select all'">
               <lucide-angular 
-                [img]="allSelected ? icons.CheckSquare : icons.Square"
-                class="checkbox-icon"
-                [class.text-red-600]="allSelected"
-                [class.text-gray-400]="!allSelected">
+                [img]="allSelected ? icons.CheckSquare : (indeterminate ? icons.Minus : icons.Square)"
+                class="w-4 h-4">
               </lucide-angular>
             </button>
           </th>
@@ -41,7 +46,7 @@
           <!-- Column Headers -->
           <th 
             *ngFor="let column of config.columns"
-            [class]="'table-header-cell ' + (column.headerClass || '')"
+            [class]="'px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider ' + (column.headerClass || '')"
             [style.width]="column.width"
             [style.min-width]="column.minWidth"
             [style.max-width]="column.maxWidth"
@@ -52,12 +57,13 @@
               type="button"
               (click)="onSort(column)"
               [disabled]="config.loading"
-              class="sort-button">
+              class="flex items-center space-x-2 text-left px-0 py-2 w-full bg-transparent border-none cursor-pointer transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-800 dark:hover:text-gray-100"
+              [title]="'Sort by ' + column.header">
               <span>{{ column.header }}</span>
               <lucide-angular 
                 *ngIf="getSortIcon(column)"
                 [img]="getSortIcon(column)"
-                class="sort-icon">
+                class="w-4 h-4 text-gray-400 dark:text-gray-500">
               </lucide-angular>
             </button>
 
@@ -67,19 +73,20 @@
           </th>
 
           <!-- Actions Column -->
-          <th *ngIf="config.actions && config.actions.length > 0" class="actions-column">
+          <th *ngIf="config.actions && config.actions.length > 0" class="w-32 px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
             Actions
           </th>
         </tr>
       </thead>
 
       <!-- Body -->
-      <tbody class="table-body">
+      <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
         <!-- Empty State -->
-        <tr *ngIf="config.data.length === 0 && !config.loading" class="empty-row">
-          <td [colSpan]="getTotalColumns()" class="empty-cell">
-            <div class="empty-state">
-              <p class="text-gray-500 dark:text-gray-400">{{ config.emptyMessage }}</p>
+        <tr *ngIf="config.data.length === 0 && !config.loading" class="hover:bg-transparent cursor-default">
+          <td [colSpan]="getTotalColumns()" class="px-6 py-12 text-center">
+            <div class="text-center">
+              <p class="text-lg font-medium text-gray-500 dark:text-gray-400">{{ config.emptyMessage }}</p>
+              <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">No data to display</p>
             </div>
           </td>
         </tr>
@@ -88,21 +95,26 @@
         <tr 
           *ngFor="let row of config.data; let i = index"
           [class]="getRowClass(row, i)"
+          class="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-150"
+          [class.bg-red-50]="isRowSelected(row)"
+          [class.dark:bg-red-900]="isRowSelected(row)"
+          [class.bg-opacity-20]="isRowSelected(row)"
+          [class.dark:bg-opacity-20]="isRowSelected(row)"
           (click)="onRowClick(row)">
           
           <!-- Select Checkbox -->
-          <td *ngIf="config.selectable" class="select-cell">
+          <td *ngIf="config.selectable" class="w-12 px-6 py-4">
             <button
               type="button"
               (click)="onSelectRow(row, $event)"
               [disabled]="config.loading"
-              class="checkbox-button"
-              [class.checked]="isRowSelected(row)">
+              class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+              [class.text-red-600]="isRowSelected(row)"
+              [class.text-gray-400]="!isRowSelected(row)"
+              [title]="isRowSelected(row) ? 'Deselect row' : 'Select row'">
               <lucide-angular 
                 [img]="isRowSelected(row) ? icons.CheckSquare : icons.Square"
-                class="checkbox-icon"
-                [class.text-red-600]="isRowSelected(row)"
-                [class.text-gray-400]="!isRowSelected(row)">
+                class="w-4 h-4">
               </lucide-angular>
             </button>
           </td>
@@ -110,7 +122,7 @@
           <!-- Data Cells -->
           <td 
             *ngFor="let column of config.columns"
-            [class]="'table-cell ' + (column.cellClass || '')"
+            [class]="'px-6 py-4 text-sm text-gray-900 dark:text-gray-100 ' + (column.cellClass || '')"
             [style.text-align]="column.align || 'left'">
             
             <!-- Custom Component Cell -->
@@ -125,24 +137,24 @@
           </td>
 
           <!-- Actions Cell -->
-          <td *ngIf="config.actions && config.actions.length > 0" class="actions-cell">
-            <div class="actions-container">
+          <td *ngIf="config.actions && config.actions.length > 0" class="px-6 py-4 text-right">
+            <div class="flex items-center justify-end space-x-2">
               <ng-container *ngFor="let action of config.actions">
                 <button
                   *ngIf="isActionVisible(action, row)"
                   type="button"
                   (click)="onActionClick(action, row, $event)"
                   [disabled]="isActionDisabled(action, row) || config.loading"
-                  [class]="'action-button ' + (action.class || 'default-action')"
+                  [class]="'inline-flex items-center px-2 py-1 text-xs font-medium rounded-md transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ' + getActionButtonClass(action)"
                   [title]="action.label">
                   
                   <lucide-angular 
                     *ngIf="action.icon"
                     [img]="action.icon"
-                    class="action-icon">
+                    class="w-3 h-3">
                   </lucide-angular>
                   
-                  <span *ngIf="!action.icon">{{ action.label }}</span>
+                  <span *ngIf="!action.icon" class="text-xs font-medium">{{ action.label }}</span>
                 </button>
               </ng-container>
             </div>
@@ -153,22 +165,24 @@
   </div>
 
   <!-- Pagination -->
-  <div *ngIf="config.pagination && config.data.length > 0" class="pagination-container">
-    <div class="pagination-info">
-      <span class="text-sm text-gray-700 dark:text-gray-300">
-        Showing {{ getStartRecord() }} to {{ getEndRecord() }} of {{ getTotalRecords() }} results
+  <div *ngIf="config.pagination && config.data.length > 0" class="flex items-center justify-between px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+    <div class="text-sm text-gray-700 dark:text-gray-300">
+      <span>
+        Showing <span class="font-semibold">{{ getStartRecord() }}</span> to 
+        <span class="font-semibold">{{ getEndRecord() }}</span> of 
+        <span class="font-semibold">{{ getTotalRecords() }}</span> results
       </span>
     </div>
 
-    <div class="pagination-controls">
+    <div class="flex items-center space-x-4">
       <!-- Page Size Selector -->
-      <div class="page-size-selector">
-        <label class="text-sm text-gray-700 dark:text-gray-300">Show:</label>
+      <div class="flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
+        <label>Rows per page:</label>
         <select
           [value]="config.pageSize"
           (change)="onPageSizeChange(+$any($event.target).value)"
           [disabled]="config.loading"
-          class="page-size-select">
+          class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
           <option *ngFor="let size of config.pageSizeOptions" [value]="size">
             {{ size }}
           </option>
@@ -176,15 +190,15 @@
       </div>
 
       <!-- Page Navigation -->
-      <div class="page-navigation">
+      <div class="flex items-center space-x-1">
         <!-- First Page -->
         <button
           type="button"
           (click)="onPageChange(1)"
           [disabled]="config.currentPage === 1 || config.loading"
-          class="page-button"
+          class="inline-flex items-center px-3 py-1 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
           title="First Page">
-          <lucide-angular [img]="icons.ChevronsLeft" class="page-icon"></lucide-angular>
+          <lucide-angular [img]="icons.ChevronsLeft" class="w-4 h-4"></lucide-angular>
         </button>
 
         <!-- Previous Page -->
@@ -192,9 +206,9 @@
           type="button"
           (click)="onPageChange((config.currentPage || 1) - 1)"
           [disabled]="config.currentPage === 1 || config.loading"
-          class="page-button"
+          class="inline-flex items-center px-3 py-1 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
           title="Previous Page">
-          <lucide-angular [img]="icons.ChevronLeft" class="page-icon"></lucide-angular>
+          <lucide-angular [img]="icons.ChevronLeft" class="w-4 h-4"></lucide-angular>
         </button>
 
         <!-- Page Numbers -->
@@ -203,7 +217,8 @@
           type="button"
           (click)="onPageChange(page)"
           [disabled]="config.loading"
-          [class]="'page-button ' + (page === config.currentPage ? 'active' : '')">
+          [class]="'inline-flex items-center px-3 py-1 text-sm font-medium rounded-md transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed ' + (page === config.currentPage ? 'bg-red-600 border-red-600 text-white hover:bg-red-700 hover:text-white' : 'text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300')"
+          [title]="'Go to page ' + page">
           {{ page }}
         </button>
 
@@ -212,9 +227,9 @@
           type="button"
           (click)="onPageChange((config.currentPage || 1) + 1)"
           [disabled]="config.currentPage === totalPages || config.loading"
-          class="page-button"
+          class="inline-flex items-center px-3 py-1 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
           title="Next Page">
-          <lucide-angular [img]="icons.ChevronRight" class="page-icon"></lucide-angular>
+          <lucide-angular [img]="icons.ChevronRight" class="w-4 h-4"></lucide-angular>
         </button>
 
         <!-- Last Page -->
@@ -222,9 +237,9 @@
           type="button"
           (click)="onPageChange(totalPages)"
           [disabled]="config.currentPage === totalPages || config.loading"
-          class="page-button"
+          class="inline-flex items-center px-3 py-1 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
           title="Last Page">
-          <lucide-angular [img]="icons.ChevronsRight" class="page-icon"></lucide-angular>
+          <lucide-angular [img]="icons.ChevronsRight" class="w-4 h-4"></lucide-angular>
         </button>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { LucideAngularModule, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUp, ArrowDown, CheckSquare, Square } from 'lucide-angular';
+import { LucideAngularModule, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUp, ArrowDown, CheckSquare, Square, Minus } from 'lucide-angular';
 
 export interface TableColumn<T = any> {
   key: string;
@@ -100,7 +100,8 @@ export class CustomTableComponent<T = any> implements OnInit, OnChanges {
     ArrowUp,
     ArrowDown,
     CheckSquare,
-    Square
+    Square,
+    Minus
   };
 
   // Internal state
@@ -325,6 +326,21 @@ export class CustomTableComponent<T = any> implements OnInit, OnChanges {
 
   isActionDisabled(action: TableAction<T>, row: T): boolean {
     return action.disabled ? action.disabled(row) : false;
+  }
+
+  getActionButtonClass(action: TableAction<T>): string {
+    const baseClasses = '';
+    
+    switch (action.class) {
+      case 'edit-action':
+        return 'text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900 hover:bg-blue-200 dark:hover:bg-blue-800';
+      case 'activate-action':
+        return 'text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800';
+      case 'deactivate-action':
+        return 'text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900 hover:bg-red-200 dark:hover:bg-red-800';
+      default:
+        return 'text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600';
+    }
   }
 
   // Utility methods

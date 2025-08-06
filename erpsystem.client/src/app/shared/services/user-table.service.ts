@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { TableConfig, TableColumn, TableAction } from '../components/custom-table/custom-table.component';
 import { User } from '../../core/models/user.interface';
-import { Edit, UserX, UserCheck } from 'lucide-angular';
+import { Edit3, UserX, UserCheck, Shield, Calendar, Mail, User as UserIcon } from 'lucide-angular';
 
 @Injectable({
   providedIn: 'root'
@@ -61,7 +61,7 @@ export class UserTableService {
     if (onEdit) {
       actions.push({
         label: 'Edit',
-        icon: Edit,
+        icon: Edit3,
         action: onEdit,
         class: 'edit-action'
       });
