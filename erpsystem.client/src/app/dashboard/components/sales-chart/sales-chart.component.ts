@@ -64,12 +64,12 @@ export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, On
   }
   
   ngOnChanges(changes: SimpleChanges) {
-    // React to input changes, especially chartData and options
-    if (changes['chartData'] || changes['options']) {
+    // React to input changes, especially chartData, options, and darkMode
+    if (changes['chartData'] || changes['options'] || changes['darkMode']) {
       this.checkIfShowingSampleData();
       
-      // If options changed (including chart type), we need to recreate the chart
-      if (changes['options'] && this.chart) {
+      // If options or darkMode changed, we need to recreate the chart with new configuration
+      if ((changes['options'] || changes['darkMode']) && this.chart) {
         this.initializeChart(); // Recreate the chart with new configuration
       } else if (changes['chartData'] && this.chart) {
         // If only data changed, just update the data
@@ -143,26 +143,27 @@ export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, On
       datasets: this.chartData!.datasets.map((dataset, index) => {
         const isAreaChart = this.options.chartType === 'area';
         const isRevenue = dataset.label?.toLowerCase().includes('revenue');
+        const defaultColors = this.getDefaultColors();
         
         return {
           label: dataset.label,
           data: dataset.data,
-          backgroundColor: dataset.backgroundColor || this.getDefaultColors().backgroundColor[index],
-          borderColor: dataset.borderColor || this.getDefaultColors().borderColor[index],
+          backgroundColor: dataset.backgroundColor || defaultColors.backgroundColor[index],
+          borderColor: dataset.borderColor || defaultColors.borderColor[index],
           borderWidth: isAreaChart ? 2.5 : (dataset.borderWidth || 2),
           fill: dataset.fill !== undefined ? dataset.fill : 
                 isAreaChart ? (isRevenue ? {
                   target: 'origin',
-                  above: dataset.backgroundColor || 'rgba(59, 130, 246, 0.15)',
-                  below: 'rgba(59, 130, 246, 0.05)'
+                  above: dataset.backgroundColor || defaultColors.backgroundColor[index],
+                  below: this.darkMode ? 'rgba(59, 130, 246, 0.08)' : 'rgba(59, 130, 246, 0.05)'
                 } : {
                   target: '-1',
-                  above: dataset.backgroundColor || 'rgba(16, 185, 129, 0.15)', 
-                  below: 'rgba(16, 185, 129, 0.05)'
+                  above: dataset.backgroundColor || defaultColors.backgroundColor[index], 
+                  below: this.darkMode ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.05)'
                 }) : false,
           tension: isAreaChart ? 0.4 : (dataset.tension || 0.1),
-          pointBackgroundColor: dataset.borderColor || this.getDefaultColors().borderColor[index],
-          pointBorderColor: '#fff',
+          pointBackgroundColor: dataset.borderColor || defaultColors.borderColor[index],
+          pointBorderColor: this.darkMode ? '#1F2937' : '#fff',
           pointBorderWidth: 2,
           pointRadius: isAreaChart ? 3 : 4,
           pointHoverRadius: 6,
@@ -216,23 +217,24 @@ export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, On
     }
     
     const datasets: any[] = [];
+    const defaultColors = this.getDefaultColors();
     
     // Always show revenue dataset
     datasets.push({
       label: 'Revenue ($)',
       data: revenueData,
-      borderColor: '#3B82F6',
-      backgroundColor: this.options.chartType === 'area' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.8)',
+      borderColor: defaultColors.borderColor[0],
+      backgroundColor: defaultColors.backgroundColor[0],
       borderWidth: this.options.chartType === 'area' ? 2.5 : 2,
       fill: this.options.chartType === 'area' ? {
         target: 'origin',
-        above: 'rgba(59, 130, 246, 0.15)',
-        below: 'rgba(59, 130, 246, 0.05)'
+        above: defaultColors.backgroundColor[0],
+        below: this.darkMode ? 'rgba(59, 130, 246, 0.08)' : 'rgba(59, 130, 246, 0.05)'
       } : false,
       tension: this.options.chartType === 'area' ? 0.4 : 0.1,
       yAxisID: 'y',
-      pointBackgroundColor: '#3B82F6',
-      pointBorderColor: '#fff',
+      pointBackgroundColor: defaultColors.borderColor[0],
+      pointBorderColor: this.darkMode ? '#1F2937' : '#fff',
       pointBorderWidth: 2,
       pointRadius: this.options.chartType === 'area' ? 3 : 4,
       pointHoverRadius: 6,
@@ -245,18 +247,18 @@ export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, On
     datasets.push({
       label: 'Orders',
       data: ordersData,
-      borderColor: '#10B981',
-      backgroundColor: this.options.chartType === 'area' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.8)',
+      borderColor: defaultColors.borderColor[1],
+      backgroundColor: defaultColors.backgroundColor[1],
       borderWidth: this.options.chartType === 'area' ? 2.5 : 2,
       fill: this.options.chartType === 'area' ? {
         target: '-1',
-        above: 'rgba(16, 185, 129, 0.15)',
-        below: 'rgba(16, 185, 129, 0.05)'
+        above: defaultColors.backgroundColor[1],
+        below: this.darkMode ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.05)'
       } : false,
       tension: this.options.chartType === 'area' ? 0.4 : 0.1,
       yAxisID: 'y1',
-      pointBackgroundColor: '#10B981',
-      pointBorderColor: '#fff',
+      pointBackgroundColor: defaultColors.borderColor[1],
+      pointBorderColor: this.darkMode ? '#1F2937' : '#fff',
       pointBorderWidth: 2,
       pointRadius: this.options.chartType === 'area' ? 3 : 4,
       pointHoverRadius: 6,
@@ -278,31 +280,33 @@ export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, On
     return {
       backgroundColor: [
         isAreaChart ? 
-          (isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)') : 
+          (isDark ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.15)') : 
           (isDark ? 'rgba(59, 130, 246, 0.8)' : 'rgba(59, 130, 246, 0.6)'),
         isAreaChart ? 
-          (isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.15)') : 
+          (isDark ? 'rgba(16, 185, 129, 0.25)' : 'rgba(16, 185, 129, 0.15)') : 
           (isDark ? 'rgba(16, 185, 129, 0.8)' : 'rgba(16, 185, 129, 0.6)'),
         isAreaChart ? 
-          (isDark ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.15)') : 
+          (isDark ? 'rgba(245, 158, 11, 0.25)' : 'rgba(245, 158, 11, 0.15)') : 
           (isDark ? 'rgba(245, 158, 11, 0.8)' : 'rgba(245, 158, 11, 0.6)'),
         isAreaChart ? 
-          (isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.15)') : 
+          (isDark ? 'rgba(239, 68, 68, 0.25)' : 'rgba(239, 68, 68, 0.15)') : 
           (isDark ? 'rgba(239, 68, 68, 0.8)' : 'rgba(239, 68, 68, 0.6)'),
       ],
       borderColor: [
-        '#3B82F6',
-        '#10B981',
-        '#F59E0B',
-        '#EF4444',
+        isDark ? '#60A5FA' : '#3B82F6',  // Lighter blue in dark mode
+        isDark ? '#34D399' : '#10B981',  // Lighter green in dark mode
+        isDark ? '#FBBF24' : '#F59E0B',  // Lighter amber in dark mode
+        isDark ? '#F87171' : '#EF4444',  // Lighter red in dark mode
       ]
     };
   }
   
   private getChartConfiguration(chartData: ChartData): ChartConfiguration {
     const isDark = this.darkMode;
-    const textColor = isDark ? '#E5E7EB' : '#374151';
-    const gridColor = isDark ? '#374151' : '#E5E7EB';
+    const textColor = isDark ? '#F3F4F6' : '#374151';       // Brighter text in dark mode
+    const gridColor = isDark ? '#4B5563' : '#E5E7EB';       // Better contrast grid in dark mode
+    const backgroundColor = isDark ? 'rgba(17, 24, 39, 0.98)' : 'rgba(255, 255, 255, 0.98)';
+    const borderColor = isDark ? '#6B7280' : '#D1D5DB';     // Better border contrast
     
     // Map our chart types to Chart.js types
     const chartTypeMapping: { [key: string]: ChartType } = {
@@ -339,10 +343,10 @@ export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, On
             }
           },
           tooltip: {
-            backgroundColor: isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+            backgroundColor: backgroundColor,
             titleColor: textColor,
             bodyColor: textColor,
-            borderColor: gridColor,
+            borderColor: borderColor,
             borderWidth: 1,
             cornerRadius: 8,
             displayColors: true,
@@ -489,7 +493,8 @@ export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, On
           radius: isAreaChart ? 3 : 4,
           hoverRadius: isAreaChart ? 6 : 7,
           borderWidth: 2,
-          backgroundColor: 'rgba(255, 255, 255, 1)',
+          backgroundColor: isDark ? 'rgba(31, 41, 55, 0.9)' : 'rgba(255, 255, 255, 1)',
+          borderColor: isDark ? '#F3F4F6' : '#374151',
           hitRadius: 10
         },
         line: {
@@ -536,16 +541,9 @@ export class SalesChartComponent implements OnInit, OnChanges, AfterViewInit, On
   updateChart(newData: DashboardChartData | null) {
     this.chartData = newData;
     this.checkIfShowingSampleData();
-    if (this.chart) {
-      const chartData = this.prepareChartData();
-      this.chart.data = chartData;
-      this.chart.update('resize');
-      
-      // Reapply smooth area chart styling if chart type is area
-      if (this.options.chartType === 'area') {
-        this.applyAreaChartSmoothing(true);
-      }
-    }
+    
+    // Fully reinitialize the chart to ensure theme changes are applied
+    this.initializeChart();
   }
   
   // Public method to toggle chart type

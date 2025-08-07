@@ -96,6 +96,12 @@ export class ProductPerformanceChartComponent implements OnInit, OnChanges, Afte
       }
     }
     
+    // Handle dark mode changes
+    if (changes['darkMode'] && this.chartInitialized && !changes['darkMode'].firstChange) {
+      console.log('Dark mode changed, refreshing chart...');
+      this.refreshChart();
+    }
+    
     if (changes['isLoading']) {
       // When loading state changes, check if we can initialize the chart
       if (!changes['isLoading'].currentValue && !this.chartInitialized) {

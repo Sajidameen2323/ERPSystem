@@ -1,12 +1,13 @@
-import { Component, OnInit, OnDestroy, inject, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ViewChild, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { LucideAngularModule, User, Users, Package, TrendingUp, Settings, ShoppingCart, FileText, BarChart3, AlertTriangle, RefreshCw, Filter, Calendar, DollarSign, Clock, Eye, ChevronRight, ArrowUp, ArrowDown, Minus, UserPlus, Database, Zap,Activity } from 'lucide-angular';
+import { LucideAngularModule, User, Users, Package, TrendingUp, Settings, ShoppingCart, FileText, BarChart3, AlertTriangle, RefreshCw, Filter, Calendar, DollarSign, Clock, Eye, ChevronRight, ArrowUp, ArrowDown, Minus, UserPlus, Database, Zap, Activity } from 'lucide-angular';
 import { Observable, Subject, interval, combineLatest, of } from 'rxjs';
 import { takeUntil, startWith, debounceTime, distinctUntilChanged, switchMap, catchError, share, finalize } from 'rxjs/operators';
 import { DashboardService } from '../services/dashboard.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ThemeService } from '../../shared/services/theme.service';
 import { SalesChartComponent } from '../components/sales-chart/sales-chart.component';
 import { ProductPerformanceChartComponent } from '../components/product-performance-chart/product-performance-chart.component';
 import { ChartControlsComponent, SalesChartType, ChartTimeframe as SalesTimeframe, ExportFormat } from '../components/chart-controls/chart-controls.component';
@@ -39,6 +40,7 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
   private readonly dashboardService = inject(DashboardService);
   private readonly authService = inject(AuthService);
+  private readonly themeService = inject(ThemeService);
 
   // Icons
   readonly icons = {
@@ -71,6 +73,7 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
   isLoading = true;
   error: string | null = null;
   lastRefresh = new Date();
+  private isInitialLoad = true;
 
   // Dashboard data
   dashboardOverview: DashboardOverview | null = null;
@@ -82,7 +85,9 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
   isLoadingProductPerformance = false;
   selectedChartType: SalesChartType = 'line';
   selectedTimeframe: SalesTimeframe = 'daily';
-  isDarkMode = false; // TODO: Get from theme service
+  
+  // Computed property for dark mode from theme service
+  isDarkMode = computed(() => this.themeService.isDarkMode());
 
   // Filters and controls
   dateRangeControl = new FormControl<string>('30');
@@ -153,6 +158,7 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
     this.initializeComponent();
     this.setupDataRefresh();
     this.setupDateRangeFilter();
+    this.setupThemeChangeDetection();
   }
 
   ngOnDestroy() {
@@ -188,6 +194,25 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
       .subscribe(() => {
         this.loadDashboardData();
       });
+  }
+
+  private setupThemeChangeDetection() {
+    // Use Angular effect to watch for theme changes and repaint charts
+    effect(() => {
+      // This will run whenever isDarkMode signal changes
+      const darkMode = this.isDarkMode();
+      
+      // Skip on initial load to avoid unnecessary repaints
+      if (this.isInitialLoad) {
+        this.isInitialLoad = false;
+        return;
+      }
+      
+      // Add a small delay to ensure charts are initialized before repainting
+      setTimeout(() => {
+        this.repaintCharts();
+      }, 100);
+    });
   }
 
   private loadDashboardData(): void {
@@ -646,6 +671,22 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
         color: '#84CC16'
       }
     ];
+  }
+
+  // Chart methods
+  private repaintCharts(): void {
+    // Only repaint if charts have data to avoid unnecessary operations
+    console.log('Repainting charts for theme change...');
+    
+    // Force repaint of sales chart when theme changes
+    if (this.salesChartComponent && this.salesChartData) {
+      this.salesChartComponent.updateChart(this.salesChartData);
+    }
+    
+    // Force repaint of product performance chart when theme changes
+    if (this.productPerformanceChartComponent && this.productPerformanceData && this.productPerformanceData.length > 0) {
+      this.productPerformanceChartComponent.refreshChart();
+    }
   }
 
   // Chart event handlers

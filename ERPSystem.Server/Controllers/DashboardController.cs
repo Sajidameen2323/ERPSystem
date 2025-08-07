@@ -616,7 +616,7 @@ public class DashboardController : ControllerBase
             // Purchase metrics
             var totalPurchaseValue = purchaseData.TotalPurchaseValue;
             var totalPurchasePaid = purchaseData.TotalPurchasePaid;
-            var totalPurchaseOutstanding = purchaseData.TotalPurchaseOutstanding;
+            var totalPurchaseOutstanding = Math.Max(0, purchaseData.TotalPurchaseValue - purchaseData.TotalPurchasePaid - returnData);
 
             // Return metrics
             var totalReturnValue = returnData;

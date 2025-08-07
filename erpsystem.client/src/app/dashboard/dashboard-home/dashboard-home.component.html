@@ -310,7 +310,7 @@
                                selectedTimeframe === 'monthly' ? 'month' : 'year',
                       enableZoom: selectedChartType === 'line' || selectedChartType === 'area',
                       enableAnnotations: false
-                    }" [darkMode]="isDarkMode" height="320px">
+                    }" [darkMode]="isDarkMode()" height="320px">
                   </app-sales-chart>
                 </div>
               </div>
@@ -393,7 +393,7 @@
           <app-product-performance-chart 
             #productPerformanceChart
             [productData]="productPerformanceData" 
-            [darkMode]="isDarkMode" 
+            [darkMode]="isDarkMode()" 
             [isLoading]="isLoadingProductPerformance"
             height="280px"
             metric="revenue">
