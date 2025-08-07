@@ -91,6 +91,9 @@ public class OktaUserProfile
     [JsonPropertyName("given_name")]
     public string GivenName { get; set; } = string.Empty;
     
+    [JsonPropertyName("displayName")]
+    public string DisplayName { get; set; } = string.Empty;
+
     [JsonPropertyName("family_name")]
     public string FamilyName { get; set; } = string.Empty;
     

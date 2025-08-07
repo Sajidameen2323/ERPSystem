@@ -84,6 +84,20 @@ public class UsersController : ControllerBase
             return BadRequest(Result.Failure("User ID is required"));
         }
 
+        // Get current user's ID from the JWT token
+        var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+        
+        if (string.IsNullOrEmpty(currentUserId))
+        {
+            return BadRequest(Result.Failure(Constants.ApiMessages.CurrentUserIdNotFound));
+        }
+
+        // Prevent user from updating their own profile
+        if (currentUserId.Equals(id, StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(Result.Failure(Constants.ApiMessages.CannotUpdateOwnProfile));
+        }
+
         if (!ModelState.IsValid)
         {
             var errors = ModelState.Values

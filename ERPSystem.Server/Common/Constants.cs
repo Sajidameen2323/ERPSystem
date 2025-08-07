@@ -38,6 +38,8 @@ public static class Constants
         public const string UserAlreadyDeactivated = "User is already deactivated";
         public const string UserActivatedSuccessfully = "User activated successfully";
         public const string UserAlreadyActive = "User is already active";
+        public const string CannotUpdateOwnProfile = "You cannot update your own profile";
+        public const string CurrentUserIdNotFound = "Current user ID not found in token";
     }
 
     public static class ApiRoutes

@@ -216,11 +216,9 @@ public class OktaService : IOktaService
                 {
                     firstName = updateDto.FirstName,
                     lastName = updateDto.LastName,
+                    displayName = updateDto.DisplayName ?? currentOktaUser.Profile.DisplayName ?? $"{updateDto.FirstName} {updateDto.LastName}",
                     email = currentOktaUser.Profile.Email, // Preserve existing email
                     login = currentOktaUser.Profile.Email, // Preserve existing login (same as email)
-                    name = !string.IsNullOrWhiteSpace(updateDto.DisplayName) 
-                        ? updateDto.DisplayName 
-                        : $"{updateDto.FirstName} {updateDto.LastName}",
                     roles = updateDto.Roles ?? Array.Empty<string>()
                 }
             };
@@ -269,11 +267,19 @@ public class OktaService : IOktaService
                 // Continue with success since main Okta update succeeded
             }
 
-            // Map the updated Okta user to view model
-            var userViewModel = MapOktaUserToViewModel(updatedOktaUser);
-            
+            // Get the updated application-specific user data instead of just mapping from Okta
+            var applicationUserResult = await GetApplicationUserByIdAsync(userId);
+            if (!applicationUserResult.IsSuccess)
+            {
+                _logger.LogWarning("User updated successfully but failed to retrieve application user data for user {UserId}: {Error}", 
+                    userId, applicationUserResult.Error);
+                // Fallback to mapping from Okta user if application user retrieval fails
+                var userViewModel = MapOktaUserToViewModel(updatedOktaUser);
+                return Result<UserViewModel>.Success(userViewModel);
+            }
+
             _logger.LogInformation("User {UserId} update completed successfully", userId);
-            return Result<UserViewModel>.Success(userViewModel);
+            return Result<UserViewModel>.Success(applicationUserResult.Data!);
         }
         catch (Exception ex)
         {
@@ -611,7 +617,7 @@ public class OktaService : IOktaService
             LastLoginAt = oktaUser?.Embedded?.User?.LastLogin,
             FirstName = oktaUser?.Profile?.GivenName ?? string.Empty,
             LastName = oktaUser?.Profile?.FamilyName ?? string.Empty,
-            DisplayName = oktaUser?.Profile?.Name ?? string.Empty,
+            DisplayName = oktaUser?.Profile?.DisplayName ?? string.Empty,
             Email = oktaUser?.Profile?.Email ?? string.Empty,
             Roles = oktaUser?.Profile?.Roles
         };
@@ -631,8 +637,8 @@ public class OktaService : IOktaService
                 {
                     firstName = oktaUser.Profile?.GivenName,
                     lastName = oktaUser.Profile?.FamilyName,
+                    // displayName = oktaUser.Profile?.Name,
                     email = oktaUser.Profile?.Email,
-                    name = oktaUser.Profile?.Name,
                     roles = oktaUser.Profile?.Roles
                 }
             };

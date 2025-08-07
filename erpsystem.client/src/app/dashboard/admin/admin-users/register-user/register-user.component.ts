@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { LucideAngularModule, UserPlus, ArrowLeft, Eye, EyeOff } from 'lucide-angular';
+import { LucideAngularModule, UserPlus, ArrowLeft, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-angular';
 import { UserService } from '../../../../core/services/user.service';
 import { RegisterUserRequest } from '../../../../core/models/user.interface';
 
@@ -18,7 +18,9 @@ export class RegisterUserComponent implements OnInit {
     UserPlus,
     ArrowLeft,
     Eye,
-    EyeOff
+    EyeOff,
+    CheckCircle,
+    AlertCircle
   };
 
   registerForm!: FormGroup;
@@ -86,16 +88,14 @@ export class RegisterUserComponent implements OnInit {
     });
   }
 
-  onRoleChange(role: string, isChecked: boolean) {
+  toggleRole(role: string) {
     const rolesControl = this.registerForm.get('roles');
     const currentRoles = rolesControl?.value || [];
     
-    if (isChecked) {
-      if (!currentRoles.includes(role)) {
-        rolesControl?.setValue([...currentRoles, role]);
-      }
-    } else {
+    if (currentRoles.includes(role)) {
       rolesControl?.setValue(currentRoles.filter((r: string) => r !== role));
+    } else {
+      rolesControl?.setValue([...currentRoles, role]);
     }
   }
 
