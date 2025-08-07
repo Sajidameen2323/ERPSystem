@@ -146,6 +146,9 @@
                 <div class="text-sm text-gray-500 dark:text-gray-400" *ngIf="supplier.lastPurchaseDate">
                   Last: {{ formatDate(supplier.lastPurchaseDate) }}
                 </div>
+                <div class="text-sm text-gray-500 dark:text-gray-400" *ngIf="!supplier.lastPurchaseDate">
+                  No purchases yet
+                </div>
               </div>
             </td>
 

@@ -237,12 +237,16 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     }).format(amount);
   }
 
-  formatDate(date: Date): string {
+  formatDate(date: Date | string | null | undefined): string {
+    if (!date) return 'N/A';
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(dateObj.getTime())) return 'Invalid Date';
+    
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
-    }).format(date);
+    }).format(dateObj);
   }
 
   getPerformanceRatingClass(rating?: number): string {
